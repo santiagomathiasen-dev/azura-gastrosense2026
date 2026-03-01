@@ -23,6 +23,13 @@ export interface PayrollEntry {
     amount: number;
     date: string;
     status: 'paid' | 'pending';
+    payslip_data?: {
+        base_salary: number;
+        overtime: number;
+        bonuses: number;
+        deductions: number;
+        net_salary: number;
+    };
 }
 
 export function useFinancials() {
@@ -34,7 +41,7 @@ export function useFinancials() {
         queryFn: async () => {
             if (!ownerId) return [];
             const { data, error } = await supabase
-                .from('financial_expenses')
+                .from('financial_expenses' as any)
                 .select('*')
                 .eq('user_id', ownerId)
                 .order('date', { ascending: false });
@@ -43,7 +50,7 @@ export function useFinancials() {
                 console.error('Error fetching expenses:', error);
                 return [];
             }
-            return data as FinancialExpense[];
+            return data as unknown as FinancialExpense[];
         },
         enabled: !!ownerId,
     });
@@ -53,7 +60,7 @@ export function useFinancials() {
         queryFn: async () => {
             if (!ownerId) return [];
             const { data, error } = await supabase
-                .from('payroll_entries')
+                .from('payroll_entries' as any)
                 .select('*')
                 .eq('user_id', ownerId)
                 .order('date', { ascending: false });
@@ -62,7 +69,7 @@ export function useFinancials() {
                 console.error('Error fetching payroll:', error);
                 return [];
             }
-            return data as PayrollEntry[];
+            return data as unknown as PayrollEntry[];
         },
         enabled: !!ownerId,
     });
@@ -71,7 +78,7 @@ export function useFinancials() {
         mutationFn: async (expense: Omit<FinancialExpense, 'id'>) => {
             if (!ownerId) throw new Error('Owner ID not found');
             const { data, error } = await supabase
-                .from('financial_expenses')
+                .from('financial_expenses' as any)
                 .insert([{ ...expense, user_id: ownerId }])
                 .select()
                 .single();
@@ -92,7 +99,7 @@ export function useFinancials() {
         mutationFn: async (entry: Omit<PayrollEntry, 'id'>) => {
             if (!ownerId) throw new Error('Owner ID not found');
             const { data, error } = await supabase
-                .from('payroll_entries')
+                .from('payroll_entries' as any)
                 .insert([{ ...entry, user_id: ownerId }])
                 .select()
                 .single();

@@ -112,7 +112,7 @@ export default function Financeiro() {
         amount: 0,
         category: 'fixed',
         type: 'other',
-        date: getNow().split('T')[0],
+        date: getNow().toISOString().split('T')[0],
         status: 'pending'
     });
 
@@ -121,7 +121,7 @@ export default function Financeiro() {
         collaborator_name: '',
         amount: 0,
         type: 'salary',
-        date: getNow().split('T')[0],
+        date: getNow().toISOString().split('T')[0],
         status: 'pending',
         payslip_data: {
             base_salary: 0,
@@ -145,7 +145,7 @@ export default function Financeiro() {
                     amount: 0,
                     category: 'fixed',
                     type: 'other',
-                    date: getNow().split('T')[0],
+                    date: getNow().toISOString().split('T')[0],
                     status: 'pending'
                 });
             }
@@ -177,7 +177,7 @@ export default function Financeiro() {
                     collaborator_name: '',
                     amount: 0,
                     type: 'salary',
-                    date: getNow().split('T')[0],
+                    date: getNow().toISOString().split('T')[0],
                     status: 'pending',
                     payslip_data: {
                         base_salary: 0,
