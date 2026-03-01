@@ -26,29 +26,24 @@ export interface PayrollEntry {
 }
 
 export function useFinancials() {
-    const { user } = useAuth();
     const { ownerId } = useOwnerId();
     const queryClient = useQueryClient();
-
-    // For now, we simulate these tables using common queries or local storage fallback
-    // since they might not exist yet in the database schema.
 
     const { data: expenses = [], isLoading: expensesLoading } = useQuery({
         queryKey: ['financial_expenses', ownerId],
         queryFn: async () => {
             if (!ownerId) return [];
-
-            // Attempt to fetch from a hypothetical table, fallback to empty
             const { data, error } = await supabase
-                .from('financial_expenses' as any)
+                .from('financial_expenses')
                 .select('*')
-                .eq('owner_id', ownerId);
+                .eq('user_id', ownerId)
+                .order('date', { ascending: false });
 
             if (error) {
-                console.warn('financial_expenses table not found, using empty list');
-                return [] as unknown as FinancialExpense[];
+                console.error('Error fetching expenses:', error);
+                return [];
             }
-            return data as unknown as FinancialExpense[];
+            return data as FinancialExpense[];
         },
         enabled: !!ownerId,
     });
@@ -57,26 +52,27 @@ export function useFinancials() {
         queryKey: ['payroll', ownerId],
         queryFn: async () => {
             if (!ownerId) return [];
-
             const { data, error } = await supabase
-                .from('payroll_entries' as any)
+                .from('payroll_entries')
                 .select('*')
-                .eq('owner_id', ownerId);
+                .eq('user_id', ownerId)
+                .order('date', { ascending: false });
 
             if (error) {
-                console.warn('payroll_entries table not found, using empty list');
-                return [] as unknown as PayrollEntry[];
+                console.error('Error fetching payroll:', error);
+                return [];
             }
-            return data as unknown as PayrollEntry[];
+            return data as PayrollEntry[];
         },
         enabled: !!ownerId,
     });
 
     const addExpense = useMutation({
         mutationFn: async (expense: Omit<FinancialExpense, 'id'>) => {
+            if (!ownerId) throw new Error('Owner ID not found');
             const { data, error } = await supabase
-                .from('financial_expenses' as any)
-                .insert([{ ...expense, owner_id: ownerId }])
+                .from('financial_expenses')
+                .insert([{ ...expense, user_id: ownerId }])
                 .select()
                 .single();
             if (error) throw error;
@@ -85,14 +81,19 @@ export function useFinancials() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['financial_expenses'] });
             toast.success('Gasto registrado com sucesso!');
+        },
+        onError: (error) => {
+            console.error('Error adding expense:', error);
+            toast.error('Falha ao registrar gasto: ' + error.message);
         }
     });
 
     const addPayroll = useMutation({
         mutationFn: async (entry: Omit<PayrollEntry, 'id'>) => {
+            if (!ownerId) throw new Error('Owner ID not found');
             const { data, error } = await supabase
-                .from('payroll_entries' as any)
-                .insert([{ ...entry, owner_id: ownerId }])
+                .from('payroll_entries')
+                .insert([{ ...entry, user_id: ownerId }])
                 .select()
                 .single();
             if (error) throw error;
@@ -101,6 +102,10 @@ export function useFinancials() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['payroll'] });
             toast.success('Lançamento de folha registrado!');
+        },
+        onError: (error) => {
+            console.error('Error adding payroll:', error);
+            toast.error('Falha ao registrar folha: ' + error.message);
         }
     });
 

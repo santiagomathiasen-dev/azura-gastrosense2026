@@ -105,6 +105,92 @@ export default function Financeiro() {
         });
     };
 
+    const [showExpenseDialog, setShowExpenseDialog] = useState(false);
+    const [showPayrollDialog, setShowPayrollDialog] = useState(false);
+    const [newExpense, setNewExpense] = useState<Omit<FinancialExpense, 'id'>>({
+        description: '',
+        amount: 0,
+        category: 'fixed',
+        type: 'other',
+        date: getNow().split('T')[0],
+        status: 'pending'
+    });
+
+    const [newPayroll, setNewPayroll] = useState<Omit<PayrollEntry, 'id'>>({
+        collaborator_id: '',
+        collaborator_name: '',
+        amount: 0,
+        type: 'salary',
+        date: getNow().split('T')[0],
+        status: 'pending',
+        payslip_data: {
+            base_salary: 0,
+            overtime: 0,
+            bonuses: 0,
+            deductions: 0,
+            net_salary: 0
+        }
+    });
+
+    const handleAddExpense = () => {
+        if (!newExpense.description || newExpense.amount <= 0) {
+            toast.error('Preencha a descrição e o valor corretamente.');
+            return;
+        }
+        addExpense.mutate(newExpense, {
+            onSuccess: () => {
+                setShowExpenseDialog(false);
+                setNewExpense({
+                    description: '',
+                    amount: 0,
+                    category: 'fixed',
+                    type: 'other',
+                    date: getNow().split('T')[0],
+                    status: 'pending'
+                });
+            }
+        });
+    };
+
+    const handleAddPayroll = () => {
+        if (!newPayroll.collaborator_id || newPayroll.amount <= 0) {
+            toast.error('Selecione um colaborador e informe o valor.');
+            return;
+        }
+
+        // Auto-calculate net if payslip active
+        const net = (newPayroll.payslip_data?.base_salary || 0) +
+            (newPayroll.payslip_data?.overtime || 0) +
+            (newPayroll.payslip_data?.bonuses || 0) -
+            (newPayroll.payslip_data?.deductions || 0);
+
+        const entry = {
+            ...newPayroll,
+            amount: net > 0 ? net : newPayroll.amount
+        };
+
+        addPayroll.mutate(entry, {
+            onSuccess: () => {
+                setShowPayrollDialog(false);
+                setNewPayroll({
+                    collaborator_id: '',
+                    collaborator_name: '',
+                    amount: 0,
+                    type: 'salary',
+                    date: getNow().split('T')[0],
+                    status: 'pending',
+                    payslip_data: {
+                        base_salary: 0,
+                        overtime: 0,
+                        bonuses: 0,
+                        deductions: 0,
+                        net_salary: 0
+                    }
+                });
+            }
+        });
+    };
+
     const handleOpenEdit = (product: any) => {
         setEditingProduct(product);
         setEditValues({
@@ -312,7 +398,7 @@ export default function Financeiro() {
                                         <Upload className="h-4 w-4" />
                                         Importar NFe (XML)
                                     </Button>
-                                    <Button size="sm" className="gap-2">
+                                    <Button size="sm" className="gap-2" onClick={() => setShowExpenseDialog(true)}>
                                         <Plus className="h-4 w-4" />
                                         Novo Lançamento
                                     </Button>
@@ -404,7 +490,7 @@ export default function Financeiro() {
                                     </CardTitle>
                                     <CardDescription>Gestão de remuneração da equipe</CardDescription>
                                 </div>
-                                <Button size="sm" className="gap-2">
+                                <Button size="sm" className="gap-2" onClick={() => setShowPayrollDialog(true)}>
                                     <Plus className="h-4 w-4" />
                                     Lançar Vencimento
                                 </Button>
@@ -501,76 +587,180 @@ export default function Financeiro() {
                 </TabsContent>
             </Tabs>
 
-            {/* Edit Costs Dialog (Simulator) */}
-            <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
-                <DialogContent className="sm:max-w-[425px]">
+            {/* Expense Dialog */}
+            <Dialog open={showExpenseDialog} onOpenChange={setShowExpenseDialog}>
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Custos Individuais (Simulação) - {editingProduct?.name}</DialogTitle>
-                        <DialogDescription>
-                            Ajuste os custos operacionais para simular a margem necessária.
-                        </DialogDescription>
+                        <DialogTitle>Novo Lançamento de Gasto</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right flex items-center justify-end gap-2">
-                                <Factory className="h-4 w-4 text-emerald-500" />
-                                M.O.
-                            </Label>
-                            <div className="col-span-3 relative">
-                                <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <div className="space-y-2">
+                            <Label>Descrição</Label>
+                            <Input
+                                value={newExpense.description}
+                                onChange={e => setNewExpense({ ...newExpense, description: e.target.value })}
+                                placeholder="Ex: Aluguel, Conta de Luz, Fornecedor X"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Valor (R$)</Label>
                                 <Input
                                     type="number"
-                                    value={editValues.labor}
-                                    onChange={(e) => setEditValues({ ...editValues, labor: e.target.value })}
-                                    className="pl-8"
-                                    placeholder="0.00"
+                                    value={newExpense.amount}
+                                    onChange={e => setNewExpense({ ...newExpense, amount: Number(e.target.value) })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Data</Label>
+                                <Input
+                                    type="date"
+                                    value={newExpense.date}
+                                    onChange={e => setNewExpense({ ...newExpense, date: e.target.value })}
                                 />
                             </div>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right flex items-center justify-end gap-2">
-                                <Zap className="h-4 w-4 text-blue-500" />
-                                Energia
-                            </Label>
-                            <div className="col-span-3 relative">
-                                <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    type="number"
-                                    value={editValues.energy}
-                                    onChange={(e) => setEditValues({ ...editValues, energy: e.target.value })}
-                                    className="pl-8"
-                                    placeholder="0.00"
-                                />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Categoria</Label>
+                                <select
+                                    className="w-full p-2 rounded-md border bg-background"
+                                    value={newExpense.category}
+                                    onChange={e => setNewExpense({ ...newExpense, category: e.target.value as any })}
+                                >
+                                    <option value="fixed">Fixo</option>
+                                    <option value="variable">Variável</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Status</Label>
+                                <select
+                                    className="w-full p-2 rounded-md border bg-background"
+                                    value={newExpense.status}
+                                    onChange={e => setNewExpense({ ...newExpense, status: e.target.value as any })}
+                                >
+                                    <option value="pending">Pendente</option>
+                                    <option value="paid">Pago</option>
+                                </select>
                             </div>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right flex items-center justify-end gap-2">
-                                <PackagePlus className="h-4 w-4 text-orange-500" />
-                                Outros
-                            </Label>
-                            <div className="col-span-3 relative">
-                                <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    type="number"
-                                    value={editValues.other}
-                                    onChange={(e) => setEditValues({ ...editValues, other: e.target.value })}
-                                    className="pl-8"
-                                    placeholder="0.00"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-muted/30 p-3 rounded-lg border border-dashed text-xs text-muted-foreground">
-                        <p><strong>Nota:</strong> O custo dos insumos (R$ {editingProduct?.ingredientCost.toFixed(2)}) é calculado automaticamente pela ficha técnica.</p>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditingProduct(null)}>Fechar</Button>
-                        <Button onClick={() => {
-                            toast.success("Custos simulados com sucesso!");
-                            setEditingProduct(null);
-                        }}>
-                            Salvar Simulação
-                        </Button>
+                        <Button variant="outline" onClick={() => setShowExpenseDialog(false)}>Cancelar</Button>
+                        <Button onClick={handleAddExpense}>Salvar Gasto</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Payroll Dialog */}
+            <Dialog open={showPayrollDialog} onOpenChange={setShowPayrollDialog}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Lançar Vencimento / Contracheque</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Colaborador</Label>
+                            <select
+                                className="w-full p-2 rounded-md border bg-background"
+                                value={newPayroll.collaborator_id}
+                                onChange={e => {
+                                    const c = collaborators.find(col => col.id === e.target.value);
+                                    setNewPayroll({ ...newPayroll, collaborator_id: e.target.value, collaborator_name: c?.name || '' });
+                                }}
+                            >
+                                <option value="">Selecione...</option>
+                                {collaborators.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="bg-muted/30 p-4 rounded-xl space-y-3 border border-dashed">
+                            <p className="text-[10px] font-black uppercase text-muted-foreground mb-2">Detalhes do Contracheque</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <Label className="text-[10px]">Salário Base</Label>
+                                    <Input
+                                        type="number"
+                                        className="h-8 text-xs"
+                                        value={newPayroll.payslip_data?.base_salary}
+                                        onChange={e => setNewPayroll({
+                                            ...newPayroll,
+                                            payslip_data: { ...newPayroll.payslip_data!, base_salary: Number(e.target.value) }
+                                        })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-[10px]">Horas Extras</Label>
+                                    <Input
+                                        type="number"
+                                        className="h-8 text-xs"
+                                        value={newPayroll.payslip_data?.overtime}
+                                        onChange={e => setNewPayroll({
+                                            ...newPayroll,
+                                            payslip_data: { ...newPayroll.payslip_data!, overtime: Number(e.target.value) }
+                                        })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-[10px]">Bônus/Prêmios</Label>
+                                    <Input
+                                        type="number"
+                                        className="h-8 text-xs"
+                                        value={newPayroll.payslip_data?.bonuses}
+                                        onChange={e => setNewPayroll({
+                                            ...newPayroll,
+                                            payslip_data: { ...newPayroll.payslip_data!, bonuses: Number(e.target.value) }
+                                        })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-[10px]">Descontos (INSS/Faltas)</Label>
+                                    <Input
+                                        type="number"
+                                        className="h-8 text-xs"
+                                        value={newPayroll.payslip_data?.deductions}
+                                        onChange={e => setNewPayroll({
+                                            ...newPayroll,
+                                            payslip_data: { ...newPayroll.payslip_data!, deductions: Number(e.target.value) }
+                                        })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="pt-2 mt-2 border-t border-dashed flex justify-between items-center">
+                                <span className="text-xs font-bold">Líquido Estimado:</span>
+                                <span className="font-black text-emerald-600">
+                                    R$ {((newPayroll.payslip_data?.base_salary || 0) + (newPayroll.payslip_data?.overtime || 0) + (newPayroll.payslip_data?.bonuses || 0) - (newPayroll.payslip_data?.deductions || 0)).toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Data do Pagamento</Label>
+                                <Input
+                                    type="date"
+                                    value={newPayroll.date}
+                                    onChange={e => setNewPayroll({ ...newPayroll, date: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Status</Label>
+                                <select
+                                    className="w-full p-2 rounded-md border bg-background"
+                                    value={newPayroll.status}
+                                    onChange={e => setNewPayroll({ ...newPayroll, status: e.target.value as any })}
+                                >
+                                    <option value="pending">Agendado</option>
+                                    <option value="paid">Pago</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowPayrollDialog(false)}>Cancelar</Button>
+                        <Button onClick={handleAddPayroll}>Gerar Lançamento</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
