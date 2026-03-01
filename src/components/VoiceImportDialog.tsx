@@ -309,16 +309,27 @@ IMPORTANTE:
 - Extraia o preço corretamente mesmo se falarem "reais" ou símbolos.
 - Se não houver preço, use null.`;
 
-      const { data, error } = await supabase.functions.invoke('process-voice-text', {
-        body: {
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-voice-text`;
+      console.log("Calling process-voice-text (batch import):", functionUrl);
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+        },
+        body: JSON.stringify({
           text: textToProcess,
           systemPrompt,
-        },
+        })
       });
 
-      if (error) {
-        throw new Error(error.message);
+      if (!response.ok) {
+        throw new Error(`Cloud Error: ${response.status}`);
       }
+
+      const data = await response.json();
 
       if (data.error) {
         throw new Error(data.error);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, DollarSign, Calculator, Clock, Users, ChefHat, Edit, Trash2, Mic, Plus, FileText, Loader2 } from 'lucide-react';
+import { Search, DollarSign, Calculator, Clock, Users, ChefHat, Edit, Trash2, Mic, MicOff, Plus, FileText, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Input } from '@/components/ui/input';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -27,6 +27,7 @@ import {
 import { useTechnicalSheets, TechnicalSheetWithIngredients } from '@/hooks/useTechnicalSheets';
 import { useTechnicalSheetStages } from '@/hooks/useTechnicalSheetStages';
 import { useStockItems, type StockUnit, type StockCategory } from '@/hooks/useStockItems';
+import { useStockVoiceControl } from '@/hooks/useStockVoiceControl';
 import { VoiceImportDialog, type ExtractedItem } from '@/components/VoiceImportDialog';
 import { RecipeFileImportDialog } from '@/components/RecipeFileImportDialog';
 import { StageForm, type StageFormData } from '@/components/fichas/StageForm';
@@ -59,6 +60,25 @@ export default function Fichas() {
   const [fileImportDialogOpen, setFileImportDialogOpen] = useState(false);
   const [editingSheet, setEditingSheet] = useState<TechnicalSheetWithIngredients | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const {
+    isListening,
+    transcript,
+    pendingConfirmation,
+    startListening,
+    stopListening,
+    confirmUpdate,
+    cancelUpdate
+  } = useStockVoiceControl({
+    stockItems: stockItems,
+    onQuantityUpdate: (id, qty) => {
+      // In Fichas we might want to add to current stage or similar
+      console.log(`Voice update: ${id} qty ${qty}`);
+    }
+  });
+
+  const handleMicMouseDown = () => startListening();
+  const handleMicMouseUp = () => stopListening();
 
   // Load stages for selected sheet
   const { stages: sheetStages, createStage, deleteStage } = useTechnicalSheetStages(selectedSheet?.id);
@@ -283,14 +303,24 @@ export default function Fichas() {
 
     setIsSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('process-recipe-video', {
-        body: { videoUrl: formData.video_url },
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-recipe-video`;
+      console.log("Calling process-recipe-video:", functionUrl);
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+        },
+        body: JSON.stringify({ videoUrl: formData.video_url })
       });
 
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'Erro na comunicação com o servidor');
+      if (!response.ok) {
+        throw new Error(`Cloud Error: ${response.status}`);
       }
+
+      const data = await response.json();
 
       if (data && data.error) {
         throw new Error(data.error);
@@ -450,69 +480,55 @@ export default function Fichas() {
     setIsSaving(true);
     try {
       let sheetId: string;
+      const sheetData = {
+        name: formData.nome,
+        description: formData.descricao || null,
+        preparation_method: null,
+        preparation_time: formData.tempoPreparo ? parseInt(formData.tempoPreparo) : null,
+        yield_quantity: formData.rendimento ? parseFloat(formData.rendimento) : 1,
+        yield_unit: formData.unidadeRendimento,
+        image_url: formData.image_url || null,
+        video_url: formData.video_url || null,
+        minimum_stock: formData.minimumStock ? parseFloat(formData.minimumStock) : 0,
+        production_type: formData.productionType,
+        shelf_life_hours: formData.shelfLife ? parseInt(formData.shelfLife) : null,
+        lead_time_hours: formData.leadTime ? parseInt(formData.leadTime) : null,
+        labor_cost: formData.laborCost ? parseFloat(formData.laborCost) : 0,
+        energy_cost: formData.energyCost ? parseFloat(formData.energyCost) : 0,
+        other_costs: formData.otherCosts ? parseFloat(formData.otherCosts) : 0,
+        markup: formData.markup ? parseFloat(formData.markup) : 0,
+        target_price: formData.targetPrice ? parseFloat(formData.targetPrice) : null,
+        praca: formData.praca || null,
+      };
 
       if (editingSheet) {
-        // Update existing sheet
         await updateSheet.mutateAsync({
           id: editingSheet.id,
-          name: formData.nome,
-          description: formData.descricao || null,
-          preparation_method: null, // We now use stages for preparation
-          preparation_time: formData.tempoPreparo ? parseInt(formData.tempoPreparo) : null,
-          yield_quantity: formData.rendimento ? parseFloat(formData.rendimento) : 1,
-          yield_unit: formData.unidadeRendimento,
-          image_url: formData.image_url || null,
-          video_url: formData.video_url || null,
-          minimum_stock: formData.minimumStock ? parseFloat(formData.minimumStock) : 0,
-          production_type: formData.productionType,
-          shelf_life_hours: formData.shelfLife ? parseInt(formData.shelfLife) : null,
-          lead_time_hours: formData.leadTime ? parseInt(formData.leadTime) : null,
-          labor_cost: formData.laborCost ? parseFloat(formData.laborCost) : 0,
-          energy_cost: formData.energyCost ? parseFloat(formData.energyCost) : 0,
-          other_costs: formData.otherCosts ? parseFloat(formData.otherCosts) : 0,
-          markup: formData.markup ? parseFloat(formData.markup) : 0,
-          target_price: formData.targetPrice ? parseFloat(formData.targetPrice) : null,
-          praca: formData.praca || null,
+          ...sheetData
         } as any);
         sheetId = editingSheet.id;
 
-        // Remove all existing ingredients (we'll re-add them with stages)
-        for (const ing of editingSheet.ingredients || []) {
-          await removeIngredient.mutateAsync(ing.id);
-        }
+        // Cleanup: remove existing ingredients and stages efficiently
+        const { error: ingError } = await supabase
+          .from('technical_sheet_ingredients')
+          .delete()
+          .eq('technical_sheet_id', sheetId);
 
-        // Remove existing stages
-        for (const stage of sheetStages) {
-          await deleteStage.mutateAsync(stage.id);
-        }
+        if (ingError) throw ingError;
+
+        const { error: stageError } = await supabase
+          .from('technical_sheet_stages')
+          .delete()
+          .eq('technical_sheet_id', sheetId);
+
+        if (stageError) throw stageError;
       } else {
-        // Create new sheet
-        const newSheet = await createSheet.mutateAsync({
-          name: formData.nome,
-          description: formData.descricao || null,
-          preparation_method: null,
-          preparation_time: formData.tempoPreparo ? parseInt(formData.tempoPreparo) : null,
-          yield_quantity: formData.rendimento ? parseFloat(formData.rendimento) : 1,
-          yield_unit: formData.unidadeRendimento,
-          image_url: formData.image_url || null,
-          video_url: formData.video_url || null,
-          minimum_stock: formData.minimumStock ? parseFloat(formData.minimumStock) : 0,
-          production_type: formData.productionType,
-          shelf_life_hours: formData.shelfLife ? parseInt(formData.shelfLife) : null,
-          lead_time_hours: formData.leadTime ? parseInt(formData.leadTime) : null,
-          labor_cost: formData.laborCost ? parseFloat(formData.laborCost) : 0,
-          energy_cost: formData.energyCost ? parseFloat(formData.energyCost) : 0,
-          other_costs: formData.otherCosts ? parseFloat(formData.otherCosts) : 0,
-          markup: formData.markup ? parseFloat(formData.markup) : 0,
-          target_price: formData.targetPrice ? parseFloat(formData.targetPrice) : null,
-          praca: formData.praca || null,
-        } as any);
+        const newSheet = await createSheet.mutateAsync(sheetData as any);
         sheetId = (newSheet as any).id;
       }
 
       // Create stages and ingredients
       for (const stage of stages) {
-        // Create the stage
         const newStage = await createStage.mutateAsync({
           technical_sheet_id: sheetId,
           name: stage.name,
@@ -521,16 +537,18 @@ export default function Fichas() {
           duration_minutes: null,
         });
 
-        // Add ingredients to the stage
-        for (const ing of stage.ingredients) {
-          await addIngredient.mutateAsync({
+        const stageId = (newStage as any).id;
+
+        // Add ingredients for this stage in parallel
+        await Promise.all(stage.ingredients.map(ing =>
+          addIngredient.mutateAsync({
             technical_sheet_id: sheetId,
             stock_item_id: ing.stockItemId,
             quantity: parseFloat(ing.quantidade),
             unit: ing.unidade,
-            stage_id: (newStage as any).id,
-          });
-        }
+            stage_id: stageId,
+          })
+        ));
       }
 
       toast.success(editingSheet ? 'Ficha técnica atualizada!' : 'Ficha técnica criada!');
@@ -538,10 +556,11 @@ export default function Fichas() {
       resetForm();
     } catch (error) {
       console.error('Error saving recipe:', error);
-      toast.error('Erro ao salvar ficha técnica');
+      toast.error('Erro ao salvar ficha técnica. Verifique se todos os ingredientes são válidos.');
     } finally {
       setIsSaving(false);
     }
+
   };
 
   if (isLoading) {
@@ -861,6 +880,72 @@ export default function Fichas() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!pendingConfirmation} onOpenChange={(open) => !open && cancelUpdate()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Ingrediente por Voz</DialogTitle>
+            <DialogDescription>
+              IA identificou este ingrediente para sua ficha técnica:
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingConfirmation && (
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-muted rounded-lg border border-primary/10">
+                <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Ingrediente</div>
+                <div className="font-semibold text-lg">{pendingConfirmation.itemName}</div>
+              </div>
+
+              <div className="p-4 bg-muted rounded-lg border border-primary/10">
+                <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Quantidade Sugerida</div>
+                <div className="font-semibold text-lg">
+                  {pendingConfirmation.quantity ?? '---'} {pendingConfirmation.unit}
+                </div>
+              </div>
+
+              {transcript && (
+                <div className="p-3 bg-secondary/30 rounded italic text-sm text-muted-foreground border-l-4 border-primary/30">
+                  " {transcript} "
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button variant="outline" onClick={cancelUpdate}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (pendingConfirmation) {
+                  // Logic to add to current stage in Fichas
+                  const newIngredient = {
+                    stockItemId: pendingConfirmation.itemId,
+                    quantidade: (pendingConfirmation.quantity || 0).toString(),
+                    unidade: pendingConfirmation.unit || 'un',
+                    nome: pendingConfirmation.itemName
+                  };
+
+                  if (stages.length > 0) {
+                    const lastStageIndex = stages.length - 1;
+                    const updatedStages = [...stages];
+                    updatedStages[lastStageIndex].ingredients.push(newIngredient as any);
+                    setStages(updatedStages);
+                    toast.success(`${pendingConfirmation.itemName} adicionado ao último estágio`);
+                  } else {
+                    toast.error('Crie um estágio primeiro para adicionar o ingrediente');
+                  }
+                  cancelUpdate();
+                }
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Adicionar à Ficha
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Create/Edit Dialog */}
       <Dialog open={formDialogOpen} onOpenChange={(open) => {
         setFormDialogOpen(open);
@@ -893,12 +978,28 @@ export default function Fichas() {
                   <div className="flex-1 space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="nome">Nome da Receita *</Label>
-                      <Input
-                        id="nome"
-                        value={formData.nome}
-                        onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                        placeholder="Ex: Bolo de Chocolate"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="nome"
+                          value={formData.nome}
+                          onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                          placeholder="Ex: Bolo de Chocolate"
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant={isListening ? "destructive" : "outline"}
+                          size="icon"
+                          className={`shrink-0 transition-all ${isListening ? 'animate-pulse shadow-lg shadow-destructive/20' : ''}`}
+                          onMouseDown={handleMicMouseDown}
+                          onMouseUp={handleMicMouseUp}
+                          onTouchStart={handleMicMouseDown}
+                          onTouchEnd={handleMicMouseUp}
+                          title="Segure para falar ingrediente"
+                        >
+                          {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -1182,6 +1283,6 @@ export default function Fichas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div >
+    </div>
   );
 }

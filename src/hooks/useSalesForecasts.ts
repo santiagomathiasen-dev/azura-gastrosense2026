@@ -118,18 +118,70 @@ export function useSalesForecasts(targetDate?: string) {
 
     const generateForecast = useMutation({
         mutationFn: async ({ targetDate, baseDate, bufferPercent, periodType }: { targetDate: string, baseDate: string, bufferPercent: number, periodType?: string }) => {
-            // @ts-ignore
-            const { error } = await supabase.rpc('generate_sales_forecast', {
-                target_date: targetDate,
-                base_date: baseDate,
-                buffer_percent: bufferPercent,
-                period_type: periodType || 'day'
-            });
-            if (error) throw error;
+            if (!ownerId) throw new Error('Usuário não autenticado');
+
+            // 1. Fetch sales products
+            const { data: products, error: pErr } = await supabase
+                .from('sale_products')
+                .select('id, name')
+                .eq('user_id', ownerId)
+                .eq('is_active', true);
+
+            if (pErr) throw pErr;
+
+            // 2. Fetch sales from baseDate
+            const { data: sales, error: sErr } = await supabase
+                .from('sales')
+                .select('sale_product_id, quantity_sold')
+                .eq('sale_date', baseDate);
+
+            if (sErr) throw sErr;
+
+            // 3. Check for events on target date
+            const { data: events } = await supabase
+                .from('calendar_events' as any)
+                .select('multiplier')
+                .eq('event_date', targetDate);
+
+            const eventMultiplier = (events as any[])?.reduce((acc, ev) => acc * Number(ev.multiplier), 1) || 1;
+
+            // 4. Calculate and upsert forecasts
+            const baseMultiplier = 1 + (bufferPercent / 100);
+            const totalMultiplier = baseMultiplier * eventMultiplier;
+
+            const forecastsToUpsert = products.map(product => {
+                const productSale = sales?.find(s => s.sale_product_id === product.id);
+                const quantity = productSale ? productSale.quantity_sold * totalMultiplier : 0;
+
+                let notes = `Sugerido com base em ${baseDate} (+${bufferPercent}%)`;
+                if (eventMultiplier !== 1) {
+                    notes += ` x Evento (${eventMultiplier}x)`;
+                }
+
+                return {
+                    user_id: ownerId,
+                    sale_product_id: product.id,
+                    target_date: targetDate,
+                    forecasted_quantity: Math.ceil(quantity),
+                    notes: notes
+                };
+            }).filter(f => f.forecasted_quantity > 0);
+
+            if (forecastsToUpsert.length === 0) {
+                throw new Error('Não foram encontradas vendas na data base selecionada.');
+            }
+
+            const { error: upErr } = await supabase
+                .from('sales_forecasts')
+                .upsert(forecastsToUpsert, {
+                    onConflict: 'user_id,target_date,sale_product_id'
+                });
+
+            if (upErr) throw upErr;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sales_forecasts'] });
-            toast.success('Sugestão gerada com sucesso! Verifique os itens abaixo.');
+            toast.success('Sugestão gerada com sucesso!');
         },
         onError: (err: Error) => {
             toast.error(`Erro ao gerar sugestão: ${err.message}`);

@@ -142,12 +142,24 @@ export default function Estoque() {
     isListening,
     activeItemId: activeVoiceItemId,
     transcript,
-    toggleListening,
+    pendingConfirmation,
+    startListening,
+    stopListening,
+    confirmUpdate,
+    cancelUpdate
   } = useStockVoiceControl({
     stockItems: items,
     onQuantityUpdate: handleQuantityUpdate,
     onExpiryUpdate: handleExpiryUpdate,
   });
+
+  const handleMicMouseDown = () => {
+    startListening();
+  };
+
+  const handleMicMouseUp = () => {
+    stopListening();
+  };
 
   const filteredItems = items.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
@@ -463,17 +475,11 @@ export default function Estoque() {
         <TabsContent value="stock" className="flex-1 flex flex-col overflow-hidden space-y-3">
           {/* Big Stock Update Button - Opens microphone immediately */}
           <Card
-            className={`cursor-pointer hover:border-primary transition-all ${isListening ? 'border-primary bg-primary/5' : ''}`}
-            onClick={() => {
-              if (!isListening && voiceSupported) {
-                setCountingMode(true);
-                toggleListening();
-              } else if (isListening) {
-                toggleListening();
-              } else {
-                setCountingMode(!countingMode);
-              }
-            }}
+            className={`cursor-pointer transition-all border-2 ${isListening ? 'border-destructive bg-destructive/5' : 'hover:border-primary/40'}`}
+            onMouseDown={handleMicMouseDown}
+            onMouseUp={handleMicMouseUp}
+            onTouchStart={handleMicMouseDown}
+            onTouchEnd={handleMicMouseUp}
           >
             <CardContent className="flex items-center justify-center gap-3 py-6">
               {isListening ? (
@@ -483,12 +489,12 @@ export default function Estoque() {
               )}
               <div className="text-center">
                 <h3 className="text-lg font-bold">
-                  {isListening ? 'Ouvindo...' : 'Atualizar Estoque'}
+                  {isListening ? 'Ouvindo...' : 'Segure para Atualizar'}
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {isListening
-                    ? (transcript || 'Diga o ingrediente, quantidade e unidade')
-                    : 'Diga o ingrediente, quantidade e unidade'}
+                    ? (transcript || 'Diga o ingrediente e quantidade')
+                    : 'Pressione e segure para falar'}
                 </p>
               </div>
             </CardContent>
@@ -656,7 +662,7 @@ export default function Estoque() {
               onCountedQuantityChange={handleCountedQuantityChange}
               isVoiceActive={isListening}
               activeVoiceItemId={activeVoiceItemId}
-              onVoiceToggle={voiceSupported ? toggleListening : undefined}
+              onVoiceToggle={voiceSupported ? startListening : undefined}
               onTransfer={openTransferDialog}
               onManageBatches={openBatchDialog}
               expiryMap={expiryMap}
@@ -973,6 +979,165 @@ export default function Estoque() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Voice Confirmation Dialog */}
+      <Dialog open={!!pendingConfirmation} onOpenChange={(open) => !open && cancelUpdate()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Atualização de Voz</DialogTitle>
+            <DialogDescription>
+              A IA interpretou seu comando. Confirme os dados abaixo:
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingConfirmation && (
+            <div className="space-y-4 py-4">
+              <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg">
+                <span className="text-sm text-muted-foreground">Item</span>
+                <span className="font-semibold text-lg">{pendingConfirmation.itemName}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg">
+                  <span className="text-sm text-muted-foreground">Quantidade</span>
+                  <span className="font-semibold text-lg">
+                    {pendingConfirmation.quantity ?? '---'} {pendingConfirmation.unit}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg">
+                  <span className="text-sm text-muted-foreground">Validade</span>
+                  <span className="font-semibold text-lg">
+                    {pendingConfirmation.expirationDate
+                      ? new Date(pendingConfirmation.expirationDate + 'T12:00:00').toLocaleDateString('pt-BR')
+                      : '---'}
+                  </span>
+                </div>
+              </div>
+
+              {transcript && (
+                <div className="p-3 bg-secondary/30 rounded italic text-sm text-muted-foreground">
+                  " {transcript} "
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button variant="outline" onClick={cancelUpdate} className="flex gap-2">
+              <X className="h-4 w-4" /> Cancelar
+            </Button>
+            <Button onClick={confirmUpdate} className="flex gap-2 bg-green-600 hover:bg-green-700">
+              <Check className="h-4 w-4" /> Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Voice Confirmation Dialog */}
+      <Dialog open={!!pendingConfirmation} onOpenChange={(open) => !open && cancelUpdate()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Atualização de Voz</DialogTitle>
+            <DialogDescription>
+              A IA interpretou seu comando. Confirme os dados abaixo:
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingConfirmation && (
+            <div className="space-y-4 py-4">
+              <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg border border-primary/10">
+                <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Item</span>
+                <span className="font-semibold text-lg">{pendingConfirmation.itemName}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg border border-primary/10">
+                  <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Quantidade</span>
+                  <span className="font-semibold text-lg">
+                    {pendingConfirmation.quantity ?? '---'} {pendingConfirmation.unit}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg border border-primary/10">
+                  <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Validade</span>
+                  <span className="font-semibold text-lg">
+                    {pendingConfirmation.expirationDate
+                      ? new Date(pendingConfirmation.expirationDate + 'T12:00:00').toLocaleDateString('pt-BR')
+                      : '---'}
+                  </span>
+                </div>
+              </div>
+
+              {transcript && (
+                <div className="p-3 bg-secondary/30 rounded italic text-sm text-muted-foreground border-l-4 border-primary/30">
+                  " {transcript} "
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button variant="outline" onClick={cancelUpdate} className="flex gap-2">
+              <X className="h-4 w-4" /> Cancelar
+            </Button>
+            <Button onClick={confirmUpdate} className="flex gap-2 bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20 transition-all hover:scale-105 active:scale-95">
+              <Check className="h-4 w-4" /> Confirmar Alteração
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Voice Confirmation Dialog */}
+      <Dialog open={!!pendingConfirmation} onOpenChange={(open) => !open && cancelUpdate()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Atualização de Voz</DialogTitle>
+            <DialogDescription>
+              A IA interpretou seu comando. Confirme os dados abaixo:
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingConfirmation && (
+            <div className="space-y-4 py-4">
+              <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg border border-primary/10">
+                <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Item</span>
+                <span className="font-semibold text-lg">{pendingConfirmation.itemName}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg border border-primary/10">
+                  <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Quantidade</span>
+                  <span className="font-semibold text-lg">
+                    {pendingConfirmation.quantity ?? '---'} {pendingConfirmation.unit}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg border border-primary/10">
+                  <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Validade</span>
+                  <span className="font-semibold text-lg">
+                    {pendingConfirmation.expirationDate
+                      ? new Date(pendingConfirmation.expirationDate + 'T12:00:00').toLocaleDateString('pt-BR')
+                      : '---'}
+                  </span>
+                </div>
+              </div>
+
+              {transcript && (
+                <div className="p-3 bg-secondary/30 rounded italic text-sm text-muted-foreground border-l-4 border-primary/30">
+                  " {transcript} "
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button variant="outline" onClick={cancelUpdate} className="flex gap-2">
+              <X className="h-4 w-4" /> Cancelar
+            </Button>
+            <Button onClick={confirmUpdate} className="flex gap-2 bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20 transition-all hover:scale-105 active:scale-95">
+              <Check className="h-4 w-4" /> Confirmar Alteração
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

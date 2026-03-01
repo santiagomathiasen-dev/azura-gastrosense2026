@@ -28,8 +28,17 @@ export function useStockAI(stockItems: StockItem[]) {
     setAiMessage('');
 
     try {
-      const { data, error } = await supabase.functions.invoke('process-stock-input', {
-        body: {
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-stock-input`;
+      console.log("Calling process-stock-input (voice):", functionUrl);
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+        },
+        body: JSON.stringify({
           type: 'voice',
           content: text,
           stockItems: stockItems.map((item) => ({
@@ -38,12 +47,14 @@ export function useStockAI(stockItems: StockItem[]) {
             unit: item.unit,
             category: item.category,
           })),
-        },
+        })
       });
 
-      if (error) {
-        throw new Error(error.message);
+      if (!response.ok) {
+        throw new Error(`Cloud Error: ${response.status}`);
       }
+
+      const data = await response.json();
 
       if (data.error) {
         toast.error(data.error);
@@ -68,8 +79,17 @@ export function useStockAI(stockItems: StockItem[]) {
     setAiMessage('');
 
     try {
-      const { data, error } = await supabase.functions.invoke('process-stock-input', {
-        body: {
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-stock-input`;
+      console.log("Calling process-stock-input (image):", functionUrl);
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+        },
+        body: JSON.stringify({
           type: 'image',
           content: imageBase64,
           stockItems: stockItems.map((item) => ({
@@ -78,12 +98,14 @@ export function useStockAI(stockItems: StockItem[]) {
             unit: item.unit,
             category: item.category,
           })),
-        },
+        })
       });
 
-      if (error) {
-        throw new Error(error.message);
+      if (!response.ok) {
+        throw new Error(`Cloud Error: ${response.status}`);
       }
+
+      const data = await response.json();
 
       if (data.error) {
         toast.error(data.error);

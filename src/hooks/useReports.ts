@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useOwnerId } from './useOwnerId';
@@ -320,6 +321,39 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
   const totalPurchased = purchasedReport.reduce((sum, item) => sum + item.totalCost, 0);
   const totalPurchaseList = purchaseListReport.reduce((sum, item) => sum + item.estimatedCost, 0);
 
+  // --- New Logic: Alerts & Insights ---
+  const alerts = useMemo(() => {
+    const list: { type: 'price' | 'waste' | 'stock', title: string, message: string, severity: 'warning' | 'info' | 'error' }[] = [];
+
+    // 1. Price Variation (Compare with previous 30 days)
+    // For now, let's flag items that are 20% above their typical average cost in the report
+    purchasedReport.forEach(item => {
+      // Mock logic for "high cost" detection
+      if (item.totalCost > 1000) {
+        list.push({
+          type: 'price',
+          title: `Custo Elevado: ${item.itemName}`,
+          message: `O item ${item.itemName} representou um gasto de R$ ${item.totalCost.toFixed(2)} no período.`,
+          severity: 'info'
+        });
+      }
+    });
+
+    // 2. Waste Alerts
+    lossesReport.forEach(item => {
+      if (item.quantity > 5) {
+        list.push({
+          type: 'waste',
+          title: `Desperdício detectado: ${item.productName}`,
+          message: `Houve uma perda de ${item.quantity} ${item.unit}.`,
+          severity: 'warning'
+        });
+      }
+    });
+
+    return list;
+  }, [purchasedReport, lossesReport]);
+
   return {
     salesReport,
     lossesReport,
@@ -330,6 +364,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
     totalLosses,
     totalPurchased,
     totalPurchaseList,
+    alerts,
     isLoading: salesLoading || lossesLoading || purchasedLoading || usedLoading || purchaseListLoading,
   };
 }

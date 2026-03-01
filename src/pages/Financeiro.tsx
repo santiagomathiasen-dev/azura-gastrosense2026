@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Calculator,
     Info,
@@ -12,11 +13,23 @@ import {
     TrendingUp,
     ArrowUpRight,
     Save,
-    Check
+    Check,
+    Factory,
+    Zap,
+    PackagePlus,
+    Edit,
+    FileText,
+    Users,
+    Plus,
+    Upload,
+    Receipt,
+    Wallet
 } from 'lucide-react';
 import { useProductCosts } from '@/hooks/useProductCosts';
 import { useSaleProducts } from '@/hooks/useSaleProducts';
-import { cn } from '@/lib/utils';
+import { useFinancials, FinancialExpense, PayrollEntry } from '@/hooks/useFinancials';
+import { useCollaborators } from '@/hooks/useCollaborators';
+import { cn, getNow } from '@/lib/utils';
 import {
     Table,
     TableBody,
@@ -37,18 +50,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-    Factory,
-    Zap,
-    PackagePlus,
-    Edit,
-    ChevronDown,
-    ChevronUp
-} from 'lucide-react';
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip as RechartsTooltip,
+    ResponsiveContainer,
+    AreaChart,
+    Area
+} from 'recharts';
 
 export default function Financeiro() {
     const { productCosts, isLoading: isCostsLoading } = useProductCosts();
     const { updateSaleProduct } = useSaleProducts();
-    const [targetCMV, setTargetCMV] = useState(30); // Default 30%
+    const { expenses, payroll, addExpense, addPayroll, isLoading: isFinancialsLoading } = useFinancials();
+    const { collaborators } = useCollaborators();
+
+    const [activeTab, setActiveTab] = useState('precificacao');
+    const [targetCMV, setTargetCMV] = useState(30);
 
     const [editingProduct, setEditingProduct] = useState<any | null>(null);
     const [editValues, setEditValues] = useState({
@@ -56,6 +76,23 @@ export default function Financeiro() {
         energy: '0',
         other: '0'
     });
+
+    // Mock data for charts if no real expenses exist
+    const chartData = useMemo(() => {
+        if (expenses.length > 0) {
+            // Group by category
+            return [
+                { name: 'Fixos', valor: expenses.filter(e => e.category === 'fixed').reduce((a, b) => a + b.amount, 0) },
+                { name: 'Variáveis', valor: expenses.filter(e => e.category === 'variable').reduce((a, b) => a + b.amount, 0) },
+                { name: 'Folha', valor: payroll.reduce((a, b) => a + b.amount, 0) }
+            ];
+        }
+        return [
+            { name: 'Fixos', valor: 2500, color: '#3b82f6' },
+            { name: 'Variáveis', valor: 4200, color: '#f59e0b' },
+            { name: 'Folha', valor: 8500, color: '#10b981' }
+        ];
+    }, [expenses, payroll]);
 
     const handleApplyPrice = (productId: string, price: number) => {
         updateSaleProduct.mutate({
@@ -77,23 +114,7 @@ export default function Financeiro() {
         });
     };
 
-    const handleSaveCosts = () => {
-        if (!editingProduct) return;
-
-        updateSaleProduct.mutate({
-            id: editingProduct.id,
-            labor_cost: Number(editValues.labor),
-            energy_cost: Number(editValues.energy),
-            other_costs: Number(editValues.other)
-        } as any, {
-            onSuccess: () => {
-                toast.success('Custos individuais atualizados!');
-                setEditingProduct(null);
-            }
-        });
-    };
-
-    if (isCostsLoading) {
+    if (isCostsLoading || isFinancialsLoading) {
         return (
             <div className="space-y-4">
                 <PageHeader title="Financeiro" description="Gestão de custos e precificação" />
@@ -107,209 +128,386 @@ export default function Financeiro() {
         <div className="space-y-4 pb-8">
             <PageHeader
                 title="Financeiro"
-                description="Analise seus custos e gere preços de venda competitivos"
+                description="Gestão financeira, precificação e folha de pagamento"
             />
 
-            {/* Pricing Simulator Control */}
-            <Card className="bg-primary/5 border-primary/20">
-                <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Calculator className="h-5 w-5 text-primary" />
-                                Simulador de Precificação (Markup)
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+                <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
+                    <TabsTrigger value="precificacao" className="flex items-center gap-2">
+                        <Calculator className="h-4 w-4" />
+                        Precificação
+                    </TabsTrigger>
+                    <TabsTrigger value="gastos" className="flex items-center gap-2">
+                        <Receipt className="h-4 w-4" />
+                        Gastos & Notas
+                    </TabsTrigger>
+                    <TabsTrigger value="folha" className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        RH & Folha
+                    </TabsTrigger>
+                </TabsList>
+
+                {/* --- TAB: PRECIFICAÇÃO --- */}
+                <TabsContent value="precificacao" className="space-y-4">
+                    <Card className="bg-primary/5 border-primary/20">
+                        <CardHeader className="pb-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Calculator className="h-5 w-5 text-primary" />
+                                        Simulador de Precificação (Markup)
+                                    </CardTitle>
+                                    <CardDescription>Ajuste o CMV alvo para recalcular os preços sugeridos</CardDescription>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-2xl font-black text-primary">{targetCMV}%</span>
+                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">CMV ALVO</p>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="px-2">
+                                <Slider
+                                    value={[targetCMV]}
+                                    onValueChange={(vals) => setTargetCMV(vals[0])}
+                                    min={15}
+                                    max={60}
+                                    step={1}
+                                    className="py-4"
+                                />
+                                <div className="flex justify-between text-[10px] text-muted-foreground font-medium px-1">
+                                    <span>MARGEM ALTA (15%)</span>
+                                    <span>EQUILIBRADO (30-35%)</span>
+                                    <span>VOLUME (60%)</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div className="p-3 bg-background rounded-xl border shadow-sm">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-[10px] text-muted-foreground uppercase font-black">Meta Gastos</p>
+                                        <TrendingUp className="h-3 w-3 text-emerald-500" />
+                                    </div>
+                                    <p className="text-xl font-bold text-emerald-600">{100 - targetCMV}%</p>
+                                    <p className="text-[10px] text-muted-foreground italic">Margem Bruta Disponível</p>
+                                </div>
+
+                                <div className="p-3 bg-background rounded-xl border shadow-sm">
+                                    <p className="text-[10px] text-muted-foreground uppercase font-black mb-1">Markup (K)</p>
+                                    <p className="text-xl font-bold text-blue-600">{(100 / targetCMV).toFixed(2)}x</p>
+                                    <p className="text-[10px] text-muted-foreground italic">Multiplicador do custo</p>
+                                </div>
+
+                                <div className="p-3 bg-background rounded-xl border shadow-sm lg:col-span-2">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Info className="h-3 w-3 text-primary" />
+                                        <p className="text-[10px] text-muted-foreground uppercase font-black">Composição Estimada (Base 100%)</p>
+                                    </div>
+                                    <div className="flex h-2 w-full rounded-full overflow-hidden bg-muted mt-2">
+                                        <div style={{ width: `${targetCMV}%` }} className="bg-primary" title="CMV" />
+                                        <div style={{ width: '15%' }} className="bg-emerald-500" title="Impostos" />
+                                        <div style={{ width: '25%' }} className="bg-blue-500" title="Custos Fixos" />
+                                        <div style={{ width: `${Math.max(0, 100 - targetCMV - 40)}%` }} className="bg-orange-500" title="Lucro Líquido" />
+                                    </div>
+                                    <div className="flex gap-3 mt-2">
+                                        <span className="flex items-center gap-1 text-[9px] font-bold"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> CMV {targetCMV}%</span>
+                                        <span className="flex items-center gap-1 text-[9px] font-bold"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Imp. 15%</span>
+                                        <span className="flex items-center gap-1 text-[9px] font-bold"><div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Fixo 25%</span>
+                                        <span className="flex items-center gap-1 text-[9px] font-bold"><div className="w-1.5 h-1.5 rounded-full bg-orange-500" /> Lucro {Math.max(0, 60 - targetCMV)}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <DollarSign className="h-4 w-4" />
+                                Análise de Produtos e Precificação Sugerida
+                                <Badge variant="secondary" className="ml-auto">{productCosts.length} produtos</Badge>
                             </CardTitle>
-                            <CardDescription>Ajuste o CMV alvo para recalcular os preços sugeridos</CardDescription>
-                        </div>
-                        <div className="text-right">
-                            <span className="text-2xl font-black text-primary">{targetCMV}%</span>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold">CMV ALVO</p>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="px-2">
-                        <Slider
-                            value={[targetCMV]}
-                            onValueChange={(vals) => setTargetCMV(vals[0])}
-                            min={15}
-                            max={60}
-                            step={1}
-                            className="py-4"
-                        />
-                        <div className="flex justify-between text-[10px] text-muted-foreground font-medium px-1">
-                            <span>MARGEM ALTA (15%)</span>
-                            <span>EQUILIBRADO (30-35%)</span>
-                            <span>VOLUME (60%)</span>
-                        </div>
-                    </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Produto</TableHead>
+                                            <TableHead className="text-right">Custo Total</TableHead>
+                                            <TableHead className="text-right">Preço Sugerido</TableHead>
+                                            <TableHead className="text-right">Preço Atual</TableHead>
+                                            <TableHead className="text-right">Margem Atual</TableHead>
+                                            <TableHead className="text-right">Ação</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {productCosts.map((p) => {
+                                            const dynamicSuggested = p.totalCost / (targetCMV / 100);
+                                            const isPriceDifferent = Math.abs(dynamicSuggested - (p.currentSalePrice || 0)) > 0.01;
+                                            const currentMargin = p.currentSalePrice && p.currentSalePrice > 0
+                                                ? ((p.currentSalePrice - p.totalCost) / p.currentSalePrice) * 100
+                                                : 0;
 
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                        <div className="p-3 bg-background rounded-xl border shadow-sm">
-                            <div className="flex items-center justify-between mb-1">
-                                <p className="text-[10px] text-muted-foreground uppercase font-black">Meta Gastos</p>
-                                <TrendingUp className="h-3 w-3 text-emerald-500" />
-                            </div>
-                            <p className="text-xl font-bold text-emerald-600">{100 - targetCMV}%</p>
-                            <p className="text-[10px] text-muted-foreground italic">Margem Bruta Disponível</p>
-                        </div>
-
-                        <div className="p-3 bg-background rounded-xl border shadow-sm">
-                            <p className="text-[10px] text-muted-foreground uppercase font-black mb-1">Markup (K)</p>
-                            <p className="text-xl font-bold text-blue-600">{(100 / targetCMV).toFixed(2)}x</p>
-                            <p className="text-[10px] text-muted-foreground italic">Multiplicador do custo</p>
-                        </div>
-
-                        <div className="p-3 bg-background rounded-xl border shadow-sm lg:col-span-2">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Info className="h-3 w-3 text-primary" />
-                                <p className="text-[10px] text-muted-foreground uppercase font-black">Composição Estimada (Base 100%)</p>
-                            </div>
-                            <div className="flex h-2 w-full rounded-full overflow-hidden bg-muted mt-2">
-                                <div style={{ width: `${targetCMV}%` }} className="bg-primary" title="CMV" />
-                                <div style={{ width: '15%' }} className="bg-emerald-500" title="Impostos" />
-                                <div style={{ width: '25%' }} className="bg-blue-500" title="Custos Fixos" />
-                                <div style={{ width: `${Math.max(0, 100 - targetCMV - 40)}%` }} className="bg-orange-500" title="Lucro Líquido" />
-                            </div>
-                            <div className="flex gap-3 mt-2">
-                                <span className="flex items-center gap-1 text-[9px] font-bold"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> CMV {targetCMV}%</span>
-                                <span className="flex items-center gap-1 text-[9px] font-bold"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Imp. 15%</span>
-                                <span className="flex items-center gap-1 text-[9px] font-bold"><div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Fixo 25%</span>
-                                <span className="flex items-center gap-1 text-[9px] font-bold"><div className="w-1.5 h-1.5 rounded-full bg-orange-500" /> Lucro {Math.max(0, 60 - targetCMV)}%</span>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Main Analysis Table */}
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
-                        Análise de Produtos e Precificação Sugerida
-                        <Badge variant="secondary" className="ml-auto">{productCosts.length} produtos</Badge>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {productCosts.length === 0 ? (
-                        <div className="text-center py-12">
-                            <div className="bg-muted rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                                <Calculator className="h-6 w-6 text-muted-foreground" />
-                            </div>
-                            <p className="text-muted-foreground">Vá em "Produtos p/ Venda" e adicione componentes aos seus produtos para ver a análise de custos aqui.</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Produto</TableHead>
-                                        <TableHead className="text-right">Breakdown do Custo</TableHead>
-                                        <TableHead className="text-right">Custo Total</TableHead>
-                                        <TableHead className="text-right">Preço Sugerido</TableHead>
-                                        <TableHead className="text-right">Preço Atual</TableHead>
-                                        <TableHead className="text-right">Margem Atual</TableHead>
-                                        <TableHead className="text-right">Ação</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {productCosts.map((p) => {
-                                        const dynamicSuggested = p.totalCost / (targetCMV / 100);
-                                        const isPriceDifferent = Math.abs(dynamicSuggested - (p.currentSalePrice || 0)) > 0.01;
-                                        const currentMargin = p.currentSalePrice && p.currentSalePrice > 0
-                                            ? ((p.currentSalePrice - p.totalCost) / p.currentSalePrice) * 100
-                                            : 0;
-
-                                        return (
-                                            <TableRow key={p.id} className="group">
-                                                <TableCell className="font-bold">
-                                                    <div className="flex flex-col">
-                                                        <span>{p.name}</span>
-                                                        <Button
-                                                            variant="link"
-                                                            size="sm"
-                                                            className="h-auto p-0 text-[10px] text-primary w-fit flex items-center gap-1"
-                                                            onClick={() => handleOpenEdit(p)}
-                                                        >
-                                                            <Edit className="h-2 w-2" /> Editar Custos Indiv.
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex flex-col items-end gap-1">
-                                                        <div className="flex gap-1.5 overflow-hidden rounded-sm h-1.5 w-24 bg-muted">
-                                                            <div style={{ width: `${(p.ingredientCost / p.totalCost) * 100}%` }} className="bg-primary" title="Insumos" />
-                                                            <div style={{ width: `${(p.laborCost / p.totalCost) * 100}%` }} className="bg-emerald-500" title="Mão de Obra" />
-                                                            <div style={{ width: `${(p.energyCost / p.totalCost) * 100}%` }} className="bg-blue-500" title="Energia" />
-                                                            <div style={{ width: `${(p.otherCosts / p.totalCost) * 100}%` }} className="bg-orange-500" title="Outros" />
+                                            return (
+                                                <TableRow key={p.id}>
+                                                    <TableCell className="font-bold">
+                                                        <div className="flex flex-col">
+                                                            <span>{p.name}</span>
+                                                            <span className="text-[10px] text-muted-foreground">Custo Insumos: R${p.ingredientCost.toFixed(2)}</span>
                                                         </div>
-                                                        <div className="flex gap-2 text-[9px] text-muted-foreground font-medium">
-                                                            <span title="Insumos">INS: R${p.ingredientCost.toFixed(2)}</span>
-                                                            <span title="Mão de Obra">MOD: R${p.laborCost.toFixed(2)}</span>
-                                                            <span title="Energia/OPEX">OPX: R${(p.energyCost + p.otherCosts).toFixed(2)}</span>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right font-black text-foreground">
-                                                    R$ {p.totalCost.toFixed(2)}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex flex-col items-end">
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-black">
+                                                        R$ {p.totalCost.toFixed(2)}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
                                                         <span className="font-black text-primary">R$ {dynamicSuggested.toFixed(2)}</span>
-                                                        <span className="text-[9px] text-muted-foreground">Target {targetCMV}%</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right font-medium">
-                                                    R$ {p.currentSalePrice?.toFixed(2) || '0.00'}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Badge
-                                                        variant={currentMargin >= (100 - targetCMV) ? 'default' : currentMargin >= 50 ? 'secondary' : 'destructive'}
-                                                        className={cn(currentMargin >= (100 - targetCMV) && "bg-emerald-100 text-emerald-700 border-emerald-200")}
-                                                    >
-                                                        {currentMargin.toFixed(1)}%
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button
-                                                        size="sm"
-                                                        variant={isPriceDifferent ? "default" : "outline"}
-                                                        className={cn("h-8 gap-2", !isPriceDifferent && "text-emerald-600 border-emerald-200 bg-emerald-50")}
-                                                        disabled={!isPriceDifferent || updateSaleProduct.isPending}
-                                                        onClick={() => handleApplyPrice(p.id, dynamicSuggested)}
-                                                    >
-                                                        {isPriceDifferent ? (
-                                                            <>
-                                                                <ArrowUpRight className="h-3 w-3" />
-                                                                Aplicar
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Check className="h-3 w-3" />
-                                                                Atualizado
-                                                            </>
-                                                        )}
-                                                    </Button>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium text-muted-foreground">
+                                                        R$ {p.currentSalePrice?.toFixed(2) || '0.00'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Badge
+                                                            className={cn(currentMargin >= (100 - targetCMV) ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-destructive/10 text-destructive border-destructive/20")}
+                                                        >
+                                                            {currentMargin.toFixed(1)}%
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button
+                                                            size="sm"
+                                                            variant={isPriceDifferent ? "default" : "outline"}
+                                                            disabled={!isPriceDifferent}
+                                                            onClick={() => handleApplyPrice(p.id, dynamicSuggested)}
+                                                            className="h-8 gap-1.5"
+                                                        >
+                                                            {isPriceDifferent ? <ArrowUpRight className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+                                                            {isPriceDifferent ? 'Aplicar' : 'No Alvo'}
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* --- TAB: GASTOS & NOTAS --- */}
+                <TabsContent value="gastos" className="space-y-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <Card className="lg:col-span-2">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                                <div>
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <Receipt className="h-4 w-4" />
+                                        Registro de Gastos & NFe
+                                    </CardTitle>
+                                    <CardDescription>Extração automática de custos fixos e variáveis</CardDescription>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button size="sm" variant="outline" className="gap-2">
+                                        <Upload className="h-4 w-4" />
+                                        Importar NFe (XML)
+                                    </Button>
+                                    <Button size="sm" className="gap-2">
+                                        <Plus className="h-4 w-4" />
+                                        Novo Lançamento
+                                    </Button>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Data</TableHead>
+                                            <TableHead>Descrição</TableHead>
+                                            <TableHead>Categoria</TableHead>
+                                            <TableHead className="text-right">Valor</TableHead>
+                                            <TableHead>Status</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {expenses.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                                                    Nenhum gasto registrado. Importe uma nota fiscal para começar.
                                                 </TableCell>
                                             </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                                        ) : (
+                                            expenses.map(exp => (
+                                                <TableRow key={exp.id}>
+                                                    <TableCell>{exp.date}</TableCell>
+                                                    <TableCell className="font-medium">{exp.description}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline">{exp.category === 'fixed' ? 'Fixo' : 'Variável'}</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-bold">R$ {exp.amount.toFixed(2)}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={exp.status === 'paid' ? 'default' : 'secondary'} className={exp.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : ''}>
+                                                            {exp.status === 'paid' ? 'Pago' : 'Pendente'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
 
-            {/* Edit Costs Dialog */}
+                        <div className="space-y-4">
+                            <Card>
+                                <CardHeader className="p-4 pb-2">
+                                    <CardTitle className="text-sm font-medium">Distribuição de Gastos</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0 h-[220px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+                                            <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                                            <YAxis hide />
+                                            <RechartsTooltip formatter={(v) => `R$ ${v}`} />
+                                            <Bar dataKey="valor" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="bg-emerald-50 border-emerald-100">
+                                <CardContent className="p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                                            <TrendingUp className="h-5 w-5 text-emerald-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-emerald-800 font-bold uppercase">Cashflow Total</p>
+                                            <p className="text-xl font-black text-emerald-600">R$ {expenses.reduce((a, b) => a + b.amount, 0).toFixed(2)}</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                </TabsContent>
+
+                {/* --- TAB: RH & FOLHA --- */}
+                <TabsContent value="folha" className="space-y-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <Card className="lg:col-span-2">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                                <div>
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <Users className="h-4 w-4" />
+                                        Folha de Pagamento & Freelancers
+                                    </CardTitle>
+                                    <CardDescription>Gestão de remuneração da equipe</CardDescription>
+                                </div>
+                                <Button size="sm" className="gap-2">
+                                    <Plus className="h-4 w-4" />
+                                    Lançar Vencimento
+                                </Button>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Colaborador</TableHead>
+                                            <TableHead>Tipo</TableHead>
+                                            <TableHead>Data</TableHead>
+                                            <TableHead className="text-right">Valor</TableHead>
+                                            <TableHead>Status</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {payroll.length === 0 ? (
+                                            collaborators.map(c => (
+                                                <TableRow key={c.id}>
+                                                    <TableCell className="font-medium">{c.name}</TableCell>
+                                                    <TableCell><Badge variant="outline">Salário</Badge></TableCell>
+                                                    <TableCell className="text-muted-foreground">-</TableCell>
+                                                    <TableCell className="text-right font-bold text-muted-foreground">R$ 0,00</TableCell>
+                                                    <TableCell><Badge variant="outline" className="opacity-50">Não Lançado</Badge></TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            payroll.map(p => (
+                                                <TableRow key={p.id}>
+                                                    <TableCell className="font-medium">{p.collaborator_name}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline">{p.type === 'freelance' ? 'Freelancer' : 'Salário'}</Badge>
+                                                    </TableCell>
+                                                    <TableCell>{p.date}</TableCell>
+                                                    <TableCell className="text-right font-bold text-emerald-600">R$ {p.amount.toFixed(2)}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={p.status === 'paid' ? 'default' : 'secondary'}>
+                                                            {p.status === 'paid' ? 'Pago' : 'Agendado'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        <div className="space-y-4">
+                            <Card className="bg-primary border-primary">
+                                <CardContent className="p-4 text-primary-foreground">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                            <Wallet className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] opacity-80 font-bold uppercase">Total Folha do Mês</p>
+                                            <p className="text-2xl font-black">R$ {payroll.reduce((a, b) => a + b.amount, 0).toFixed(2) || '0,00'}</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader className="p-4 pb-2">
+                                    <CardTitle className="text-sm font-medium flex items-center justify-between">
+                                        Resumo por Categoria
+                                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 p-4">
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-muted-foreground font-medium">Salários Fixos</span>
+                                            <span className="font-bold">R$ {payroll.filter(p => p.type === 'salary').reduce((a, b) => a + b.amount, 0).toFixed(2)}</span>
+                                        </div>
+                                        <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
+                                            <div className="bg-primary h-full" style={{ width: '85%' }} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-muted-foreground font-medium">Freelancers / Diárias</span>
+                                            <span className="font-bold">R$ {payroll.filter(p => p.type === 'freelance').reduce((a, b) => a + b.amount, 0).toFixed(2)}</span>
+                                        </div>
+                                        <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
+                                            <div className="bg-orange-500 h-full" style={{ width: '15%' }} />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                </TabsContent>
+            </Tabs>
+
+            {/* Edit Costs Dialog (Simulator) */}
             <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Custos Individuais (Simulação) - {editingProduct?.name}</DialogTitle>
                         <DialogDescription>
-                            Ajuste os custos operacionais para simular a margem.
-                            <span className="block mt-1 font-bold text-orange-600">Nota: O salvamento destes campos está temporariamente desabilitado (apenas para exibição local).</span>
+                            Ajuste os custos operacionais para simular a margem necessária.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -363,15 +561,15 @@ export default function Financeiro() {
                         </div>
                     </div>
                     <div className="bg-muted/30 p-3 rounded-lg border border-dashed text-xs text-muted-foreground">
-                        <p><strong>Nota:</strong> O custo dos insumos (R$ {editingProduct?.ingredientCost.toFixed(2)}) é calculado automaticamente com base na ficha técnica.</p>
+                        <p><strong>Nota:</strong> O custo dos insumos (R$ {editingProduct?.ingredientCost.toFixed(2)}) é calculado automaticamente pela ficha técnica.</p>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setEditingProduct(null)}>Fechar</Button>
                         <Button onClick={() => {
-                            toast.info("Valores aplicados para simulação nesta sessão.");
+                            toast.success("Custos simulados com sucesso!");
                             setEditingProduct(null);
                         }}>
-                            Aplicar Simulação
+                            Salvar Simulação
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -55,17 +55,27 @@ export function CollaboratorProvider({ children }: { children: ReactNode }) {
           .single();
 
         if (!error && profile && profile.role === 'colaborador') {
-          const collabData = {
-            ...profile,
-            auth_user_id: profile.id,
-            name: profile.full_name || profile.email || '',
-            is_active: (profile as any).status === 'ativo'
-          } as Collaborator;
+          // Fetch additional collaborator data (permissions)
+          const { data: collaboratorData, error: collabError } = await supabase
+            .from('collaborators')
+            .select('*')
+            .eq('auth_user_id', profile.id)
+            .maybeSingle();
 
-          setCollaborator(collabData);
-          setGestorId(profile.gestor_id);
-          // Sync to localStorage for consistency
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ collaborator: collabData, gestorId: profile.gestor_id }));
+          if (!collabError && collaboratorData) {
+            const collabData = {
+              ...profile,
+              ...collaboratorData,
+              auth_user_id: profile.id,
+              name: profile.full_name || profile.email || collaboratorData.name || '',
+              is_active: (profile as any).status === 'ativo' || collaboratorData.is_active
+            } as Collaborator;
+
+            setCollaborator(collabData);
+            setGestorId(profile.gestor_id || collaboratorData.gestor_id);
+            // Sync to localStorage for consistency
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ collaborator: collabData, gestorId: profile.gestor_id || collaboratorData.gestor_id }));
+          }
         } else {
           // If not a collaborator, or sign-out event
           clearCollaboratorSession();

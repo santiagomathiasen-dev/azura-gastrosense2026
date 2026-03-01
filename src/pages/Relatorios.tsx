@@ -11,14 +11,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   FileText,
   DollarSign,
+  TrendingDown,
   Package,
   ShoppingCart,
-  TrendingDown,
   Calendar as CalendarIcon,
   Download,
   Printer,
   Calculator,
-  Info
+  Info,
+  AlertTriangle,
+  TrendingUp
 } from 'lucide-react';
 import { useReports, DateRangeType } from '@/hooks/useReports';
 import { useProductCosts } from '@/hooks/useProductCosts';
@@ -33,6 +35,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  AreaChart,
+  Area
+} from 'recharts';
 
 function DatePickerWithState({ date, setDate, placeholder }: { date: Date | undefined, setDate: (d: Date | undefined) => void, placeholder: string }) {
   const [open, setOpen] = useState(false);
@@ -88,6 +105,7 @@ export default function Relatorios() {
     totalLosses,
     totalPurchased,
     totalPurchaseList,
+    alerts,
     isLoading,
   } = useReports(dateRange, customStart, customEnd);
 
@@ -190,6 +208,31 @@ export default function Relatorios() {
         />
       </div>
 
+      {/* Alerts Section */}
+      {alerts && (alerts as any[]).length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 print:hidden">
+          {(alerts as any[]).map((alert, idx) => (
+            <Card key={idx} className={cn(
+              "border-l-4",
+              alert.severity === 'error' ? "border-l-destructive bg-destructive/5" :
+                alert.severity === 'warning' ? "border-l-amber-500 bg-amber-50" : "border-l-blue-500 bg-blue-50"
+            )}>
+              <div className="px-3 py-2 flex items-start gap-3">
+                <div className="shrink-0 mt-1">
+                  {alert.severity === 'error' ? <AlertTriangle className="h-4 w-4 text-destructive" /> :
+                    alert.severity === 'warning' ? <AlertTriangle className="h-4 w-4 text-amber-600" /> :
+                      <TrendingUp className="h-4 w-4 text-blue-600" />}
+                </div>
+                <div>
+                  <p className="font-bold text-[13px] leading-tight">{alert.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{alert.message}</p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {/* Date Range Selector */}
       <div className="flex flex-wrap gap-2 items-center print:hidden">
         <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeType)}>
@@ -249,6 +292,56 @@ export default function Relatorios() {
             <ShoppingCart className="h-5 w-5 text-orange-500 mx-auto mb-1" />
             <p className="text-lg font-bold">R$ {(totalPurchaseList || 0).toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">Lista Compras</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-2 print:hidden">
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-sm font-medium">Fluxo Financeiro (Vendas vs Perdas)</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 h-[250px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={[
+                  { name: 'Vendas', valor: totalSales || 0 },
+                  { name: 'Perdas', valor: totalLosses || 0 }
+                ]}
+                margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
+                <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v}`} />
+                <RechartsTooltip />
+                <Area type="monotone" dataKey="valor" stroke="#059669" fill="#059669" fillOpacity={0.1} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-sm font-medium">Top 5 Insumos Comprados (Custo)</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 h-[250px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={purchasedReport.slice(0, 5).map(i => ({
+                  name: i.itemName.length > 12 ? i.itemName.substring(0, 10) + '...' : i.itemName,
+                  valor: i.totalCost
+                }))}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} strokeOpacity={0.2} />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" fontSize={11} width={100} tickLine={false} axisLine={false} />
+                <RechartsTooltip />
+                <Bar dataKey="valor" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>

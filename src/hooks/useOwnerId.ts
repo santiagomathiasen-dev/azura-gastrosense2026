@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
+import { supabaseFetch } from '@/lib/supabase-fetch';
 
 /**
  * Hook that returns the correct owner_id for data operations.
@@ -33,12 +34,15 @@ export function useOwnerId() {
       // If not in collaborator mode, call the database function
       if (!user?.id) return null;
 
-      const { data, error } = await supabase.rpc('get_owner_id');
-      if (error) {
-        console.error('Error getting owner_id:', error);
+      try {
+        console.log("useOwnerId: calling get_owner_id via fetch");
+        const data = await supabaseFetch('rpc/get_owner_id', { method: 'POST' });
+        console.log("useOwnerId: SUCCESS via fetch", data);
+        return data as string;
+      } catch (error) {
+        console.error('Error getting owner_id via fetch:', error);
         return user.id; // Fallback to user's own ID
       }
-      return data as string;
     },
     enabled: !!user?.id || isCollaboratorMode || isImpersonating,
     staleTime: Infinity,

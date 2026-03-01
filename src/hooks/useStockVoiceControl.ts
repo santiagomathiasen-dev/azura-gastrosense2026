@@ -39,6 +39,7 @@ export interface PendingVoiceUpdate {
   itemName: string;
   quantity?: number;
   expirationDate?: string;
+  unit?: string;
 }
 
 interface UseStockVoiceControlProps {
@@ -47,14 +48,15 @@ interface UseStockVoiceControlProps {
   onExpiryUpdate?: (itemId: string, expirationDate: string) => void;
 }
 
-const VOICE_TIMEOUT_MS = 6000; // 6 seconds before auto-stop
+const VOICE_TIMEOUT_MS = 300000; // 5 minutes max per user request
 
 export function useStockVoiceControl({ stockItems, onQuantityUpdate, onExpiryUpdate }: UseStockVoiceControlProps) {
   const [isListening, setIsListening] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [transcript, setTranscript] = useState('');
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingVoiceUpdate | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<any>(null);
 
   const isSupported = typeof window !== 'undefined' &&
     !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -265,14 +267,24 @@ Você é um assistente que atualiza itens de estoque a partir de áudio.
 Determine o item mencionado e extraia a quantidade (que deve ser número decimal caso falarem "vírgula") e a validade (YYYY-MM-DD ou null).
 Retorne APENAS um array JSON: [{"name": string, "quantity": number, "expiration_date": string | null}]`;
 
-          const { data, error } = await supabase.functions.invoke('process-voice-text', {
-            body: { text: cleanFinal, systemPrompt }
+          const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-voice-text`;
+          console.log("Calling process-voice-text (stock control):", functionUrl);
+
+          const response = await fetch(functionUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+            },
+            body: JSON.stringify({ text: cleanFinal, systemPrompt })
           });
 
-          if (error) {
-            console.error('Voice process invoke error:', error);
-            throw new Error('Falha de conexão ou erro no servidor de proc. de voz.');
+          if (!response.ok) {
+            throw new Error(`Cloud Error: ${response.status}`);
           }
+
+          const data = await response.json();
 
           if (data && data.error) {
             console.error('Voice process logic error:', data.error);
@@ -292,17 +304,14 @@ Retorne APENAS um array JSON: [{"name": string, "quantity": number, "expiration_
             : findItemByVoice(extracted.name);
 
           if (item) {
-            // Update quantity if present
-            if (extracted.quantity !== null && extracted.quantity !== undefined) {
-              onQuantityUpdate(item.id, extracted.quantity);
-              toast.success(`${item.name}: ${extracted.quantity} ${item.unit}`);
-            }
-
-            // Update expiry if present
-            if (extracted.expiration_date && onExpiryUpdate) {
-              onExpiryUpdate(item.id, extracted.expiration_date);
-              toast.success(`${item.name}: validade para ${new Date(extracted.expiration_date + 'T12:00:00').toLocaleDateString('pt-BR')}`);
-            }
+            const pending: PendingVoiceUpdate = {
+              itemId: item.id,
+              itemName: item.name,
+              quantity: extracted.quantity ?? undefined,
+              expirationDate: extracted.expiration_date ?? undefined,
+              unit: item.unit
+            };
+            setPendingConfirmation(pending);
           } else {
             toast.error(`Não encontrei o item "${extracted.name}"`);
           }
@@ -355,16 +364,19 @@ Retorne APENAS um array JSON: [{"name": string, "quantity": number, "expiration_
     }
   }, [stockItems, resetVoiceTimeout]);
 
-  const stopListening = useCallback(() => {
+  const stopListening = useCallback((cancel = false) => {
     clearVoiceTimeout();
     if (recognitionRef.current) {
       try {
-        recognitionRef.current.stop();
+        if (cancel) {
+          recognitionRef.current.abort();
+        } else {
+          recognitionRef.current.stop();
+        }
       } catch (e) { }
     }
     setIsListening(false);
-    setActiveItemId(null);
-    setTranscript('');
+    // Don't clear transcripts here if we just stopped to process
   }, [clearVoiceTimeout]);
 
   const toggleListening = useCallback((itemId?: string) => {
@@ -375,13 +387,33 @@ Retorne APENAS um array JSON: [{"name": string, "quantity": number, "expiration_
     }
   }, [isListening, startListening, stopListening]);
 
+  const confirmUpdate = useCallback(() => {
+    if (pendingConfirmation) {
+      if (pendingConfirmation.quantity !== undefined) {
+        onQuantityUpdate(pendingConfirmation.itemId, pendingConfirmation.quantity);
+      }
+      if (pendingConfirmation.expirationDate && onExpiryUpdate) {
+        onExpiryUpdate(pendingConfirmation.itemId, pendingConfirmation.expirationDate);
+      }
+      toast.success(`${pendingConfirmation.itemName} atualizado!`);
+      setPendingConfirmation(null);
+    }
+  }, [pendingConfirmation, onQuantityUpdate, onExpiryUpdate]);
+
+  const cancelUpdate = useCallback(() => {
+    setPendingConfirmation(null);
+  }, []);
+
   return {
     isSupported,
     isListening,
     activeItemId,
     transcript,
+    pendingConfirmation,
     toggleListening,
     startListening,
     stopListening,
+    confirmUpdate,
+    cancelUpdate
   };
 }

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { adminSupabase } from '../integrations/supabase/adminClient'; // admin client for protected functions
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
+import { supabaseFetch } from '@/lib/supabase-fetch';
 
 export type BusinessRole = Database['public']['Enums']['business_role'];
 
@@ -35,29 +36,32 @@ export function useGestaoUsuarios() {
     const { data: profiles = [], isLoading, error } = useQuery({
         queryKey: ['profiles-management'],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            return (data || []).map((p: any) => ({
-                ...p,
-                status: p.status || 'ativo',
-                can_access_financeiro: p.can_access_financeiro ?? true,
-                can_access_relatorios: p.can_access_relatorios ?? true,
-            })) as Gestor[];
+            try {
+                const data = await supabaseFetch('profiles?select=*&order=created_at.desc');
+                return (data || []).map((p: any) => ({
+                    ...p,
+                    status: p.status || 'ativo',
+                    can_access_financeiro: p.can_access_financeiro ?? true,
+                    can_access_relatorios: p.can_access_relatorios ?? true,
+                })) as Gestor[];
+            } catch (err) {
+                console.error("useGestaoUsuarios QUERY ERROR:", err);
+                throw err;
+            }
         },
     });
 
     const createGestor = useMutation({
         mutationFn: async (data: any) => {
-            const { data: result, error } = await adminSupabase.functions.invoke('manage-gestors', {
-                body: { action: 'create', ...data },
-            });
-            if (error) throw error;
-            if (result?.error) throw new Error(result.error);
-            return result;
+            try {
+                const result = await supabaseFetch('functions/v1/manage-gestors', {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'create', ...data }),
+                });
+                return result;
+            } catch (error: any) {
+                throw new Error(error.message || 'Erro ao criar gestor');
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['profiles-management'] });
@@ -70,12 +74,15 @@ export function useGestaoUsuarios() {
 
     const updatePermissions = useMutation({
         mutationFn: async ({ gestorId, permissions }: { gestorId: string; permissions: any }) => {
-            const { data: result, error } = await adminSupabase.functions.invoke('manage-gestors', {
-                body: { action: 'update_permissions', gestorId, permissions },
-            });
-            if (error) throw error;
-            if (result?.error) throw new Error(result.error);
-            return result;
+            try {
+                const result = await supabaseFetch('functions/v1/manage-gestors', {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'update_permissions', gestorId, permissions }),
+                });
+                return result;
+            } catch (error: any) {
+                throw new Error(error.message || 'Erro ao atualizar permissões');
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['profiles-management'] });
@@ -85,11 +92,14 @@ export function useGestaoUsuarios() {
 
     const updateStatus = useMutation({
         mutationFn: async ({ id, status }: { id: string; status: 'ativo' | 'inativo' }) => {
-            const { data: result, error } = await adminSupabase.functions.invoke('manage-gestors', {
-                body: { action: 'toggle_status', gestorId: id, active: status === 'ativo' },
-            });
-            if (error) throw error;
-            if (result?.error) throw new Error(result.error);
+            try {
+                await supabaseFetch('functions/v1/manage-gestors', {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'toggle_status', gestorId: id, active: status === 'ativo' }),
+                });
+            } catch (error: any) {
+                throw new Error(error.message || 'Erro ao atualizar status');
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['profiles-management'] });
@@ -99,11 +109,14 @@ export function useGestaoUsuarios() {
 
     const deleteGestor = useMutation({
         mutationFn: async (id: string) => {
-            const { data: result, error } = await adminSupabase.functions.invoke('manage-gestors', {
-                body: { action: 'delete', gestorId: id },
-            });
-            if (error) throw error;
-            if (result?.error) throw new Error(result.error);
+            try {
+                await supabaseFetch('functions/v1/manage-gestors', {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'delete', gestorId: id }),
+                });
+            } catch (error: any) {
+                throw new Error(error.message || 'Erro ao excluir gestor');
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['profiles-management'] });

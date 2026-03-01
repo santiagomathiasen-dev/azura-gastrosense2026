@@ -34,6 +34,7 @@ const Colaboradores = lazy(() => import("@/pages/Colaboradores"));
 const Gestores = lazy(() => import("@/pages/Gestores"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Landing = lazy(() => import("@/pages/Landing"));
+const ConfiguracaoPDV = lazy(() => import("@/pages/ConfiguracaoPDV"));
 
 const LoadingFallback = () => (
   <div className="h-screen w-screen flex flex-col items-center justify-center gap-4 bg-background">
@@ -86,6 +87,7 @@ const App = () => (
                     <Route path="/financeiro" element={<Financeiro />} />
                     <Route path="/colaboradores" element={<Colaboradores />} />
                     <Route path="/gestores" element={<Gestores />} />
+                    <Route path="/config-pdv" element={<ConfiguracaoPDV />} />
                     <Route path="/payment-required" element={<PaymentRequired />} />
                   </Route>
 

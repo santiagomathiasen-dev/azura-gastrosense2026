@@ -283,23 +283,7 @@ export default function Compras() {
   const handleOpenWhatsApp = (item: PurchaseListItem) => {
     // If item has a linked supplier with phone, use it directly
     if (item.supplierPhone && item.supplierName && item.supplierId) {
-      // Find all unpurchased items for this supplier
-      const supplierItems = unpurchasedItems.filter(
-        i => i.supplierId === item.supplierId
-      );
-
-      let message = `Olá ${item.supplierName}, gostaria de fazer um pedido:\n`;
-      supplierItems.forEach(i => {
-        message += `- ${i.suggestedQuantity} ${i.unit} de ${i.name}\n`;
-      });
-
-      setWhatsAppDialogData({
-        open: true,
-        supplierName: item.supplierName,
-        phoneNumber: item.supplierPhone,
-        supplierId: item.supplierId,
-        initialMessage: message
-      });
+      handleOpenWhatsAppByGroup(item.supplierId, item.supplierName, item.supplierPhone);
     } else {
       // No supplier linked — open the supplier picker dialog
       if (suppliersWithPhone.length === 0) {
@@ -309,6 +293,30 @@ export default function Compras() {
       setSupplierPickerData({ open: true, item });
       setPickedSupplierId('');
     }
+  };
+
+  const handleOpenWhatsAppByGroup = (supplierId: string, supplierName: string, phone: string) => {
+    const supplierItems = unpurchasedItems.filter(
+      i => i.supplierId === supplierId
+    );
+
+    if (supplierItems.length === 0) {
+      toast.info('Nenhum item pendente para este fornecedor.');
+      return;
+    }
+
+    let message = `Olá *${supplierName}*, gostaria de fazer um pedido:\n\n`;
+    supplierItems.forEach(i => {
+      message += `• *${i.suggestedQuantity} ${i.unit}* de ${i.name}\n`;
+    });
+
+    setWhatsAppDialogData({
+      open: true,
+      supplierName: supplierName,
+      phoneNumber: phone,
+      supplierId: supplierId,
+      initialMessage: message
+    });
   };
 
   const handleOpenWhatsAppGrouped = () => {
@@ -682,13 +690,25 @@ export default function Compras() {
                         }}
                       />
                     )}
-                    <span className="text-sm font-bold flex items-center gap-2">
+                    <span className="text-sm font-bold flex flex-1 items-center gap-2">
                       {key === 'none' ? <Package className="h-4 w-4 text-muted-foreground" /> : <Factory className="h-4 w-4 text-primary" />}
                       {group.name}
                       <Badge variant="secondary" className="text-[10px] h-4 ml-1 px-1.5 font-medium">
                         {groupItems.length}
                       </Badge>
                     </span>
+
+                    {key !== 'none' && unpurchasedGroupItems.length > 0 && groupItems[0].supplierPhone && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-green-600 hover:text-green-700 hover:bg-green-50 gap-1 px-2"
+                        onClick={() => handleOpenWhatsAppByGroup(key, group.name, groupItems[0].supplierPhone!)}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        <span className="text-[11px]">WhatsApp</span>
+                      </Button>
+                    )}
                   </div>
 
                   <MobileList className="border-t-0 shadow-none">

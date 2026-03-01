@@ -4,6 +4,7 @@ import { useAuth } from './useAuth';
 import { useOwnerId } from './useOwnerId';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { supabaseFetch } from '@/lib/supabase-fetch';
 
 type StockItem = Database['public']['Tables']['stock_items']['Row'];
 type StockItemInsert = Database['public']['Tables']['stock_items']['Insert'];
@@ -50,15 +51,13 @@ export function useStockItems() {
     queryKey: ['stock_items', ownerId],
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
-      const { data, error } = await supabase
-        .from('stock_items')
-        .select(`
-          *,
-          supplier:suppliers(name)
-        `)
-        .order('name');
-      if (error) throw error;
-      return data as StockItem[];
+      try {
+        const data = await supabaseFetch('stock_items?select=*,supplier:suppliers(name)&order=name.asc');
+        return data as StockItem[];
+      } catch (err) {
+        console.error("Error fetching stock items:", err);
+        throw err;
+      }
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
     refetchInterval: 30_000,
@@ -68,13 +67,19 @@ export function useStockItems() {
     mutationFn: async (item: Omit<StockItemInsert, 'user_id'>) => {
       if (isOwnerLoading) throw new Error('Carregando dados do usuário...');
       if (!ownerId) throw new Error('Usuário não autenticado');
-      const { data, error } = await supabase
-        .from('stock_items')
-        .insert({ ...item, user_id: ownerId })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+
+      try {
+        const data = await supabaseFetch('stock_items', {
+          method: 'POST',
+          headers: {
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({ ...item, user_id: ownerId })
+        });
+        return Array.isArray(data) ? data[0] : data;
+      } catch (err: any) {
+        throw new Error(err.message || 'Erro ao criar item');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock_items'] });
@@ -87,12 +92,15 @@ export function useStockItems() {
 
   const updateItem = useMutation({
     mutationFn: async ({ id, ...updates }: StockItemUpdate & { id: string }) => {
-      const { error } = await supabase
-        .from('stock_items')
-        .update(updates)
-        .eq('id', id);
-      if (error) throw error;
-      return null;
+      try {
+        await supabaseFetch(`stock_items?id=eq.${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(updates)
+        });
+        return null;
+      } catch (err: any) {
+        throw new Error(err.message || 'Erro ao atualizar item');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock_items'] });
@@ -131,12 +139,15 @@ export function useStockItems() {
 
       const itemsWithUser = items.map(item => ({ ...item, user_id: ownerId }));
 
-      const { error } = await supabase
-        .from('stock_items')
-        .insert(itemsWithUser);
-
-      if (error) throw error;
-      return null;
+      try {
+        await supabaseFetch('stock_items', {
+          method: 'POST',
+          body: JSON.stringify(itemsWithUser)
+        });
+        return null;
+      } catch (err: any) {
+        throw new Error(err.message || 'Erro ao importar itens');
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['stock_items'] });

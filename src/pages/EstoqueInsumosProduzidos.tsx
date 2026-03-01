@@ -149,12 +149,16 @@ export default function EstoqueInsumosProduzidos() {
     return (
       <div className="animate-fade-in space-y-4">
         <PageHeader title="Insumos Produzidos" description="Estoque de insumos feitos internamente" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
+
+  // Handle case where we have no produced inputs after loading
+  const isEmpty = !producedInputs || producedInputs.length === 0;
 
   return (
     <div className="animate-fade-in">
@@ -204,7 +208,7 @@ export default function EstoqueInsumosProduzidos() {
       </div>
 
       {/* List */}
-      {filteredInputs.length === 0 ? (
+      {isEmpty ? (
         <EmptyState
           icon={Package}
           title="Nenhum insumo produzido"

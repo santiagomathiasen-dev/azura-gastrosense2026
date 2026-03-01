@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useLosses, LossInput } from '@/hooks/useLosses';
 import { useStockItems } from '@/hooks/useStockItems';
 import { useFinishedProductionsStock } from '@/hooks/useFinishedProductionsStock';
+import { useProductCosts } from '@/hooks/useProductCosts';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatQuantity } from '@/lib/utils';
@@ -29,6 +30,7 @@ export default function Perdas() {
   const { losses, isLoading, createLoss, deleteLoss } = useLosses();
   const { items: stockItems } = useStockItems();
   const { finishedStock } = useFinishedProductionsStock();
+  const { productCosts } = useProductCosts();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -53,12 +55,16 @@ export default function Perdas() {
         unitPrice: i.unit_price || 0,
       }));
     }
-    return finishedStock.map(f => ({
-      id: f.id,
-      name: f.technical_sheet?.name || 'Sem nome',
-      unit: f.unit,
-      unitPrice: 0,
-    }));
+    return finishedStock.map(f => {
+      // Try to find the cost from productCosts based on the technical sheet
+      const costInfo = productCosts.find(cp => cp.id === f.technical_sheet_id);
+      return {
+        id: f.id,
+        name: f.technical_sheet?.name || 'Sem nome',
+        unit: f.unit,
+        unitPrice: costInfo?.totalCost || 0,
+      };
+    });
   };
 
   const handleSubmit = () => {

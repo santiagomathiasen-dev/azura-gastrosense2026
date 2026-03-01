@@ -69,6 +69,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { AIImportDialog } from '@/components/AIImportDialog';
 import { ExtractedIngredient } from '@/hooks/useIngredientImport';
+import { useEvents, CalendarEvent } from '@/hooks/useEvents';
 
 // ---- Forecast Input Tab ----
 
@@ -86,6 +87,9 @@ function ForecastInputTab() {
     const { forecasts, isLoading, createForecast, deleteForecast, generateForecast } = useSalesForecasts(dateStr);
     const { saleProducts = [] } = useSaleProducts();
     const { explode } = useForecastExplosion();
+    const { events } = useEvents();
+
+    const activeEvents = events.filter(e => e.event_date === dateStr);
 
     const handleAddForecast = () => {
         if (!selectedProductId || !quantity) {
@@ -188,6 +192,17 @@ function ForecastInputTab() {
                 <Button size="sm" variant="outline" onClick={() => setTargetDate(addDays(getNow(), 2))}>
                     Depois de amanhã
                 </Button>
+
+                {activeEvents.length > 0 && (
+                    <div className="flex gap-2">
+                        {activeEvents.map(ev => (
+                            <Badge key={ev.id} className="bg-amber-100 text-amber-800 border-amber-200 gap-1 py-1">
+                                <AlertTriangle className="h-3.3 w-3.5" />
+                                {ev.title} ({ev.multiplier}x)
+                            </Badge>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Actions */}
@@ -774,6 +789,109 @@ function HistoryAnalysisTab() {
     );
 }
 
+// ---- Events Tab ----
+
+function EventsTab() {
+    const { events, isLoading, createEvent, deleteEvent } = useEvents();
+    const [showAddDialog, setShowAddDialog] = useState(false);
+    const [title, setTitle] = useState('');
+    const [date, setDate] = useState<Date>(getNow());
+    const [multiplier, setMultiplier] = useState('1.5');
+
+    const handleAdd = () => {
+        if (!title || !multiplier) return;
+        createEvent.mutate({
+            title,
+            event_date: format(date, 'yyyy-MM-dd'),
+            multiplier: parseFloat(multiplier),
+            description: '',
+        });
+        setShowAddDialog(false);
+        setTitle('');
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Eventos e Datas Especiais</h3>
+                <Button onClick={() => setShowAddDialog(true)} className="gap-2">
+                    <Plus className="h-4 w-4" /> Novo Evento
+                </Button>
+            </div>
+
+            {isLoading ? (
+                <Skeleton className="h-24 w-full" />
+            ) : events.length === 0 ? (
+                <Card className="bg-muted/30">
+                    <CardContent className="p-8 text-center">
+                        <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-20" />
+                        <p className="text-muted-foreground">Nenhum evento agendado.</p>
+                        <p className="text-sm text-muted-foreground/60">Agende feriados ou eventos para ajustar a demanda automaticamente.</p>
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {events.map((event) => (
+                        <Card key={event.id}>
+                            <CardContent className="p-4 flex justify-between items-start">
+                                <div>
+                                    <p className="font-bold text-lg">{event.title}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Data: {format(parseSafeDate(event.event_date), 'dd/MM/yyyy')}
+                                    </p>
+                                    <Badge variant="secondary" className="mt-2 text-xs">
+                                        Fator: {event.multiplier}x
+                                    </Badge>
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={() => deleteEvent.mutate(event.id)}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Agendar Evento</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Nome do Evento (ex: Carnaval, Feriado)</Label>
+                            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Natal" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Data</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {format(date, "dd/MM/yyyy")}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar mode="single" selected={date} onSelect={d => d && setDate(d)} locale={ptBR} />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Fator de ajuste (multiplicador de vendas)</Label>
+                            <Input type="number" step="0.1" value={multiplier} onChange={e => setMultiplier(e.target.value)} />
+                            <p className="text-xs text-muted-foreground">1.5 aumentará a previsão em 50%. 0.8 diminuirá em 20%.</p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancelar</Button>
+                        <Button onClick={handleAdd}>Salvar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}
+
 // ---- Main Page ----
 
 export default function PrevisaoVendas() {
@@ -784,9 +902,12 @@ export default function PrevisaoVendas() {
                 description="Defina previsões de vendas e gere automaticamente as ordens de produção por praça."
             />
             <Tabs defaultValue="previsao" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 max-w-xl">
+                <TabsList className="grid w-full grid-cols-4 max-w-2xl">
                     <TabsTrigger value="previsao" className="gap-2">
                         <CalendarClock className="h-4 w-4" /> Previsão
+                    </TabsTrigger>
+                    <TabsTrigger value="eventos" className="gap-2">
+                        <CalendarIcon className="h-4 w-4" /> Eventos
                     </TabsTrigger>
                     <TabsTrigger value="historico" className="gap-2">
                         <History className="h-4 w-4" /> Histórico
@@ -797,6 +918,9 @@ export default function PrevisaoVendas() {
                 </TabsList>
                 <TabsContent value="previsao">
                     <ForecastInputTab />
+                </TabsContent>
+                <TabsContent value="eventos">
+                    <EventsTab />
                 </TabsContent>
                 <TabsContent value="historico">
                     <HistoryAnalysisTab />

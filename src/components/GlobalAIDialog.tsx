@@ -48,15 +48,28 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
             const pageContent = document.body.innerText.substring(0, 2000); // Simple context
             const currentPath = location.pathname;
 
-            const { data, error } = await supabase.functions.invoke('process-global-command', {
-                body: {
+            const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-global-command`;
+            console.log("Calling process-global-command:", functionUrl);
+
+            const response = await fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                    'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+                },
+                body: JSON.stringify({
                     text,
                     path: currentPath,
                     context: pageContent
-                }
+                })
             });
 
-            if (error) throw error;
+            if (!response.ok) {
+                throw new Error(`Cloud Error: ${response.status}`);
+            }
+
+            const data = await response.json();
 
             if (data.action === 'navigate') {
                 navigate(data.target);

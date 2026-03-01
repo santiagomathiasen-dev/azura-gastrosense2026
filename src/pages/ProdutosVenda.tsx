@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, ShoppingBag, Search, DollarSign, X, Package, Mic, FileText, ChefHat, Trash, Minus } from 'lucide-react';
+import { Plus, Edit, Trash2, ShoppingBag, Search, DollarSign, X, Package, Mic, FileText, ChefHat, Trash, Minus, Settings2, RefreshCw } from 'lucide-react';
 import { useSaleProducts, SaleProduct, ComponentInput } from '@/hooks/useSaleProducts';
 import { useFinishedProductionsStock } from '@/hooks/useFinishedProductionsStock';
 import { useStockItems } from '@/hooks/useStockItems';
@@ -408,6 +408,11 @@ export default function ProdutosVenda() {
       <PageHeader
         title="Produtos para Venda"
         description="Prepare produtos e registre vendas"
+        action={{
+          label: 'Configurações PDV',
+          onClick: () => window.location.href = '/config-pdv',
+          icon: Settings2
+        }}
       />
 
       <Tabs defaultValue="products" className="w-full">
@@ -420,14 +425,20 @@ export default function ProdutosVenda() {
         <TabsContent value="products" className="space-y-4">
           {/* Search */}
           {saleProducts.length > 0 && (
-            <div className="relative max-w-sm mx-auto">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar produtos..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex flex-col md:flex-row gap-3 items-center justify-between mb-2">
+              <div className="relative w-full max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar produtos..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button variant="outline" size="sm" className="w-full md:w-auto gap-2 text-primary border-primary/20 hover:bg-primary/5">
+                <RefreshCw className="h-4 w-4" />
+                Sincronizar com PDV
+              </Button>
             </div>
           )}
 

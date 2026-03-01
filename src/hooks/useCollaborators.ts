@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { supabaseFetch } from '@/lib/supabase-fetch';
 
 export interface Collaborator {
   id: string;
@@ -56,33 +57,30 @@ export function useCollaborators() {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
+      try {
+        console.log('useCollaborators: fetching profile via fetch');
+        const profile = await supabaseFetch(`profiles?id=eq.${user.id}&select=role`);
+        const userRole = Array.isArray(profile) ? profile[0]?.role : profile?.role;
 
-      let query = supabase
-        .from('collaborators')
-        .select('*');
+        console.log('useCollaborators: fetching collaborators via fetch');
+        let path = 'collaborators?select=*';
 
-      // If not admin, filter by gestor_id
-      if (profile?.role !== 'admin') {
-        query = query.eq('gestor_id', user.id);
+        // If not admin, filter by gestor_id
+        if (userRole !== 'admin') {
+          path += `&gestor_id=eq.${user.id}`;
+        }
+
+        const data = await supabaseFetch(`${path}&order=name.asc`);
+
+        // Map back to interface expected by UI
+        return (data as any[]).map(p => ({
+          ...p,
+          is_active: p.is_active
+        })) as Collaborator[];
+      } catch (err) {
+        console.error("useCollaborators QUERY ERROR:", err);
+        throw err;
       }
-
-      const { data, error } = await query.order('name');
-
-      if (error) {
-        console.error("useCollaborators QUERY ERROR:", error);
-        throw error;
-      }
-
-      // Map back to interface expected by UI
-      return (data as any[]).map(p => ({
-        ...p,
-        is_active: p.is_active
-      })) as Collaborator[];
     },
     enabled: !!user?.id,
   });
@@ -92,14 +90,15 @@ export function useCollaborators() {
       if (!user?.id) throw new Error('Usuário não autenticado');
 
       // Edge function still handles the complex Auth creation
-      const { data, error } = await supabase.functions.invoke('create-collaborator', {
-        body: { name, email, password, pin, permissions },
-      });
-
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-
-      return data.collaborator;
+      try {
+        const data = await supabaseFetch('functions/v1/create-collaborator', {
+          method: 'POST',
+          body: JSON.stringify({ name, email, password, pin, permissions }),
+        });
+        return data.collaborator;
+      } catch (error: any) {
+        throw new Error(error.message || 'Erro ao criar colaborador');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collaborators'] });
@@ -124,34 +123,33 @@ export function useCollaborators() {
       }
 
       // Update collaborators table
-      const { error: collabError } = await supabase
-        .from('collaborators')
-        .update(updateData as any)
-        .eq('id', id);
-
-      if (collabError) throw collabError;
+      try {
+        await supabaseFetch(`collaborators?id=eq.${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(updateData)
+        });
+      } catch (collabError) {
+        throw collabError;
+      }
 
       // Also update role in profiles table if it's connected to an auth user
-      const { data: collabData } = await supabase
-        .from('collaborators')
-        .select('auth_user_id')
-        .eq('id', id)
-        .single();
+      try {
+        const collabList = await supabaseFetch(`collaborators?id=eq.${id}&select=auth_user_id`);
+        const collabData = Array.isArray(collabList) ? collabList[0] : collabList;
 
-      if (collabData?.auth_user_id && role) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            role,
-            gestor_id: role === 'gestor' || role === 'admin' ? null : user?.id,
-            ...otherPerms
-          } as any)
-          .eq('id', collabData.auth_user_id);
-
-        if (profileError) {
-          console.error("Error updating profile role:", profileError);
-          // Don't throw here to not block the whole operation if profile update fails
+        if (collabData?.auth_user_id && role) {
+          await supabaseFetch(`profiles?id=eq.${collabData.auth_user_id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              role,
+              gestor_id: role === 'gestor' || role === 'admin' ? null : user?.id,
+              ...otherPerms
+            })
+          });
         }
+      } catch (profileError) {
+        console.error("Error updating profile role:", profileError);
+        // Don't throw here to not block the whole operation if profile update fails
       }
     },
     onSuccess: () => {
@@ -165,12 +163,14 @@ export function useCollaborators() {
 
   const deleteCollaborator = useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await supabase.functions.invoke('delete-collaborator', {
-        body: { collaboratorId: id },
-      });
-
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
+      try {
+        await supabaseFetch('functions/v1/delete-collaborator', {
+          method: 'POST',
+          body: JSON.stringify({ collaboratorId: id }),
+        });
+      } catch (error: any) {
+        throw new Error(error.message || 'Erro ao remover colaborador');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collaborators'] });
@@ -183,12 +183,14 @@ export function useCollaborators() {
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const { error } = await supabase
-        .from('collaborators')
-        .update({ is_active: isActive } as any)
-        .eq('id', id);
-
-      if (error) throw error;
+      try {
+        await supabaseFetch(`collaborators?id=eq.${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ is_active: isActive })
+        });
+      } catch (error) {
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collaborators'] });
@@ -197,12 +199,14 @@ export function useCollaborators() {
 
   const resetPin = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('collaborators')
-        .update({ pin_hash: null } as any)
-        .eq('id', id);
-
-      if (error) throw error;
+      try {
+        await supabaseFetch(`collaborators?id=eq.${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ pin_hash: null })
+        });
+      } catch (error) {
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collaborators'] });
@@ -241,12 +245,15 @@ export function useCollaboratorAuth() {
   const setPin = async (collaboratorId: string, pin: string): Promise<boolean> => {
     const hashedPin = await hashPin(pin);
 
-    const { error } = await supabase
-      .from('collaborators')
-      .update({ pin_hash: hashedPin } as any)
-      .eq('id', collaboratorId);
-
-    return !error;
+    try {
+      await supabaseFetch(`collaborators?id=eq.${collaboratorId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ pin_hash: hashedPin })
+      });
+      return true;
+    } catch (error) {
+      return false;
+    }
   };
 
   return {
