@@ -88,7 +88,7 @@ export default function Financeiro() {
             ];
         }
         return [
-            { name: 'Fixos', valor: 2500, color: '#3b82f6' },
+            { name: 'Fixos', valor: 2500, color: '#1b5e3f' },
             { name: 'Variáveis', valor: 4200, color: '#f59e0b' },
             { name: 'Folha', valor: 8500, color: '#10b981' }
         ];
@@ -467,7 +467,7 @@ export default function Financeiro() {
                                             <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
                                             <YAxis hide />
                                             <RechartsTooltip formatter={(v) => `R$ ${v}`} />
-                                            <Bar dataKey="valor" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="valor" fill="#1b5e3f" radius={[4, 4, 0, 0]} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </CardContent>

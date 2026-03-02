@@ -5,7 +5,7 @@ window.onerror = function (message, source, lineno, colno, error) {
     root.innerHTML = `<div style="padding: 20px; color: red; font-family: sans-serif;">
       <h2>Erro Crítico no Sistema</h2>
       <pre>${message}</pre>
-      <button onclick="localStorage.clear(); sessionStorage.clear(); window.location.reload();" style="padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+      <button onclick="localStorage.clear(); sessionStorage.clear(); window.location.reload();" style="padding: 10px; background: #1b5e3f; color: white; border: none; border-radius: 4px; cursor: pointer;">
         Limpar Dados e Recarregar
       </button>
     </div>`;

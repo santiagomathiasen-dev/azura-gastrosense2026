@@ -339,7 +339,7 @@ export default function Relatorios() {
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" fontSize={11} width={100} tickLine={false} axisLine={false} />
                 <RechartsTooltip />
-                <Bar dataKey="valor" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="valor" fill="#1b5e3f" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

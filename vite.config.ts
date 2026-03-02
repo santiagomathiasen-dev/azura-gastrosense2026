@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
         name: "Gestão Gastronômica",
         short_name: "Gestão Gastro",
         description: "Sistema de gestão gastronômica completo - Estoque, Fichas Técnicas, Produções e Vendas",
-        theme_color: "#3b82f6",
+        theme_color: "#1b5e3f",
         background_color: "#1e293b",
         display: "standalone",
         orientation: "portrait",
