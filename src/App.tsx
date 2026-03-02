@@ -59,8 +59,8 @@ const App = () => (
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                   {/* Public Routes */}
-                  <Route path="/auth" element={<Auth />} />
                   <Route path="/" element={<Landing />} />
+                  <Route path="/auth" element={<Auth />} />
 
                   {/* Protected Routes */}
                   <Route
