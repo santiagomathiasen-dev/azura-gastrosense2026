@@ -31,6 +31,8 @@ export function useSuppliers() {
       }
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const createSupplier = useMutation({

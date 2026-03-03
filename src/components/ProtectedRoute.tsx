@@ -12,7 +12,6 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  return <>{children}</>;
   const { user, isLoading: authLoading } = useAuth();
   const { isCollaboratorMode, hasAccess } = useCollaboratorContext();
   const { isAdmin, isLoading: roleLoading } = useUserRole();
@@ -31,7 +30,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAdminBypass = user?.email === 'santiago.aloom@gmail.com';
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: any;
     if ((isEssentialLoading || isSecondaryLoading) && !isAdminBypass) {
       timer = setTimeout(() => {
         setShowTimeoutMessage(true);

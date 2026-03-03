@@ -10,13 +10,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatQuantity } from '@/lib/utils';
-import {
-  type StockItem,
-  CATEGORY_LABELS,
-  UNIT_LABELS,
-  getStockStatus,
-  type StockCategory,
+import type {
+  StockItem,
+  StockCategory,
 } from '@/hooks/useStockItems';
+import { CATEGORY_LABELS, UNIT_LABELS } from '@/hooks/useStockItems';
+import { StockService } from '@/modules/stock/services/StockService';
 import { parseSafeDate } from '@/hooks/useExpiryDates';
 import { getNow } from '@/lib/utils';
 import {
@@ -104,7 +103,7 @@ export function StockTable({
         const currentQty = Number(item.current_quantity);
         const minQty = Number(item.minimum_quantity);
         const isExpired = currentQty > 0 && expiryMap[item.id] && parseSafeDate(expiryMap[item.id]) < getNow();
-        const status = getStockStatus(currentQty, minQty, !!isExpired);
+        const status = StockService.getStockStatus(currentQty, minQty, !!isExpired);
         const unitLabel = UNIT_LABELS[item.unit as keyof typeof UNIT_LABELS];
         const categoryLabel = CATEGORY_LABELS[item.category as StockCategory];
         const isEditing = editingItemId === item.id;

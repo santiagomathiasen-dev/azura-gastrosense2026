@@ -226,7 +226,16 @@ export function useStockVoiceControl({ stockItems, onQuantityUpdate, onExpiryUpd
 
     return () => {
       clearVoiceTimeout();
-      recognition.abort();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.onresult = null;
+          recognitionRef.current.onerror = null;
+          recognitionRef.current.onend = null;
+          recognitionRef.current.abort();
+        } catch (e) {
+          console.warn("Error cleaning up speech recognition:", e);
+        }
+      }
     };
   }, [isSupported, clearVoiceTimeout]);
 

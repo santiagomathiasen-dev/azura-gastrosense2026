@@ -29,6 +29,8 @@ export function useUserRole() {
     },
     enabled: !!user?.id,
     retry: false,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
 

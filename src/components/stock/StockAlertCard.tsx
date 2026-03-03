@@ -1,7 +1,9 @@
 import { AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { type StockItem, UNIT_LABELS, getStockStatus } from '@/hooks/useStockItems';
+import type { StockItem } from '@/hooks/useStockItems';
+import { UNIT_LABELS } from '@/hooks/useStockItems';
+import { StockService } from '@/modules/stock/services/StockService';
 
 interface StockAlertCardProps {
   items: StockItem[];
@@ -9,10 +11,10 @@ interface StockAlertCardProps {
 
 export function StockAlertCard({ items }: StockAlertCardProps) {
   const criticalItems = items.filter(
-    (item) => getStockStatus(Number(item.current_quantity), Number(item.minimum_quantity)) === 'red'
+    (item) => StockService.getStockStatus(Number(item.current_quantity), Number(item.minimum_quantity)) === 'red'
   );
   const warningItems = items.filter(
-    (item) => getStockStatus(Number(item.current_quantity), Number(item.minimum_quantity)) === 'yellow'
+    (item) => StockService.getStockStatus(Number(item.current_quantity), Number(item.minimum_quantity)) === 'yellow'
   );
 
   if (criticalItems.length === 0 && warningItems.length === 0) return null;

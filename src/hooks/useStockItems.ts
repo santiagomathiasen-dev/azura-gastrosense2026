@@ -6,39 +6,18 @@ import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { supabaseFetch } from '@/lib/supabase-fetch';
 
-type StockItem = Database['public']['Tables']['stock_items']['Row'];
-type StockItemInsert = Database['public']['Tables']['stock_items']['Insert'];
-type StockItemUpdate = Database['public']['Tables']['stock_items']['Update'];
-type StockCategory = Database['public']['Enums']['stock_category'];
-type StockUnit = Database['public']['Enums']['stock_unit'];
+import { StockService } from '../modules/stock/services/StockService';
+import type {
+  StockItem,
+  StockItemInsert,
+  StockItemUpdate,
+  StockCategory,
+  StockUnit
+} from '../modules/stock/types';
+import { CATEGORY_LABELS, UNIT_LABELS } from '../modules/stock/types';
 
 export type { StockItem, StockItemInsert, StockItemUpdate, StockCategory, StockUnit };
-
-export const CATEGORY_LABELS: Record<StockCategory, string> = {
-  laticinios: 'Laticínios',
-  secos_e_graos: 'Secos e Grãos',
-  hortifruti: 'Hortifruti',
-  carnes_e_peixes: 'Carnes e Peixes',
-  embalagens: 'Embalagens',
-  limpeza: 'Limpeza',
-  outros: 'Outros',
-};
-
-export const UNIT_LABELS: Record<StockUnit, string> = {
-  kg: 'kg',
-  g: 'g',
-  L: 'L',
-  ml: 'ml',
-  unidade: 'un',
-  caixa: 'cx',
-  dz: 'dz',
-};
-
-export function getStockStatus(currentQty: number, minimumQty: number, isExpired?: boolean): 'green' | 'yellow' | 'red' {
-  if (isExpired || currentQty <= minimumQty) return 'red';
-  if (currentQty <= minimumQty * 1.2) return 'yellow';
-  return 'green';
-}
+export { CATEGORY_LABELS, UNIT_LABELS };
 
 export function useStockItems() {
   const { user } = useAuth();
@@ -61,6 +40,8 @@ export function useStockItems() {
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
     refetchInterval: 30_000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const createItem = useMutation({
@@ -131,9 +112,7 @@ export function useStockItems() {
     },
   });
 
-  const itemsInAlert = items.filter(
-    (item) => getStockStatus(Number(item.current_quantity), Number(item.minimum_quantity)) !== 'green'
-  );
+  const itemsInAlert = StockService.getItemsInAlert(items);
 
   const batchCreateItems = useMutation({
     mutationFn: async (items: Omit<StockItemInsert, 'user_id'>[]) => {

@@ -37,7 +37,7 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
         setIsListening(false);
     }, []);
 
-    const handleProcessCommand = async (text: string) => {
+    const handleProcessCommand = useCallback(async (text: string) => {
         if (!text.trim()) return;
 
         setIsProcessing(true);
@@ -87,7 +87,7 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
         } finally {
             setIsProcessing(false);
         }
-    };
+    }, [location.pathname, navigate, onOpenChange, stopListening]);
 
     useEffect(() => {
         if (!open || !isSupported) return;
@@ -123,9 +123,16 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
         setTranscript('');
 
         return () => {
-            recognition.abort();
+            try {
+                recognition.onresult = null;
+                recognition.onerror = null;
+                recognition.onend = null;
+                recognition.abort();
+            } catch (e) {
+                console.warn("Error cleaning up global speech recognition:", e);
+            }
         };
-    }, [open, isSupported]);
+    }, [open, isSupported, handleProcessCommand]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

@@ -23,7 +23,9 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useStockItems, CATEGORY_LABELS, UNIT_LABELS, getStockStatus } from '@/hooks/useStockItems';
+import { useStockItems } from '@/hooks/useStockItems';
+import { CATEGORY_LABELS, UNIT_LABELS } from '@/hooks/useStockItems';
+import { StockService } from '@/modules/stock/services/StockService';
 import { useEarliestExpiryMap, parseSafeDate } from '@/hooks/useExpiryDates';
 import { useProductionStock } from '@/hooks/useProductionStock';
 import { useStockRequests } from '@/hooks/useStockRequests';
@@ -320,7 +322,7 @@ export default function EstoqueProducao() {
                           const today = getNow();
                           const diffTime = expiryDate.getTime() - today.getTime();
                           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                          const isExpired = diffDays < 0;
+                          const isExpired = StockService.getStockStatus(Number(ps.quantity), Number(ps.stock_item?.minimum_quantity || 0)) === 'red';
 
                           return (
                             <div className="flex items-center gap-2">
