@@ -36,7 +36,7 @@ export function useFinishedProductionsStock() {
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
       try {
-        const data = await supabaseFetch('finished_productions_stock?select=*,technical_sheet:technical_sheets(id,name,yield_unit,image_url,minimum_stock,praca)&order=updated_at.desc');
+        const data = await supabaseFetch('finished_productions_stock?select=*,technical_sheet:technical_sheets(id,name,yield_unit,image_url,minimum_stock)&order=updated_at.desc');
         return data as unknown as FinishedProductionStock[];
       } catch (err) {
         console.error("Error fetching finished stock:", err);
@@ -59,7 +59,7 @@ export function useFinishedProductionsStock() {
       if (!ownerId) throw new Error('Usuário não autenticado');
 
       // Get technical sheet to see if it has a default praca
-      const sheetData = await supabaseFetch(`technical_sheets?id=eq.${data.technical_sheet_id}&select=praca`);
+      const sheetData = await supabaseFetch(`technical_sheets?id=eq.${data.technical_sheet_id}&select=id`);
       const sheet = Array.isArray(sheetData) ? sheetData[0] : sheetData;
 
       // Check if entry already exists for this technical sheet
@@ -68,10 +68,9 @@ export function useFinishedProductionsStock() {
 
       if (existing) {
         // Update existing entry
-        const updateData: { quantity: number; notes?: string; image_url?: string; praca?: string | null } = {
+        const updateData: { quantity: number; notes?: string; image_url?: string } = {
           quantity: Number(existing.quantity) + data.quantity,
-          notes: data.notes,
-          praca: sheet?.praca
+          notes: data.notes
         };
         if (data.image_url) updateData.image_url = data.image_url;
 
@@ -88,14 +87,12 @@ export function useFinishedProductionsStock() {
           unit: string;
           notes?: string;
           image_url?: string;
-          praca?: string | null;
         } = {
           user_id: ownerId,
           technical_sheet_id: data.technical_sheet_id,
           quantity: data.quantity,
           unit: data.unit,
-          notes: data.notes,
-          praca: sheet?.praca
+          notes: data.notes
         };
         if (data.image_url) insertData.image_url = data.image_url;
 

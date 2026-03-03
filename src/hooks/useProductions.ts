@@ -48,7 +48,6 @@ export interface ProductionWithSheet extends Production {
     preparation_method: string | null;
     production_type?: 'insumo' | 'final';
     shelf_life_hours?: number | null;
-    praca?: string | null;
     ingredients: {
       stock_item_id: string;
       quantity: number;
