@@ -5,7 +5,9 @@ export const TechnicalSheetIngredientSchema = z.object({
     technical_sheet_id: z.string().uuid().optional(),
     stock_item_id: z.string().uuid(),
     quantity: z.number().min(0, "A quantidade não pode ser negativa"),
+    unit: z.string().optional(),
     cost: z.number().min(0).optional(),
+    stage_id: z.string().uuid().nullable().optional(),
     stock_item: z.object({
         name: z.string(),
         unit: z.string(),
@@ -23,6 +25,17 @@ export const TechnicalSheetSchema = z.object({
     category: z.string().nullable().optional(),
     total_cost: z.number().min(0).optional(),
     unit_cost: z.number().min(0).optional(),
+
+    // Missing fields added
+    production_type: z.enum(['insumo', 'final']).default('final'),
+    minimum_stock: z.number().min(0).default(0),
+    video_url: z.string().url().nullable().optional(),
+    labor_cost: z.number().min(0).default(0),
+    energy_cost: z.number().min(0).default(0),
+    other_costs: z.number().min(0).default(0),
+    markup: z.number().min(0).default(0),
+    target_price: z.number().min(0).nullable().optional(),
+
     created_at: z.string().optional(),
     updated_at: z.string().optional(),
     ingredients: z.array(TechnicalSheetIngredientSchema).optional(),
