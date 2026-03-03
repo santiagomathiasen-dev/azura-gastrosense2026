@@ -44,7 +44,7 @@ export class StockService {
     /**
      * Filters items that need attention.
      */
-    static getItemsInAlert<T extends { current_quantity: any; minimum_quantity: any; is_expired?: boolean }>(items: T[]): T[] {
+    static getItemsInAlert<T extends { current_quantity?: any; minimum_quantity?: any; is_expired?: boolean }>(items: T[]): T[] {
         return items.filter(item =>
             this.getStockStatus(Number(item.current_quantity), Number(item.minimum_quantity), item.is_expired) !== 'green'
         );

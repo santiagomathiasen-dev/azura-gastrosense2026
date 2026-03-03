@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { supabaseFetch } from '@/lib/supabase-fetch';
 
+import { technicalSheetApi } from '@/api/TechnicalSheetApi';
 import { TechnicalSheetService } from '../modules/technical-sheets/services/TechnicalSheetService';
 import type {
   TechnicalSheet,
@@ -43,24 +44,19 @@ export function useTechnicalSheets() {
     queryKey: ['technical_sheets', ownerId],
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
-      try {
-        const data = await supabaseFetch('technical_sheets?select=*,ingredients:technical_sheet_ingredients(*,stock_item:stock_items(name,unit,unit_price))&order=name');
+      const data = await technicalSheetApi.getAll();
 
-        return (data || []).map((sheet: any) => ({
-          ...sheet,
-          production_type: (sheet.production_type as ProductionType) || 'final',
-          minimum_stock: Number(sheet.minimum_stock || 0),
-          video_url: sheet.video_url || null,
-          labor_cost: Number(sheet.labor_cost || 0),
-          energy_cost: Number(sheet.energy_cost || 0),
-          other_costs: Number(sheet.other_costs || 0),
-          markup: Number(sheet.markup || 0),
-          target_price: sheet.target_price || null,
-        })) as TechnicalSheetWithIngredients[];
-      } catch (err) {
-        console.error("Error fetching technical sheets:", err);
-        throw err;
-      }
+      return (data || []).map((sheet: any) => ({
+        ...sheet,
+        production_type: (sheet.production_type as ProductionType) || 'final',
+        minimum_stock: Number(sheet.minimum_stock || 0),
+        video_url: sheet.video_url || null,
+        labor_cost: Number(sheet.labor_cost || 0),
+        energy_cost: Number(sheet.energy_cost || 0),
+        other_costs: Number(sheet.other_costs || 0),
+        markup: Number(sheet.markup || 0),
+        target_price: sheet.target_price || null,
+      })) as TechnicalSheetWithIngredients[];
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
     staleTime: 5 * 60 * 1000,
@@ -72,19 +68,14 @@ export function useTechnicalSheets() {
       if (isOwnerLoading) throw new Error('Carregando dados do usuário...');
       if (!ownerId) throw new Error('Usuário não autenticado');
 
-      const data = await supabaseFetch('technical_sheets', {
-        method: 'POST',
-        headers: { 'Prefer': 'return=representation' },
-        body: JSON.stringify({
-          ...sheet,
-          user_id: ownerId,
-          labor_cost: Number(sheet.labor_cost || 0),
-          energy_cost: Number(sheet.energy_cost || 0),
-          other_costs: Number(sheet.other_costs || 0),
-          markup: Number(sheet.markup || 0),
-        })
-      });
-      return Array.isArray(data) ? data[0] : data;
+      return technicalSheetApi.create({
+        ...sheet,
+        user_id: ownerId,
+        labor_cost: Number(sheet.labor_cost || 0),
+        energy_cost: Number(sheet.energy_cost || 0),
+        other_costs: Number(sheet.other_costs || 0),
+        markup: Number(sheet.markup || 0),
+      } as any);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['technical_sheets'] });
@@ -97,18 +88,13 @@ export function useTechnicalSheets() {
 
   const updateSheet = useMutation({
     mutationFn: async ({ id, ...updates }: TechnicalSheetUpdate & { id: string }) => {
-      const data = await supabaseFetch(`technical_sheets?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { 'Prefer': 'return=representation' },
-        body: JSON.stringify({
-          ...updates,
-          labor_cost: updates.labor_cost !== undefined ? Number(updates.labor_cost || 0) : undefined,
-          energy_cost: updates.energy_cost !== undefined ? Number(updates.energy_cost || 0) : undefined,
-          other_costs: updates.other_costs !== undefined ? Number(updates.other_costs || 0) : undefined,
-          markup: updates.markup !== undefined ? Number(updates.markup || 0) : undefined,
-        })
-      });
-      return Array.isArray(data) ? data[0] : data;
+      return technicalSheetApi.update(id, {
+        ...updates,
+        labor_cost: updates.labor_cost !== undefined ? Number(updates.labor_cost || 0) : undefined,
+        energy_cost: updates.energy_cost !== undefined ? Number(updates.energy_cost || 0) : undefined,
+        other_costs: updates.other_costs !== undefined ? Number(updates.other_costs || 0) : undefined,
+        markup: updates.markup !== undefined ? Number(updates.markup || 0) : undefined,
+      } as any);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['technical_sheets'] });
@@ -121,9 +107,7 @@ export function useTechnicalSheets() {
 
   const deleteSheet = useMutation({
     mutationFn: async (id: string) => {
-      await supabaseFetch(`technical_sheets?id=eq.${id}`, {
-        method: 'DELETE'
-      });
+      await technicalSheetApi.remove(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['technical_sheets'] });

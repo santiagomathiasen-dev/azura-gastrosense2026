@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { supabaseFetch } from '@/lib/supabase-fetch';
 
+import { supplierApi } from '@/api/SupplierApi';
 import { SupplierService } from '../modules/supplier/services/SupplierService';
 import type { Supplier, SupplierInsert, SupplierUpdate } from '../modules/supplier/types';
 
@@ -21,13 +22,7 @@ export function useSuppliers() {
     queryKey: ['suppliers', ownerId],
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
-      try {
-        const data = await supabaseFetch('suppliers?select=*&order=name.asc');
-        return data as Supplier[];
-      } catch (err) {
-        console.error("Error fetching suppliers:", err);
-        throw err;
-      }
+      return supplierApi.getAll();
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
     staleTime: 5 * 60 * 1000,
@@ -38,20 +33,7 @@ export function useSuppliers() {
     mutationFn: async (supplier: Omit<SupplierInsert, 'user_id'>) => {
       if (isOwnerLoading) throw new Error('Carregando dados do usuário...');
       if (!ownerId) throw new Error('Usuário não autenticado');
-
-      try {
-        const data = await supabaseFetch('suppliers', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify({ ...supplier, user_id: ownerId })
-        });
-        return Array.isArray(data) ? data[0] : data;
-      } catch (err: any) {
-        throw new Error(err.message || 'Erro ao criar fornecedor');
-      }
+      return supplierApi.create({ ...supplier, user_id: ownerId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
@@ -64,19 +46,7 @@ export function useSuppliers() {
 
   const updateSupplier = useMutation({
     mutationFn: async ({ id, ...updates }: SupplierUpdate & { id: string }) => {
-      try {
-        const data = await supabaseFetch(`suppliers?id=eq.${id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify(updates)
-        });
-        return Array.isArray(data) ? data[0] : data;
-      } catch (err: any) {
-        throw new Error(err.message || 'Erro ao atualizar fornecedor');
-      }
+      return supplierApi.update(id, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
@@ -89,9 +59,7 @@ export function useSuppliers() {
 
   const deleteSupplier = useMutation({
     mutationFn: async (id: string) => {
-      await supabaseFetch(`suppliers?id=eq.${id}`, {
-        method: 'DELETE'
-      });
+      await supplierApi.remove(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });

@@ -7,6 +7,7 @@ import { getNow } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 import { supabaseFetch } from '@/lib/supabase-fetch';
 
+import { productionApi } from '@/api/ProductionApi';
 import { ProductionService } from '../modules/production/services/ProductionService';
 import type {
   Production,
@@ -46,13 +47,7 @@ export function useProductions() {
     queryKey: ['productions', ownerId],
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
-      try {
-        const data = await supabaseFetch('productions?select=*,technical_sheet:technical_sheets(id,name,yield_quantity,yield_unit,preparation_method,ingredients:technical_sheet_ingredients(stock_item_id,quantity,unit,stage_id,stock_item:stock_items(name)))&order=scheduled_date.asc');
-        return data as ProductionWithSheet[];
-      } catch (err) {
-        console.error("Error fetching productions:", err);
-        throw err;
-      }
+      return productionApi.getAll(ownerId || '');
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
     refetchInterval: 30_000,
@@ -63,12 +58,7 @@ export function useProductions() {
       if (isOwnerLoading) throw new Error('Carregando dados do usuário...');
       if (!ownerId) throw new Error('Usuário não autenticado');
 
-      const data = await supabaseFetch('productions', {
-        method: 'POST',
-        headers: { 'Prefer': 'return=representation' },
-        body: JSON.stringify({ ...production, user_id: ownerId })
-      });
-      return Array.isArray(data) ? data[0] : data;
+      return productionApi.create({ ...production, user_id: ownerId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['productions'] });
@@ -269,12 +259,7 @@ export function useProductions() {
       // Get the current production to check status change
       const currentProduction = productions.find(p => p.id === id);
 
-      const data = await supabaseFetch(`productions?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { 'Prefer': 'return=representation' },
-        body: JSON.stringify(updates)
-      });
-      const updatedData = Array.isArray(data) ? data[0] : data;
+      const updatedData = await productionApi.update(id, updates);
 
       // If changing from 'planned' or 'requested' to 'in_progress', subtract stock
       if (
@@ -319,9 +304,7 @@ export function useProductions() {
 
   const deleteProduction = useMutation({
     mutationFn: async (id: string) => {
-      await supabaseFetch(`productions?id=eq.${id}`, {
-        method: 'DELETE'
-      });
+      await productionApi.remove(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['productions'] });

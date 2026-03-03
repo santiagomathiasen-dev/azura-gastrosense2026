@@ -7,6 +7,7 @@ import type { Database } from '@/integrations/supabase/types';
 import { supabaseFetch } from '@/lib/supabase-fetch';
 
 import { StockService } from '../modules/stock/services/StockService';
+import { stockApi } from '@/api/StockApi';
 import type {
   StockItem,
   StockItemInsert,
@@ -30,13 +31,7 @@ export function useStockItems() {
     queryKey: ['stock_items', ownerId],
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
-      try {
-        const data = await supabaseFetch('stock_items?select=*,supplier:suppliers(name)&order=name.asc');
-        return data as StockItem[];
-      } catch (err) {
-        console.error("Error fetching stock items:", err);
-        throw err;
-      }
+      return stockApi.getAll(ownerId || user?.id || '');
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
     refetchInterval: 30_000,
@@ -49,19 +44,7 @@ export function useStockItems() {
       if (isOwnerLoading) throw new Error('Carregando dados do usuário...');
       if (!ownerId) throw new Error('Usuário não autenticado');
 
-      try {
-        const data = await supabaseFetch('stock_items', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify({ ...item, user_id: ownerId })
-        });
-        return Array.isArray(data) ? data[0] : data;
-      } catch (err: any) {
-        throw new Error(err.message || 'Erro ao criar item');
-      }
+      return stockApi.create({ ...item, user_id: ownerId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock_items'] });
@@ -74,19 +57,7 @@ export function useStockItems() {
 
   const updateItem = useMutation({
     mutationFn: async ({ id, ...updates }: StockItemUpdate & { id: string }) => {
-      try {
-        await supabaseFetch(`stock_items?id=eq.${id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify(updates)
-        });
-        return null;
-      } catch (err: any) {
-        throw new Error(err.message || 'Erro ao atualizar item');
-      }
+      return stockApi.update(id, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock_items'] });
@@ -99,9 +70,7 @@ export function useStockItems() {
 
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
-      await supabaseFetch(`stock_items?id=eq.${id}`, {
-        method: 'DELETE'
-      });
+      await stockApi.remove(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock_items'] });
