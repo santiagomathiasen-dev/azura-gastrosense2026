@@ -1,18 +1,18 @@
 import { ChefHat } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 
 interface MobileHeaderProps {
   title?: string;
 }
 
 export function MobileHeader({ title }: MobileHeaderProps) {
-  const navigate = useNavigate();
+  const router = useRouter();
 
   return (
     <header className="md:hidden sticky top-0 z-40 bg-card border-b border-border px-4 py-3">
-      <div 
+      <div
         className="flex items-center gap-3 cursor-pointer"
-        onClick={() => navigate('/dashboard')}
+        onClick={() => router.push('/dashboard')}
       >
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
           <ChefHat className="h-5 w-5 text-primary-foreground" />

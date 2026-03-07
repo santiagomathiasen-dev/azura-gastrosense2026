@@ -35,6 +35,12 @@ export const TechnicalSheetSchema = z.object({
     other_costs: z.number().min(0).default(0),
     markup: z.number().min(0).default(0),
     target_price: z.number().min(0).nullable().optional(),
+    preparation_time: z.number().min(0).nullable().optional(),
+    preparation_method: z.string().nullable().optional(),
+    shelf_life_hours: z.number().min(0).nullable().optional(),
+    lead_time_hours: z.number().min(0).nullable().optional(),
+    image_url: z.string().url().nullable().optional(),
+    praca: z.string().nullable().optional(),
 
     created_at: z.string().optional(),
     updated_at: z.string().optional(),

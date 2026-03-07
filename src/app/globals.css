@@ -15,17 +15,20 @@
     --popover: 0 0% 100%;
     --popover-foreground: 40 12% 10%;
 
-    --primary: 152 55% 24%;
+    --primary: 152 40% 45%;
+    /* Pastel green */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 24% 91%;
-    --secondary-foreground: 44 10% 22%;
+    --secondary: 40 30% 95%;
+    /* Lighter pastel yellow */
+    --secondary-foreground: 44 15% 30%;
 
-    --muted: 40 24% 91%;
-    --muted-foreground: 43 9% 51%;
+    --muted: 40 30% 95%;
+    --muted-foreground: 43 12% 55%;
 
-    --accent: 151 41% 88%;
-    --accent-foreground: 152 55% 24%;
+    --accent: 151 45% 92%;
+    /* Light mint */
+    --accent-foreground: 152 40% 45%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -42,14 +45,16 @@
 
     --radius: 0.75rem;
 
-    --sidebar-background: 40 12% 10%;
-    --sidebar-foreground: 40 31% 95%;
-    --sidebar-primary: 152 55% 24%;
+    --sidebar-background: 0 0% 98%;
+    /* Light pastel background */
+    --sidebar-foreground: 40 12% 20%;
+    --sidebar-primary: 152 40% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 44 10% 22%;
-    --sidebar-accent-foreground: 40 31% 95%;
-    --sidebar-border: 44 10% 22%;
-    --sidebar-ring: 152 55% 24%;
+    --sidebar-accent: 40 10% 92%;
+    /* Light grey/yellow */
+    --sidebar-accent-foreground: 40 12% 20%;
+    --sidebar-border: 40 10% 92%;
+    --sidebar-ring: 152 40% 45%;
     --sidebar-muted: 43 9% 51%;
   }
 
@@ -63,16 +68,16 @@
     --popover: 44 10% 22%;
     --popover-foreground: 40 31% 95%;
 
-    --primary: 152 46% 33%;
+    --primary: 152 40% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 44 10% 22%;
+    --secondary: 44 15% 22%;
     --secondary-foreground: 40 31% 95%;
 
-    --muted: 44 10% 22%;
-    --muted-foreground: 43 9% 51%;
+    --muted: 44 15% 22%;
+    --muted-foreground: 43 12% 55%;
 
-    --accent: 152 55% 24%;
+    --accent: 152 35% 35%;
     --accent-foreground: 40 31% 95%;
 
     --destructive: 0 63% 31%;
@@ -84,12 +89,12 @@
 
     --sidebar-background: 40 12% 10%;
     --sidebar-foreground: 40 31% 95%;
-    --sidebar-primary: 152 46% 33%;
+    --sidebar-primary: 152 40% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 44 10% 22%;
+    --sidebar-accent: 44 15% 22%;
     --sidebar-accent-foreground: 40 31% 95%;
-    --sidebar-border: 44 10% 22%;
-    --sidebar-ring: 152 46% 33%;
+    --sidebar-border: 44 15% 22%;
+    --sidebar-ring: 152 40% 45%;
   }
 }
 
@@ -142,5 +147,11 @@
 
   .compact-card {
     @apply p-3 space-y-2;
+  }
+
+  /* Force hide Next.js development badges and overlays */
+  nextjs-portal,
+  #next-route-announcer {
+    display: none !important;
   }
 }

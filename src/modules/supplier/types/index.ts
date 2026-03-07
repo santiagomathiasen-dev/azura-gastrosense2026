@@ -12,6 +12,14 @@ export const SupplierSchema = z.object({
     address: z.string().nullable().optional(),
     category: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
+    // Added extended columns
+    cnpj_cpf: z.string().nullable().optional(),
+    average_delivery_days: z.number().nullable().optional(),
+    quality_rating: z.number().nullable().optional(),
+    payment_method: z.string().nullable().optional(),
+    zip_code: z.string().nullable().optional(),
+    city: z.string().nullable().optional(),
+    state: z.string().nullable().optional(),
     created_at: z.string().optional(),
     updated_at: z.string().optional(),
 });

@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface GlobalAIDialogProps {
     open: boolean;
@@ -22,8 +22,8 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
     const [transcript, setTranscript] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const recognitionRef = useRef<any>(null);
-    const location = useLocation();
-    const navigate = useNavigate();
+    const pathname = usePathname();
+    const router = useRouter();
 
     const isSupported = typeof window !== 'undefined' &&
         (window.SpeechRecognition || (window as any).webkitSpeechRecognition);
@@ -46,17 +46,17 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
         try {
             // Get page context
             const pageContent = document.body.innerText.substring(0, 2000); // Simple context
-            const currentPath = location.pathname;
+            const currentPath = pathname;
 
-            const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-global-command`;
+            const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-global-command`;
             console.log("Calling process-global-command:", functionUrl);
 
             const response = await fetch(functionUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-                    'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
+                    'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
                 },
                 body: JSON.stringify({
                     text,
@@ -72,7 +72,7 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
             const data = await response.json();
 
             if (data.action === 'navigate') {
-                navigate(data.target);
+                router.push(data.target);
                 toast.success(`Navegando para ${data.label || data.target}`);
             } else if (data.action === 'toast') {
                 toast(data.message);
@@ -87,7 +87,7 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
         } finally {
             setIsProcessing(false);
         }
-    }, [location.pathname, navigate, onOpenChange, stopListening]);
+    }, [pathname, router, onOpenChange, stopListening]);
 
     useEffect(() => {
         if (!open || !isSupported) return;

@@ -94,9 +94,9 @@ export function useProductCosts() {
             });
 
             const salePrice = Number(product.sale_price || 0);
-            const laborCost = Number(product.labor_cost || 0);
-            const energyCost = Number(product.energy_cost || 0);
-            const otherCosts = Number(product.other_costs || 0);
+            const laborCost = Number((product as any).labor_cost || 0);
+            const energyCost = Number((product as any).energy_cost || 0);
+            const otherCosts = Number((product as any).other_costs || 0);
 
             const totalCost = totalCMV + laborCost + energyCost + otherCosts;
             const suggestedPrice = totalCost / 0.3; // 30% Target CMV (now including OPEX)

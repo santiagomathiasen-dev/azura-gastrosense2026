@@ -100,6 +100,10 @@ function ForecastInputTab() {
             sale_product_id: selectedProductId,
             target_date: dateStr,
             forecasted_quantity: parseInt(quantity, 10),
+        }, {
+            onSuccess: () => {
+                explode.mutate(dateStr);
+            }
         });
         setShowDialog(false);
         setSelectedProductId('');
@@ -130,6 +134,7 @@ function ForecastInputTab() {
                 createForecast.mutateAsync(f)
             );
             await Promise.all(promises);
+            explode.mutate(dateStr);
             toast.success(`Foram lidos e cadastrados ${newForecastsToCreate.length} produtos de venda!`);
         } else {
             toast.info('A IA leu os dados, mas não encontrou correspondência exata de nomes de "Produtos de Venda". Revise o que foi importado.');
@@ -154,6 +159,10 @@ function ForecastInputTab() {
             baseDate: format(baseDate, 'yyyy-MM-dd'),
             bufferPercent: 10,
             periodType,
+        }, {
+            onSuccess: () => {
+                explode.mutate(dateStr);
+            }
         });
         setShowSuggestDialog(false);
     };

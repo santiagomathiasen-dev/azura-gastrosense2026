@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Search, ArrowLeft, Package, Boxes, ClipboardList, Send, Mic, MicOff, RefreshCw, FileText } from 'lucide-react';
+import { Search, ArrowLeft, Package, Boxes, ClipboardList, Send, Mic, MicOff, RefreshCw, FileText, Check, X } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -692,6 +692,51 @@ export default function EstoqueProducao() {
             >
               <RefreshCw className="h-4 w-4 mr-1" />
               Atualizar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Voice Confirmation Dialog */}
+      <Dialog open={!!voiceControl.pendingConfirmation} onOpenChange={(open) => !open && voiceControl.cancelUpdate()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Atualização de Voz (Produção)</DialogTitle>
+            <DialogDescription>
+              A IA interpretou seu comando. Confirme os dados abaixo para atualizar o estoque de produção:
+            </DialogDescription>
+          </DialogHeader>
+
+          {voiceControl.pendingConfirmation && (
+            <div className="space-y-4 py-4">
+              <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg border border-primary/10">
+                <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Item</span>
+                <span className="font-semibold text-lg">{voiceControl.pendingConfirmation.itemName}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg border border-primary/10">
+                  <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Nova Quantidade</span>
+                  <span className="font-semibold text-lg">
+                    {voiceControl.pendingConfirmation.quantity ?? '---'} {voiceControl.pendingConfirmation.unit}
+                  </span>
+                </div>
+              </div>
+
+              {voiceControl.transcript && (
+                <div className="p-3 bg-secondary/30 rounded italic text-sm text-muted-foreground border-l-4 border-primary/30">
+                  " {voiceControl.transcript} "
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button variant="outline" onClick={voiceControl.cancelUpdate} className="flex gap-2">
+              <X className="h-4 w-4" /> Cancelar
+            </Button>
+            <Button onClick={voiceControl.confirmUpdate} className="flex gap-2 bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20 transition-all hover:scale-105 active:scale-95">
+              <Check className="h-4 w-4" /> Confirmar Alteração
             </Button>
           </DialogFooter>
         </DialogContent>

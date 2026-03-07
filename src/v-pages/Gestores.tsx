@@ -21,7 +21,7 @@ import { Loader2, Search, Users, ShieldAlert, Plus, Pencil, Trash2, KeyRound, Sh
 import { useProfile } from '@/hooks/useProfile';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 const permissionLabels: Record<string, string> = {
@@ -40,7 +40,8 @@ const permissionLabels: Record<string, string> = {
 export default function Gestores() {
   const { profiles, isLoading, createGestor, updatePermissions, updateStatus, deleteGestor } = useGestaoUsuarios();
   const { setImpersonation } = useCollaboratorContext();
-  const navigate = useNavigate();
+  const router = useRouter();
+  const navigate = (p: string) => router.push(p);
   const { profile: currentProfile, isLoading: profileLoading } = useProfile();
   const { isAdmin } = useUserRole();
 

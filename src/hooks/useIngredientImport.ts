@@ -81,15 +81,15 @@ export function useIngredientImport() {
 
       // Bypass supabase.functions.invoke limitation by using direct fetch
       // This prevents the Supabase JS client from swallowing errors or timing out silently
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-ingredients`;
+      const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/extract-ingredients`;
       console.log("Preparing fetch to edge function:", functionUrl);
 
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         },
         body: JSON.stringify({ fileType, content, extractRecipe, mimeType })
       });

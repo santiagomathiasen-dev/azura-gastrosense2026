@@ -98,9 +98,9 @@ export function StockItemForm({
         minimum_quantity: initialData?.minimum_quantity ?? ('' as any),
         unit_price: (initialData as any)?.unit_price ?? ('' as any),
         waste_factor: (initialData as any)?.waste_factor ?? ('' as any),
-        expiration_date: initialData?.expiration_date || '',
-        supplier_id: initialData?.supplier_id || '',
-        notes: initialData?.notes || '',
+        expiration_date: (initialData as any)?.expiration_date || '',
+        supplier_id: (initialData as any)?.supplier_id || '',
+        notes: (initialData as any)?.notes || '',
       });
     }
   }, [open, initialData, reset]);

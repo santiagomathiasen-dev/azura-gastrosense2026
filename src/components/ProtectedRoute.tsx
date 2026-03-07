@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { useRouter, usePathname } from 'next/navigation';
+
+function Navigate({ to, replace }: { to: string, replace?: boolean }) {
+  const router = useRouter();
+  useEffect(() => {
+    if (replace) router.replace(to);
+    else router.push(to);
+  }, [to, replace, router]);
+  return null;
+}
 
 import { useAuth } from '@/hooks/useAuth';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
@@ -17,7 +26,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAdmin, isLoading: roleLoading } = useUserRole();
   const { profile, isLoading: profileLoading } = useProfile();
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
-  const location = useLocation();
+  const pathname = usePathname();
 
   // Optimized loading check: 
   // We only wait for auth to finish initially. 
@@ -25,9 +34,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isEssentialLoading = authLoading;
   const isSecondaryLoading = roleLoading || profileLoading;
 
-  // EMERGENCY BYPASS: If the authenticated user is the admin, 
-  // we bypass loading guards to prevent the "Otimizando" hang.
-  const isAdminBypass = user?.email === 'santiago.aloom@gmail.com';
+  // BYPASS: If auth is done and user is logged in, never block on secondary loading.
+  // roleLoading/profileLoading are background processes and should not hang navigation.
+  const isAdminBypass = !!user;
 
   useEffect(() => {
     let timer: any;
@@ -42,7 +51,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // If essential auth is loading, show minimal loader
   if (isEssentialLoading && !showTimeoutMessage && !isAdminBypass) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex items-center justify-center min-h-[60vh] w-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -52,7 +61,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Handle stuck loading
   if (showTimeoutMessage && (isEssentialLoading || isSecondaryLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4 text-center">
+      <div className="flex items-center justify-center min-h-[60vh] w-full p-4 text-center">
         <div className="max-w-md space-y-4">
           <h1 className="text-xl font-bold">Otimizando carregamento...</h1>
           <p className="text-muted-foreground">O sistema está verificando suas permissões.</p>
@@ -71,15 +80,15 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // Redirect to auth if not logged in
   if (!authLoading && !user && !isCollaboratorMode) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
+    return <Navigate to={`/auth?from=${pathname}`} replace />;
   }
 
-  // If we are logged in but profile is still loading, 
-  // we can show a lighter loader or just continue to layout 
-  // if the layout handles missing profile gracefully.
-  if (isSecondaryLoading && !profile && !isAdmin && !isAdminBypass) {
+  // If we are logged in but profile is still loading,
+  // ONLY block if there is truly no user session at all.
+  // Never block an authenticated user on background profile/role loading.
+  if (isSecondaryLoading && !profile && !isAdmin && !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex items-center justify-center min-h-[60vh] w-full">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-muted-foreground text-sm">Carregando permissões...</p>
@@ -97,7 +106,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   if (user && !isAdmin && !isSantiago && profile) {
     if (isBlocked) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4 text-center">
+        <div className="flex items-center justify-center min-h-[60vh] w-full p-4 text-center">
           <div className="max-w-md space-y-4">
             <h1 className="text-2xl font-bold text-destructive">Conta Bloqueada</h1>
             <p className="text-muted-foreground">Sua conta foi desativada pelo administrador.</p>
@@ -107,13 +116,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       );
     }
 
-    if (isPaymentPending && location.pathname !== '/payment-required') {
+    if (isPaymentPending && pathname !== '/payment-required') {
       return <Navigate to="/payment-required" replace />;
     }
   }
 
   // Check route permission for collaborators
-  if (isCollaboratorMode && !hasAccess(location.pathname)) {
+  if (isCollaboratorMode && !hasAccess(pathname)) {
     return <Navigate to="/dashboard" replace />;
   }
 

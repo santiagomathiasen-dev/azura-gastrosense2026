@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "start": "next start -p 3031",
     "build:vite": "vite build",
     "build:win": "cmd /c \"next build\"",
     "build:dev": "vite build --mode development",

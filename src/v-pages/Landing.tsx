@@ -1,9 +1,12 @@
+'use client';
+
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import './Landing.css';
 
 export default function Landing() {
-    const navigate = useNavigate();
+    const router = useRouter();
+    const navigate = (to: string) => router.push(to);
 
     useEffect(() => {
         const reveals = document.querySelectorAll('.reveal');

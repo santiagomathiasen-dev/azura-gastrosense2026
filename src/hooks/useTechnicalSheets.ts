@@ -132,7 +132,6 @@ export function useTechnicalSheets() {
         method: 'POST',
         headers: { 'Prefer': 'return=representation' },
         body: JSON.stringify({
-          user_id: ownerId,
           technical_sheet_id: ingredient.technical_sheet_id,
           stock_item_id: ingredient.stock_item_id,
           quantity: ingredient.quantity,

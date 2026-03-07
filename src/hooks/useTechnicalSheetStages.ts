@@ -61,7 +61,7 @@ export function useTechnicalSheetStages(technicalSheetId?: string) {
       const data = await supabaseFetch('technical_sheet_stages', {
         method: 'POST',
         headers: { 'Prefer': 'return=representation' },
-        body: JSON.stringify({ ...stage, user_id: ownerId })
+        body: JSON.stringify({ ...stage })
       });
       return Array.isArray(data) ? data[0] : data;
     },
@@ -112,7 +112,7 @@ export function useTechnicalSheetStages(technicalSheetId?: string) {
       const data = await supabaseFetch('technical_sheet_stage_steps', {
         method: 'POST',
         headers: { 'Prefer': 'return=representation' },
-        body: JSON.stringify({ ...step, user_id: ownerId })
+        body: JSON.stringify({ ...step })
       });
       return Array.isArray(data) ? data[0] : data;
     },

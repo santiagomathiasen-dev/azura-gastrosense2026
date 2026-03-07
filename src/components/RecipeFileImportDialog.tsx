@@ -126,14 +126,14 @@ export function RecipeFileImportDialog({
 
         console.log(`Processing ${fileType} file for recipe extraction`);
 
-        const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-ingredients`;
+        const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/extract-ingredients`;
         console.log("Preparing fetch to edge function:", functionUrl);
 
         const response = await fetch(functionUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`
           },
           body: JSON.stringify({ fileType, content, extractRecipe: true, mimeType: file.type })
         });

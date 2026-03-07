@@ -1,4 +1,6 @@
-import { useNavigate } from 'react-router-dom';
+'use client';
+
+import { useRouter } from 'next/navigation';
 import { AlertTriangle, Calendar, Clock, Bot, XCircle, CheckCircle2, Sparkles, ShoppingCart, TrendingUp, ChefHat, CalendarClock, BarChart3, Package, ClipboardList, ArrowUpRight, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +19,8 @@ import { useAllExpiryAlerts, parseSafeDate, useEarliestExpiryMap } from '@/hooks
 import { useStockMovements } from '@/hooks/useStockMovements';
 
 export default function Dashboard() {
-  const navigate = useNavigate();
+  const router = useRouter();
+  const navigate = (p: string) => router.push(p);
   const { productions, isLoading: productionsLoading } = useProductions();
   const { items: stockItems, isLoading: stockLoading } = useStockItems();
   const { finishedStock, isLoading: finishedLoading } = useFinishedProductionsStock();

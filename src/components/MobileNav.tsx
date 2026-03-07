@@ -1,4 +1,5 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Package,
@@ -49,7 +50,8 @@ export function MobileNav() {
   const { logout } = useAuth();
   const { isCollaboratorMode, clearCollaboratorSession, hasAccess } = useCollaboratorContext();
   const { isAdmin, isGestor } = useUserRole();
-  const navigate = useNavigate();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     // If in collaborator mode, clear session first
@@ -82,21 +84,24 @@ export function MobileNav() {
     <nav className="md:hidden fixed left-0 top-14 bottom-0 w-16 bg-card border-r border-border z-50 flex flex-col">
       <ScrollArea className="flex-1">
         <div className="flex flex-col items-center py-2 gap-1">
-          {visibleNavItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "flex flex-col items-center justify-center p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors w-14",
-                  isActive && "text-primary bg-primary/10"
-                )
-              }
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="text-[9px] leading-tight mt-1 text-center">{item.label}</span>
-            </NavLink>
-          ))}
+          {visibleNavItems.map((item) => {
+            const isActive = pathname === item.to;
+            return (
+              <Link
+                key={item.to}
+                href={item.to}
+                className={
+                  cn(
+                    "flex flex-col items-center justify-center p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors w-14",
+                    isActive && "text-primary bg-primary/10"
+                  )
+                }
+              >
+                <item.icon className="h-6 w-6" />
+                <span className="text-[10px] leading-none mt-1 text-center">{item.label}</span>
+              </Link>
+            );
+          })}
         </div>
       </ScrollArea>
 
@@ -106,8 +111,8 @@ export function MobileNav() {
           onClick={handleLogout}
           className="flex flex-col items-center justify-center p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors w-full"
         >
-          <LogOut className="h-5 w-5" />
-          <span className="text-[9px] leading-tight mt-1">Sair</span>
+          <LogOut className="h-6 w-6" />
+          <span className="text-[10px] leading-none mt-1">Sair</span>
         </button>
       </div>
     </nav>

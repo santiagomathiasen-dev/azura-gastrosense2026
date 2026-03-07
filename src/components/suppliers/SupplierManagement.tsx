@@ -67,7 +67,7 @@ export function SupplierManagement() {
 
     const handleFormSubmit = (data: Partial<Supplier>) => {
         if (editingSupplier) {
-            updateSupplier.mutate({ ...data, id: editingSupplier.id, updated_at: getNow().toISOString() });
+            updateSupplier.mutate({ ...data, id: editingSupplier.id, updated_at: getNow().toISOString() } as any);
         } else {
             createSupplier.mutate(data as any);
         }

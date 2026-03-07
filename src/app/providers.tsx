@@ -35,13 +35,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
                             if (to === -1) router.back();
                             return;
                         }
-                        if (options?.replace) router.replace(to);
-                        else router.push(to);
+                        if (options?.replace) {
+                            window.location.replace(to);
+                        } else {
+                            window.location.href = to;
+                        }
                     }}
                 >
                     <ThemeProvider
                         attribute="class"
-                        defaultTheme="dark"
+                        defaultTheme="light"
                         enableSystem
                         disableTransitionOnChange
                     >

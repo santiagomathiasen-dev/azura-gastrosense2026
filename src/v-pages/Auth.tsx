@@ -1,6 +1,15 @@
-import { useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+
+function Navigate({ to, replace }: { to: string, replace?: boolean }) {
+  const router = useRouter();
+  useEffect(() => {
+    if (replace) router.replace(to);
+    else router.push(to);
+  }, [to, replace, router]);
+  return null;
+}
 import { useCollaboratorAuth } from '@/hooks/useCollaborators';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,8 +25,9 @@ type LoginMode = 'gestor' | 'collaborator';
 export default function Auth() {
   const { user, login, signup, isLoading } = useAuth();
   const { isCollaboratorMode } = useCollaboratorContext();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const navigate = (p: string) => router.push(p);
 
   // Standard login state
   const [isLogin, setIsLogin] = useState(true);
@@ -30,7 +40,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = searchParams.get('from') || '/dashboard';
 
   // If user is logged in, redirect
   if (user) {

@@ -18,7 +18,7 @@ import type {
   ProductionWithSheet
 } from '../modules/production/types';
 
-export type { Production, ProductionInsert, ProductionUpdate, ProductionStatus, ProductionPeriod };
+export type { Production, ProductionInsert, ProductionUpdate, ProductionStatus, ProductionPeriod, ProductionWithSheet };
 
 export const STATUS_LABELS: Record<ProductionStatus, string> = {
   requested: 'Solicitada',

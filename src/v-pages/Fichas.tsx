@@ -39,11 +39,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 const calcularCustoTotal = (sheet: TechnicalSheetWithIngredients) => {
   if (sheet.total_cost) return sheet.total_cost;
-  return sheet.ingredients?.reduce((total, ing) => total + (ing.total_cost || 0), 0) || 0;
+  return sheet.ingredients?.reduce((total, ing) => total + ((ing as any).total_cost || 0), 0) || 0;
 };
 
 const calcularCustoPorcao = (sheet: TechnicalSheetWithIngredients) => {
-  if (sheet.cost_per_unit) return sheet.cost_per_unit;
+  if ((sheet as any).cost_per_unit) return (sheet as any).cost_per_unit;
   const custoTotal = calcularCustoTotal(sheet);
   return sheet.yield_quantity > 0 ? custoTotal / sheet.yield_quantity : 0;
 };
@@ -303,15 +303,15 @@ export default function Fichas() {
 
     setIsSaving(true);
     try {
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-recipe-video`;
+      const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-recipe-video`;
       console.log("Calling process-recipe-video:", functionUrl);
 
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         },
         body: JSON.stringify({ videoUrl: formData.video_url })
       });

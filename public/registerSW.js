@@ -1,25 +1,10 @@
-self.addEventListener('install', function (e) {
-    self.skipWaiting();
-});
-
-self.addEventListener('activate', function (e) {
-    e.waitUntil(
-        caches.keys().then(function (cacheNames) {
-            return Promise.all(
-                cacheNames.map(function (cacheName) {
-                    return caches.delete(cacheName);
-                })
-            );
-        }).then(function () {
-            self.registration.unregister();
-        }).then(function () {
-            return self.clients.matchAll();
-        }).then(function (clients) {
-            clients.forEach(client => {
-                if (client.url && "navigate" in client) {
-                    client.navigate(client.url);
-                }
-            });
-        })
-    );
-});
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        for (let registration of registrations) {
+            registration.unregister();
+        }
+    });
+    caches.keys().then(names => {
+        for (let name of names) caches.delete(name);
+    });
+}

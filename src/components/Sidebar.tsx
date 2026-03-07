@@ -1,6 +1,6 @@
 'use client';
 
-import { useNavigate } from '@/hooks/useNavigate';
+import { useRouter } from 'next/navigation';
 import { NavigationLink } from '@/components/NavigationLink';
 import { Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -63,7 +63,7 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const { collaborator, isCollaboratorMode, clearCollaboratorSession } = useCollaboratorContext();
   const { isAdmin, isGestor } = useUserRole();
   const { profile } = useProfile();
-  const navigate = useNavigate();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
@@ -114,7 +114,7 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       {/* Logo Azura - Fixed at top */}
       <div
         className="p-3 border-b border-sidebar-border cursor-pointer hover:bg-sidebar-accent/50 transition-colors flex-shrink-0"
-        onClick={() => navigate('/dashboard')}
+        onClick={() => router.push('/dashboard')}
       >
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
@@ -140,12 +140,12 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
             to={item.to}
             className={({ isActive }) =>
               cn(
-                "nav-item text-sm",
+                "nav-item text-base py-3",
                 isActive && "nav-item-active"
               )
             }
           >
-            <item.icon className="h-4 w-4 flex-shrink-0" />
+            <item.icon className="h-5 w-5 flex-shrink-0" />
             {!collapsed && <span className="animate-fade-in truncate">{item.label}</span>}
           </NavigationLink>
         ))}
@@ -173,9 +173,9 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
         <button
           type="button"
           onClick={handleLogout}
-          className="nav-item w-full text-destructive hover:bg-destructive/10 text-sm"
+          className="nav-item w-full text-destructive hover:bg-destructive/10 text-base py-3"
         >
-          <LogOut className="h-4 w-4 flex-shrink-0" />
+          <LogOut className="h-5 w-5 flex-shrink-0" />
           {!collapsed && <span>Sair</span>}
         </button>
       </div>

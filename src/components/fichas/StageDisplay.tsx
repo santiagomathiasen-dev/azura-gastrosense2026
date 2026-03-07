@@ -14,6 +14,7 @@ interface StageDisplayProps {
   ingredients: (TechnicalSheetIngredient & {
     stock_item: { name: string; unit: string } | null;
     stage_id?: string | null;
+    total_cost?: number;
   })[];
 }
 

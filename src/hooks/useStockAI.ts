@@ -28,15 +28,15 @@ export function useStockAI(stockItems: StockItem[]) {
     setAiMessage('');
 
     try {
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-stock-input`;
+      const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-stock-input`;
       console.log("Calling process-stock-input (voice):", functionUrl);
 
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         },
         body: JSON.stringify({
           type: 'voice',
@@ -79,15 +79,15 @@ export function useStockAI(stockItems: StockItem[]) {
     setAiMessage('');
 
     try {
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-stock-input`;
+      const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-stock-input`;
       console.log("Calling process-stock-input (image):", functionUrl);
 
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         },
         body: JSON.stringify({
           type: 'image',

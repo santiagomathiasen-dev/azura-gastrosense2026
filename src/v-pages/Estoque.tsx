@@ -128,7 +128,7 @@ export default function Estoque() {
 
   const handleExpiryUpdate = useCallback((itemId: string, expirationDate: string) => {
     updateItem.mutate(
-      { id: itemId, expiration_date: expirationDate },
+      { id: itemId, expiration_date: expirationDate } as any,
       {
         onSuccess: () => {
           toast.success('Data de validade atualizada!');

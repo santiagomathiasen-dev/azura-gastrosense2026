@@ -2,9 +2,7 @@
 
 import { Sidebar } from '@/components/Sidebar';
 import { MobileNav } from '@/components/MobileNav';
-import { useAuth } from '@/hooks/useAuth';
-import { useUserRole } from '@/hooks/useUserRole';
-import { Loader2 } from 'lucide-react';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useState } from 'react';
 
 export default function DashboardLayout({
@@ -12,17 +10,7 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { user, isLoading: authLoading } = useAuth();
-    const { userRole, isLoading: roleLoading } = useUserRole();
     const [collapsed, setCollapsed] = useState(false);
-
-    if (authLoading || roleLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        );
-    }
 
     return (
         <div className="flex min-h-screen bg-background text-foreground">
@@ -38,9 +26,11 @@ export default function DashboardLayout({
                     <MobileNav />
                 </div>
 
-                <main className="flex-1 p-4 md:p-8 animate-in fade-in duration-500 overflow-y-auto overflow-x-hidden" style={{ fontSize: '75%' }}>
+                <main className="flex-1 p-4 md:p-8 animate-in fade-in duration-500 overflow-y-auto overflow-x-hidden">
                     <div className="max-w-7xl mx-auto pb-8">
-                        {children}
+                        <ProtectedRoute>
+                            {children}
+                        </ProtectedRoute>
                     </div>
                 </main>
             </div>
