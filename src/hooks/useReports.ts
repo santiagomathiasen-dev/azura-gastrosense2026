@@ -42,6 +42,16 @@ export interface UsedIngredientsItem {
   source: string;
 }
 
+export interface MovementReportItem {
+  date: string;
+  itemName: string;
+  type: 'entry' | 'exit';
+  quantity: number;
+  unit: string;
+  source: string;
+  notes: string | null;
+}
+
 export interface PurchaseReportItem {
   date: string;
   itemName: string;
@@ -315,6 +325,47 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
     enabled: !!user?.id || !!ownerId,
   });
 
+  // Movements Report (All stock movements)
+  const { data: movementsReport = [], isLoading: movementsLoading } = useQuery({
+    queryKey: ['reports', 'movements', ownerId, startDate, endDate],
+    queryFn: async () => {
+      if (!user?.id && !ownerId) return [];
+
+      const { data, error } = await supabase
+        .from('stock_movements')
+        .select(`
+          id,
+          type,
+          quantity,
+          created_at,
+          source,
+          notes,
+          stock_item:stock_items!inner(name, unit)
+        `)
+        .gte('created_at', `${startDate}T00:00:00`)
+        .lte('created_at', `${endDate}T23:59:59`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (data as any[]).map(movement => {
+        const stockItem = movement.stock_item;
+        return {
+          date: format(new Date(movement.created_at), 'dd/MM/yyyy HH:mm'),
+          itemName: stockItem?.name || 'Item desconhecido',
+          type: movement.type as 'entry' | 'exit',
+          quantity: movement.quantity,
+          unit: stockItem?.unit || 'un',
+          notes: movement.notes || null,
+          source: movement.source === 'production' ? 'Produção' :
+            movement.source === 'manual' ? 'Manual' :
+              movement.source === 'purchase' ? 'Compra' : movement.source,
+        };
+      }) as MovementReportItem[];
+    },
+    enabled: !!user?.id || !!ownerId,
+  });
+
   // Calculate totals
   const totalSales = salesReport.reduce((sum, item) => sum + item.total, 0);
   const totalLosses = lossesReport.reduce((sum, item) => sum + item.estimatedValue, 0);
@@ -360,11 +411,12 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
     purchasedReport,
     usedReport,
     purchaseListReport,
+    movementsReport,
     totalSales,
     totalLosses,
     totalPurchased,
     totalPurchaseList,
     alerts,
-    isLoading: salesLoading || lossesLoading || purchasedLoading || usedLoading || purchaseListLoading,
+    isLoading: salesLoading || lossesLoading || purchasedLoading || usedLoading || purchaseListLoading || movementsLoading,
   };
 }

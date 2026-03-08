@@ -101,6 +101,7 @@ export default function Relatorios() {
     purchasedReport,
     usedReport,
     purchaseListReport,
+    movementsReport,
     totalSales,
     totalLosses,
     totalPurchased,
@@ -141,6 +142,11 @@ export default function Relatorios() {
         data = purchaseListReport;
         filename = 'relatorio_compras';
         headers = ['Data', 'Item', 'Quantidade', 'Unidade', 'Fornecedor', 'Status', 'Custo Estimado'];
+        break;
+      case 'movements':
+        data = movementsReport;
+        filename = 'relatorio_movimentacoes_estoque';
+        headers = ['Data', 'Item', 'Tipo', 'Quantidade', 'Unidade', 'Justificativa', 'Origem'];
         break;
     }
 
@@ -355,6 +361,7 @@ export default function Relatorios() {
             <TabsTrigger value="comprados" className="text-xs">Insumos Comprados</TabsTrigger>
             <TabsTrigger value="utilizados" className="text-xs">Insumos Utilizados</TabsTrigger>
             <TabsTrigger value="compras" className="text-xs">Compras</TabsTrigger>
+            <TabsTrigger value="movements" className="text-xs font-bold bg-primary/10">Movimentações Estoque</TabsTrigger>
           </TabsList>
 
           <div className="flex gap-2">
@@ -636,6 +643,59 @@ export default function Relatorios() {
                         <TableCell colSpan={6}>TOTAL</TableCell>
                         <TableCell className="text-right text-orange-600">R$ {(totalPurchaseList || 0).toFixed(2)}</TableCell>
                       </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Stock Movements Report */}
+        <TabsContent value="movements">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Histórico Geral de Movimentações
+                <Badge variant="secondary">{movementsReport.length} registros</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {movementsReport.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Nenhuma movimentação no período</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead className="text-right">Qtd</TableHead>
+                        <TableHead>Justificativa/Notas</TableHead>
+                        <TableHead>Origem</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {movementsReport.map((mov, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="text-sm whitespace-nowrap">{mov.date}</TableCell>
+                          <TableCell className="font-medium">{mov.itemName}</TableCell>
+                          <TableCell>
+                            <Badge variant={mov.type === 'entry' ? 'default' : 'destructive'} className={mov.type === 'entry' ? 'bg-emerald-100 text-emerald-700' : ''}>
+                              {mov.type === 'entry' ? 'Entrada' : 'Saída'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-bold">
+                            {mov.type === 'entry' ? '+' : '-'}{mov.quantity} {mov.unit}
+                          </TableCell>
+                          <TableCell className="text-xs italic text-muted-foreground">{mov.notes || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px]">{mov.source}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </div>

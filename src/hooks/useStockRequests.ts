@@ -31,7 +31,7 @@ export function useStockRequests() {
       if (!user?.id && !ownerId) return [];
       try {
         const data = await supabaseFetch('stock_requests?select=*,stock_item:stock_items(*)&order=created_at.desc');
-        return data as (StockRequest & { stock_item: StockItem })[];
+        return (Array.isArray(data) ? data : data ? [data] : []) as (StockRequest & { stock_item: StockItem })[];
       } catch (err) {
         console.error("Error fetching stock requests:", err);
         throw err;

@@ -36,9 +36,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
                             return;
                         }
                         if (options?.replace) {
-                            window.location.replace(to);
+                            router.replace(to);
                         } else {
-                            window.location.href = to;
+                            router.push(to);
                         }
                     }}
                 >

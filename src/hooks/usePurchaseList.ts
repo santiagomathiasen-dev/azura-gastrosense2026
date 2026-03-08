@@ -41,7 +41,7 @@ export function usePurchaseList() {
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
       const data = await supabaseFetch('purchase_list_items?select=*,stock_item:stock_items(name,unit,category),supplier:suppliers(name,whatsapp_number,whatsapp,phone)&order=created_at.desc');
-      return data as unknown as PurchaseListItemWithDetails[];
+      return (Array.isArray(data) ? data : data ? [data] : []) as unknown as PurchaseListItemWithDetails[];
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
     staleTime: 5 * 60 * 1000,

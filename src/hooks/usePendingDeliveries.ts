@@ -25,7 +25,7 @@ export function usePendingDeliveries() {
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
       const data = await supabaseFetch('purchase_list_items?status=eq.ordered&select=*,stock_item:stock_items(name,unit,category),supplier:suppliers(name)&order=order_date.desc');
-      return data as unknown as PendingDeliveryItem[];
+      return (Array.isArray(data) ? data : data ? [data] : []) as unknown as PendingDeliveryItem[];
     },
     enabled: !!user?.id || !!ownerId,
     refetchInterval: 30_000,

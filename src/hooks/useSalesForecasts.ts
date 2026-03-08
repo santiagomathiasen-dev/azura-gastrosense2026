@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useOwnerId } from './useOwnerId';
 import { toast } from 'sonner';
+import { supabaseFetch } from '@/lib/supabase-fetch';
 
 export interface SalesForecast {
     id: string;
@@ -55,7 +56,7 @@ export function useSalesForecasts(targetDate?: string) {
             if (isOwnerLoading) throw new Error('Carregando dados do usuário...');
             if (!ownerId) throw new Error('Usuário não autenticado');
 
-            const response = await supabaseFetch('sales_forecasts', {
+            const response = await supabaseFetch('sales_forecasts?on_conflict=user_id,sale_product_id,target_date', {
                 method: 'POST',
                 headers: {
                     'Prefer': 'resolution=merge-duplicates,return=representation',
@@ -157,7 +158,7 @@ export function useSalesForecasts(targetDate?: string) {
                 throw new Error('Não foram encontradas vendas na data base selecionada.');
             }
 
-            await supabaseFetch('sales_forecasts', {
+            await supabaseFetch('sales_forecasts?on_conflict=user_id,sale_product_id,target_date', {
                 method: 'POST',
                 headers: {
                     'Prefer': 'resolution=merge-duplicates,return=representation',

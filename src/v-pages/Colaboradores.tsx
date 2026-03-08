@@ -107,7 +107,7 @@ export default function Colaboradores() {
         toast.error('Email e senha são obrigatórios');
         return;
       }
-      if (password !== confirmPassword) {
+      if (password.trim() !== confirmPassword.trim()) {
         toast.error('As senhas não coincidem!');
         return;
       }
@@ -115,7 +115,7 @@ export default function Colaboradores() {
         setPinError('PIN deve ter 6 dígitos');
         return;
       }
-      if (pin.length > 0 && pin !== confirmPin) {
+      if (pin.trim().length > 0 && pin.trim() !== confirmPin.trim()) {
         setPinError('Os PINs não coincidem');
         return;
       }
@@ -132,7 +132,7 @@ export default function Colaboradores() {
         setPinError('PIN deve ter 6 dígitos');
         return;
       }
-      if (pin.length > 0 && pin !== confirmPin) {
+      if (pin.trim().length > 0 && pin.trim() !== confirmPin.trim()) {
         setPinError('Os PINs não coincidem');
         return;
       }

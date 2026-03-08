@@ -23,7 +23,8 @@ export function useProductionStock() {
       if (!user?.id && !ownerId) return [];
       try {
         const data = await supabaseFetch('production_stock?select=*,stock_item:stock_items(*)');
-        return data as (ProductionStockItem & { stock_item: StockItem })[];
+        const result = Array.isArray(data) ? data : data ? [data] : [];
+        return result as (ProductionStockItem & { stock_item: StockItem })[];
       } catch (err) {
         console.error("Error fetching production stock:", err);
         throw err;
@@ -39,7 +40,8 @@ export function useProductionStock() {
       if (!user?.id && !ownerId) return [];
       try {
         const data = await supabaseFetch('stock_transfers?select=*,stock_item:stock_items(name,unit)&order=created_at.desc&limit=50');
-        return data as (StockTransfer & { stock_item: { name: string; unit: string } })[];
+        const result = Array.isArray(data) ? data : data ? [data] : [];
+        return result as (StockTransfer & { stock_item: { name: string; unit: string } })[];
       } catch (err) {
         console.error("Error fetching transfers:", err);
         throw err;

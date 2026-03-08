@@ -74,7 +74,7 @@ export function useTechnicalSheets() {
         labor_cost: Number(sheet.labor_cost || 0),
         energy_cost: Number(sheet.energy_cost || 0),
         other_costs: Number(sheet.other_costs || 0),
-        markup: Number(sheet.markup || 0),
+        // markup: Number(sheet.markup || 0),
       } as any);
     },
     onSuccess: () => {
@@ -93,7 +93,7 @@ export function useTechnicalSheets() {
         labor_cost: updates.labor_cost !== undefined ? Number(updates.labor_cost || 0) : undefined,
         energy_cost: updates.energy_cost !== undefined ? Number(updates.energy_cost || 0) : undefined,
         other_costs: updates.other_costs !== undefined ? Number(updates.other_costs || 0) : undefined,
-        markup: updates.markup !== undefined ? Number(updates.markup || 0) : undefined,
+        // markup: updates.markup !== undefined ? Number(updates.markup || 0) : undefined,
       } as any);
     },
     onSuccess: () => {

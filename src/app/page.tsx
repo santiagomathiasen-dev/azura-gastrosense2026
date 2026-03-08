@@ -1,14 +1,41 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 import '@/v-pages/Landing.css';
 
 export default function NextLanding() {
     const router = useRouter();
     const navigate = (to: string) => router.push(to);
+    const [isRedirecting, setIsRedirecting] = useState(false);
 
     useEffect(() => {
+        // Detect if there is an access_token in the URL (Google Login return)
+        if (typeof window !== 'undefined' && (window.location.hash.includes('access_token') || window.location.hash.includes('error'))) {
+            setIsRedirecting(true);
+        }
+
+        // Redirect if already logged in
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log("Landing Auth Event:", event, !!session);
+            if (session) {
+                setIsRedirecting(true);
+                router.replace('/dashboard');
+            } else if (event === 'SIGNED_OUT') {
+                setIsRedirecting(false);
+            }
+        });
+
+        // Check current session immediately
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                setIsRedirecting(true);
+                router.replace('/dashboard');
+            }
+        });
+
         const reveals = document.querySelectorAll('.reveal');
         const obs = new IntersectionObserver((entries) => {
             entries.forEach((entry, i) => {
@@ -20,8 +47,23 @@ export default function NextLanding() {
         }, { threshold: 0.12 });
         reveals.forEach(el => obs.observe(el));
 
-        return () => obs.disconnect();
-    }, []);
+        return () => {
+            subscription.unsubscribe();
+            obs.disconnect();
+        };
+    }, [router]);
+
+    if (isRedirecting) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="text-center space-y-2">
+                    <p className="text-muted-foreground animate-pulse text-sm">Validando acesso...</p>
+                    <p className="text-[10px] text-muted-foreground/50">Carregando painel Azura</p>
+                </div>
+            </div>
+        );
+    }
 
     const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
         e.preventDefault();

@@ -391,7 +391,7 @@ function ForecastInputTab() {
             <AIImportDialog
                 open={showAIDialog}
                 onOpenChange={setShowAIDialog}
-                onConfirmImport={handleConfirmAIImport}
+                onImport={handleConfirmAIImport}
                 title="Importar Relatório de Vendas (IA)"
                 description="Envie um PDF ou imagem de um relatório de vendas (Loyverse, iFood, etc). A IA extrairá as quantidades vendidas para adicionar na previsão de produção."
                 extractRecipe={false}

@@ -39,7 +39,7 @@ export function useLosses() {
       if (!user?.id && !ownerId) return [];
       try {
         const data = await supabaseFetch('losses?order=created_at.desc');
-        return data as Loss[];
+        return (Array.isArray(data) ? data : data ? [data] : []) as Loss[];
       } catch (err) {
         console.error("Error fetching losses:", err);
         throw err;

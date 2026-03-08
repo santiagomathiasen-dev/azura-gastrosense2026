@@ -785,7 +785,7 @@ export default function ProdutosVenda() {
       <AIImportDialog
         open={aiImportDialogOpen}
         onOpenChange={setAiImportDialogOpen}
-        onConfirmImport={async (ingredients) => {
+        onImport={async (ingredients) => {
           for (const ing of ingredients) {
             await new Promise<void>((resolve, reject) => {
               createSaleProduct.mutate({

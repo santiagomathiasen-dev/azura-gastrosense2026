@@ -23,8 +23,11 @@ import {
     Plus,
     Upload,
     Receipt,
-    Wallet
+    Wallet,
+    CalendarDays
 } from 'lucide-react';
+import { AIImportDialog } from '@/components/AIImportDialog';
+import { ExtractedIngredient } from '@/hooks/useIngredientImport';
 import { useProductCosts } from '@/hooks/useProductCosts';
 import { useSaleProducts } from '@/hooks/useSaleProducts';
 import { useFinancials, FinancialExpense, PayrollEntry } from '@/hooks/useFinancials';
@@ -106,6 +109,7 @@ export default function Financeiro() {
     };
 
     const [showExpenseDialog, setShowExpenseDialog] = useState(false);
+    const [showNFeDialog, setShowNFeDialog] = useState(false);
     const [showPayrollDialog, setShowPayrollDialog] = useState(false);
     const [newExpense, setNewExpense] = useState<Omit<FinancialExpense, 'id'>>({
         description: '',
@@ -115,7 +119,7 @@ export default function Financeiro() {
         date: getNow().toISOString().split('T')[0],
         status: 'pending',
         invoice_number: '',
-        document_url: ''
+        // document_url: ''
     });
 
     const [newPayroll, setNewPayroll] = useState<Omit<PayrollEntry, 'id'>>({
@@ -134,6 +138,40 @@ export default function Financeiro() {
         }
     });
 
+    const handleNFeImport = async (ingredients: ExtractedIngredient[]) => {
+        try {
+            if (!ingredients || ingredients.length === 0) {
+                toast.error('Nenhum item encontrado na nota.');
+                return;
+            }
+
+            let count = 0;
+            for (const item of ingredients) {
+                const amount = (item.price || 0) * (item.quantity || 1);
+                if (amount > 0) {
+                    await addExpense.mutateAsync({
+                        description: `[NFe] ${item.name}`,
+                        amount: amount,
+                        category: item.category === 'limpeza' || item.category === 'embalagens' ? 'fixed' : 'variable',
+                        type: 'invoice',
+                        date: getNow().toISOString().split('T')[0],
+                        status: 'pending'
+                    });
+                    count++;
+                }
+            }
+
+            if (count > 0) {
+                toast.success(`${count} itens da NFe registrados como despesas!`);
+            } else {
+                toast.info('Itens da NFe processados, mas nenhum valor válido encontrado.');
+            }
+        } catch (error) {
+            console.error('Error importing NFe:', error);
+            toast.error('Erro ao processar itens da NFe');
+        }
+    };
+
     const handleAddExpense = () => {
         if (!newExpense.description || newExpense.amount <= 0) {
             toast.error('Preencha a descrição e o valor corretamente.');
@@ -150,7 +188,7 @@ export default function Financeiro() {
                     date: getNow().toISOString().split('T')[0],
                     status: 'pending',
                     invoice_number: '',
-                    document_url: ''
+                    // document_url: ''
                 });
             }
         });
@@ -398,7 +436,7 @@ export default function Financeiro() {
                                     <CardDescription>Extração automática de custos fixos e variáveis</CardDescription>
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button size="sm" variant="outline" className="gap-2">
+                                    <Button size="sm" variant="outline" className="gap-2" onClick={() => setShowNFeDialog(true)}>
                                         <Upload className="h-4 w-4" />
                                         Importar NFe (XML)
                                     </Button>
@@ -442,11 +480,11 @@ export default function Financeiro() {
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-right">
-                                                        {exp.document_url && (
+                                                        {/* {exp.document_url && (
                                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600" onClick={() => window.open(exp.document_url, '_blank')}>
                                                                 <FileText className="h-4 w-4" />
                                                             </Button>
-                                                        )}
+                                                        )} */}
                                                     </TableCell>
                                                 </TableRow>
                                             ))
@@ -663,7 +701,7 @@ export default function Financeiro() {
                                 </select>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4">
                             <div className="space-y-2">
                                 <Label>Nº do Documento (NF-e)</Label>
                                 <Input
@@ -671,13 +709,13 @@ export default function Financeiro() {
                                     onChange={e => setNewExpense({ ...newExpense, invoice_number: e.target.value })}
                                 />
                             </div>
-                            <div className="space-y-2">
+                            {/* <div className="space-y-2">
                                 <Label>Link do Documento (Cloud)</Label>
                                 <Input
                                     value={newExpense.document_url}
                                     onChange={e => setNewExpense({ ...newExpense, document_url: e.target.value })}
                                 />
-                            </div>
+                            </div> */}
                         </div>
                     </div>
                     <DialogFooter>
@@ -799,6 +837,13 @@ export default function Financeiro() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <AIImportDialog
+                open={showNFeDialog}
+                onOpenChange={setShowNFeDialog}
+                onImport={handleNFeImport}
+                title="Importar NFe (XML / PDF)"
+            />
         </div>
     );
 }

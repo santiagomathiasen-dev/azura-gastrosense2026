@@ -51,8 +51,21 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // If essential auth is loading, show minimal loader
   if (isEssentialLoading && !showTimeoutMessage && !isAdminBypass) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] w-full">
+      <div className="flex flex-col items-center justify-center min-h-screen w-full gap-4 bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="text-center space-y-2">
+          <p className="text-muted-foreground animate-pulse">Carregando sistema Azura...</p>
+          <button
+            onClick={() => {
+              localStorage.clear();
+              sessionStorage.clear();
+              window.location.href = '/auth';
+            }}
+            className="text-[10px] text-muted-foreground/50 hover:text-primary transition-colors underline"
+          >
+            Se demorar muito, clique aqui para resetar
+          </button>
+        </div>
       </div>
     );
   }

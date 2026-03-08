@@ -17,7 +17,7 @@ import { IngredientConfirmationList } from '@/components/ingredients/IngredientC
 interface AIImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirmImport: (ingredients: ExtractedIngredient[], recipeData?: RecipeData) => Promise<void>;
+  onImport: (ingredients: ExtractedIngredient[], recipeData?: RecipeData) => Promise<void>;
   title?: string;
   description?: string;
   extractRecipe?: boolean;
@@ -50,7 +50,7 @@ type Step = 'upload' | 'processing' | 'confirm';
 export function AIImportDialog({
   open,
   onOpenChange,
-  onConfirmImport,
+  onImport,
   title = 'Importar com IA',
   description = 'Envie imagens, PDFs ou planilhas Excel para importar dados em massa.',
   extractRecipe = false,
@@ -95,15 +95,15 @@ export function AIImportDialog({
 
   const addFiles = (newFiles: FileList | File[]) => {
     const validFiles: FileWithStatus[] = [];
-    
+
     for (const file of Array.from(newFiles)) {
       if (files.length + validFiles.length >= MAX_FILES) {
         toast.error(`Máximo de ${MAX_FILES} arquivos por vez`);
         break;
       }
-      
+
       if (!validateFile(file)) continue;
-      
+
       // Check for duplicates
       if (files.some(f => f.file.name === file.name && f.file.size === file.size)) {
         continue;
@@ -118,7 +118,7 @@ export function AIImportDialog({
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
-          setFiles(prev => prev.map(f => 
+          setFiles(prev => prev.map(f =>
             f.file === file ? { ...f, preview: e.target?.result as string } : f
           ));
         };
@@ -168,50 +168,50 @@ export function AIImportDialog({
 
     setStep('processing');
     setProcessedCount(0);
-    
+
     const extractedIngredients: ExtractedIngredient[] = [];
     let lastRecipeData: RecipeData | null = null;
 
     for (let i = 0; i < files.length; i++) {
       const fileItem = files[i];
-      
+
       // Update file status to processing
-      setFiles(prev => prev.map((f, idx) => 
+      setFiles(prev => prev.map((f, idx) =>
         idx === i ? { ...f, status: 'processing' } : f
       ));
 
       try {
         const result = await extractFromFile(fileItem.file, extractRecipe);
-        
+
         if (result && result.ingredients.length > 0) {
           // Add source file info to each ingredient
           const ingredientsWithSource = result.ingredients.map(ing => ({
             ...ing,
             selected: true,
           }));
-          
+
           extractedIngredients.push(...ingredientsWithSource);
-          
+
           // Keep recipe data from last file that had it
           if (result.recipeData) {
             lastRecipeData = result.recipeData;
           }
-          
+
           // Update file status to done
-          setFiles(prev => prev.map((f, idx) => 
+          setFiles(prev => prev.map((f, idx) =>
             idx === i ? { ...f, status: 'done', extractedCount: result.ingredients.length } : f
           ));
         } else {
-          setFiles(prev => prev.map((f, idx) => 
+          setFiles(prev => prev.map((f, idx) =>
             idx === i ? { ...f, status: 'error', error: 'Nenhum ingrediente encontrado' } : f
           ));
         }
       } catch (error) {
-        setFiles(prev => prev.map((f, idx) => 
+        setFiles(prev => prev.map((f, idx) =>
           idx === i ? { ...f, status: 'error', error: 'Erro ao processar' } : f
         ));
       }
-      
+
       setProcessedCount(i + 1);
     }
 
@@ -251,7 +251,7 @@ export function AIImportDialog({
 
     setIsSaving(true);
     try {
-      await onConfirmImport(selected, combinedRecipeData || undefined);
+      await onImport(selected, combinedRecipeData || undefined);
       toast.success(`${selected.length} ingrediente(s) importado(s) com sucesso!`);
       handleClose();
     } catch (error) {
@@ -340,9 +340,9 @@ export function AIImportDialog({
                 <div className="space-y-2 max-h-[250px] overflow-y-auto">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{files.length} arquivo(s) selecionado(s)</span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setFiles([])}
                       className="text-destructive hover:text-destructive"
                     >

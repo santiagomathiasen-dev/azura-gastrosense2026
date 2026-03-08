@@ -8,6 +8,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ error?: string }>;
   signup: (email: string, password: string, name: string) => Promise<{ error?: string }>;
+  loginWithGoogle: (redirectTo?: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -19,23 +20,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    let mounted = true;
+
+    // 1. Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!mounted) return;
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    // 2. Check for initial session (and allow hash parsing)
+    const initSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted) return;
+      if (session) {
+        setSession(session);
+        setUser(session.user);
+      }
       setIsLoading(false);
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    initSession();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<{ error?: string }> => {
@@ -102,6 +115,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: 'Conta criada com sucesso! Verifique seu email para confirmar o cadastro (se necessário).' };
   };
 
+  const loginWithGoogle = async (redirectTo?: string): Promise<{ error?: string }> => {
+    const redirectUrl = `${window.location.origin}${redirectTo || '/'}`;
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return {};
+  };
+
   const logout = async () => {
     try {
       await supabase.auth.signOut();
@@ -114,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, session, isLoading, login, signup, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );

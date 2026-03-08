@@ -54,6 +54,7 @@ export async function middleware(request: NextRequest) {
         }
     );
 
+    /*
     const {
         data: { session },
     } = await supabase.auth.getSession();
@@ -67,6 +68,7 @@ export async function middleware(request: NextRequest) {
     if (request.nextUrl.pathname.startsWith('/auth') && session) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
     }
+    */
 
     return response;
 }

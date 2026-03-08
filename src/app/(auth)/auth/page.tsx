@@ -10,7 +10,7 @@ import { ChefHat, Loader2, Mail, Lock, User, Eye, EyeOff, KeyRound } from 'lucid
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 function AuthContent() {
-    const { user, login, signup, isLoading } = useAuth();
+    const { user, login, signup, loginWithGoogle, isLoading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -34,8 +34,21 @@ function AuthContent() {
 
     if (isLoading || user) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
+            <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="text-center space-y-2">
+                    <p className="text-muted-foreground animate-pulse text-sm">Carregando sistema Azura...</p>
+                    <button
+                        onClick={() => {
+                            localStorage.clear();
+                            sessionStorage.clear();
+                            window.location.reload();
+                        }}
+                        className="text-[10px] text-muted-foreground/50 hover:text-primary transition-colors underline"
+                    >
+                        Se demorar muito, clique aqui para resetar
+                    </button>
+                </div>
             </div>
         );
     }
@@ -59,6 +72,16 @@ function AuthContent() {
             setError(result.error);
         }
         setLoading(false);
+    };
+
+    const handleGoogleLogin = async () => {
+        setLoading(true);
+        setError('');
+        const result = await loginWithGoogle(redirectPath);
+        if (result.error) {
+            setError(result.error);
+            setLoading(false);
+        }
     };
 
     return (
@@ -111,6 +134,7 @@ function AuthContent() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         className="pl-10 h-9"
+                                        autoComplete="email"
                                     />
                                 </div>
                             </div>
@@ -126,6 +150,7 @@ function AuthContent() {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         className="pl-10 pr-10 h-9"
+                                        autoComplete={isLogin ? "current-password" : "new-password"}
                                     />
                                     <button
                                         type="button"
@@ -172,6 +197,32 @@ function AuthContent() {
                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 ) : null}
                                 {isLogin ? 'Entrar' : 'Criar conta'}
+                            </Button>
+
+                            <div className="relative my-4">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-muted" />
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-card px-2 text-muted-foreground">Ou continue com</span>
+                                </div>
+                            </div>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full h-10 bg-white hover:bg-gray-50 text-gray-900 border-gray-300 relative overflow-hidden transition-all hover:shadow-md active:scale-[0.98]"
+                                onClick={handleGoogleLogin}
+                                disabled={loading}
+                            >
+                                {loading && !isLogin ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                    <svg className="mr-3 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+                                        <path fill="#4285F4" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
+                                    </svg>
+                                )}
+                                <span className="font-semibold">Continuar com Google</span>
                             </Button>
                         </form>
 

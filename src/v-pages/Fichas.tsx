@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, DollarSign, Calculator, Clock, Users, ChefHat, Edit, Trash2, Mic, MicOff, Plus, FileText, Loader2 } from 'lucide-react';
+import { Search, DollarSign, Calculator, Clock, Users, ChefHat, Edit, Trash2, Plus, FileText, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Input } from '@/components/ui/input';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -27,8 +27,6 @@ import {
 import { useTechnicalSheets, TechnicalSheetWithIngredients } from '@/hooks/useTechnicalSheets';
 import { useTechnicalSheetStages } from '@/hooks/useTechnicalSheetStages';
 import { useStockItems, type StockUnit, type StockCategory } from '@/hooks/useStockItems';
-import { useStockVoiceControl } from '@/hooks/useStockVoiceControl';
-import { VoiceImportDialog, type ExtractedItem } from '@/components/VoiceImportDialog';
 import { RecipeFileImportDialog } from '@/components/RecipeFileImportDialog';
 import { StageForm, type StageFormData } from '@/components/fichas/StageForm';
 import { StageDisplay } from '@/components/fichas/StageDisplay';
@@ -56,29 +54,9 @@ export default function Fichas() {
   const [selectedSheet, setSelectedSheet] = useState<TechnicalSheetWithIngredients | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);
-  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
   const [fileImportDialogOpen, setFileImportDialogOpen] = useState(false);
   const [editingSheet, setEditingSheet] = useState<TechnicalSheetWithIngredients | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
-  const {
-    isListening,
-    transcript,
-    pendingConfirmation,
-    startListening,
-    stopListening,
-    confirmUpdate,
-    cancelUpdate
-  } = useStockVoiceControl({
-    stockItems: stockItems,
-    onQuantityUpdate: (id, qty) => {
-      // In Fichas we might want to add to current stage or similar
-      console.log(`Voice update: ${id} qty ${qty}`);
-    }
-  });
-
-  const handleMicMouseDown = () => startListening();
-  const handleMicMouseUp = () => stopListening();
 
   // Load stages for selected sheet
   const { stages: sheetStages, createStage, deleteStage } = useTechnicalSheetStages(selectedSheet?.id);
@@ -94,7 +72,6 @@ export default function Fichas() {
     minimumStock: '0',
     shelfLife: '',
     leadTime: '',
-    video_url: '',
     laborCost: '0',
     energyCost: '0',
     otherCosts: '0',
@@ -123,7 +100,6 @@ export default function Fichas() {
       minimumStock: '0',
       shelfLife: '',
       leadTime: '',
-      video_url: '',
       laborCost: '0',
       energyCost: '0',
       otherCosts: '0',
@@ -135,86 +111,7 @@ export default function Fichas() {
     setEditingSheet(null);
   };
 
-  // Voice Import
-  const handleVoiceImport = async (items: ExtractedItem[], recipeData?: RecipeData) => {
-    if (isOwnerLoading || stockOwnerLoading) {
-      toast.error('Aguarde o carregamento dos dados do usuário...');
-      return;
-    }
-    setIsSaving(true);
 
-    try {
-      const ingredientStockIds: Map<string, string> = new Map();
-      const newlyCreatedStockItems: Map<string, string> = new Map();
-
-      for (const ing of items) {
-        // Check newly created items first to avoid duplicate creation in this loop
-        if (newlyCreatedStockItems.has(ing.name.toLowerCase())) {
-          ingredientStockIds.set(ing.name, newlyCreatedStockItems.get(ing.name.toLowerCase())!);
-          continue;
-        }
-
-        const existing = stockItems.find(
-          item => item.name.toLowerCase() === ing.name.toLowerCase()
-        );
-
-        if (existing) {
-          ingredientStockIds.set(ing.name, existing.id);
-        } else {
-          try {
-            const newItem = await createStockItem.mutateAsync({
-              name: ing.name,
-              current_quantity: 0,
-              unit: ing.unit as StockUnit,
-              category: ing.category as StockCategory,
-              minimum_quantity: 0,
-            });
-
-            if (newItem?.id) {
-              ingredientStockIds.set(ing.name, newItem.id);
-              newlyCreatedStockItems.set(ing.name.toLowerCase(), newItem.id);
-            }
-          } catch (err) {
-            console.error(`Error creating stock item ${ing.name}:`, err);
-            // Continue with other items even if one fails
-          }
-        }
-      }
-
-      const newSheet = await createSheet.mutateAsync({
-        name: recipeData?.recipeName || 'Receita por Voz',
-        description: '',
-        preparation_method: recipeData?.preparationMethod || null,
-        preparation_time: recipeData?.preparationTime || null,
-        yield_quantity: recipeData?.yieldQuantity || 1,
-        yield_unit: 'un',
-        labor_cost: recipeData?.labor_cost || 0,
-        energy_cost: recipeData?.energy_cost || 0,
-        other_costs: recipeData?.other_costs || 0,
-        markup: recipeData?.markup || 0,
-        praca: recipeData?.praca || null,
-      } as any);
-
-      for (const ing of items) {
-        const stockItemId = ingredientStockIds.get(ing.name);
-        if (stockItemId) {
-          await addIngredient.mutateAsync({
-            technical_sheet_id: (newSheet as any).id,
-            stock_item_id: stockItemId,
-            quantity: ing.quantity,
-            unit: ing.unit,
-          });
-        }
-      }
-
-      toast.success(`Ficha técnica criada com ${items.length} ingredientes!`);
-    } catch (error) {
-      console.error('Error creating recipe:', error);
-      toast.error('Erro ao criar ficha técnica');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   // File Import
   const handleFileImport = async (recipeInfo: RecipeData, items: ExtractedIngredient[]) => {
@@ -270,8 +167,8 @@ export default function Fichas() {
         labor_cost: recipeInfo.labor_cost || 0,
         energy_cost: recipeInfo.energy_cost || 0,
         other_costs: recipeInfo.other_costs || 0,
-        markup: recipeInfo.markup || 0,
-        praca: recipeInfo.praca || null,
+        // markup: recipeInfo.markup || 0,
+        // praca: recipeInfo.praca || null,
       } as any);
 
       for (const ing of items) {
@@ -295,69 +192,6 @@ export default function Fichas() {
     }
   };
 
-  const handleExtractFromVideo = async () => {
-    if (!formData.video_url) {
-      toast.error('Insira a URL do vídeo primeiro');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-recipe-video`;
-      console.log("Calling process-recipe-video:", functionUrl);
-
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-        },
-        body: JSON.stringify({ videoUrl: formData.video_url })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Cloud Error: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data && data.error) {
-        throw new Error(data.error);
-      }
-
-      if (data.preparation_method) {
-        if (stages.length === 0) {
-          setStages([{
-            id: crypto.randomUUID(),
-            name: 'Preparo (IA)',
-            preparationMethod: data.preparation_method,
-            ingredients: [],
-            order_index: 0,
-          }]);
-        } else {
-          const newStages = [...stages];
-          newStages[0] = { ...newStages[0], preparationMethod: data.preparation_method };
-          setStages(newStages);
-        }
-
-        if (data.name && !formData.nome) {
-          setFormData(prev => ({ ...prev, nome: data.name }));
-        }
-
-        if (data.estimated_time && !formData.tempoPreparo) {
-          setFormData(prev => ({ ...prev, tempoPreparo: data.estimated_time.toString() }));
-        }
-
-        toast.success('Técnicas extraídas com sucesso!');
-      }
-    } catch (err) {
-      console.error('Error extracting from video:', err);
-      toast.error('Erro ao extrair técnicas do vídeo');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const handleSelectFicha = (sheet: TechnicalSheetWithIngredients) => {
     setSelectedSheet(sheet);
@@ -390,7 +224,6 @@ export default function Fichas() {
       minimumStock: (sheet.minimum_stock || 0).toString(),
       shelfLife: sheet.shelf_life_hours?.toString() || '',
       leadTime: sheet.lead_time_hours?.toString() || '',
-      video_url: sheet.video_url || '',
       laborCost: (sheet.labor_cost || 0).toString(),
       energyCost: (sheet.energy_cost || 0).toString(),
       otherCosts: (sheet.other_costs || 0).toString(),
@@ -488,7 +321,7 @@ export default function Fichas() {
         yield_quantity: formData.rendimento ? parseFloat(formData.rendimento) : 1,
         yield_unit: formData.unidadeRendimento,
         image_url: formData.image_url || null,
-        video_url: formData.video_url || null,
+        // video_url: formData.video_url || null,
         minimum_stock: formData.minimumStock ? parseFloat(formData.minimumStock) : 0,
         production_type: formData.productionType,
         shelf_life_hours: formData.shelfLife ? parseInt(formData.shelfLife) : null,
@@ -496,9 +329,9 @@ export default function Fichas() {
         labor_cost: formData.laborCost ? parseFloat(formData.laborCost) : 0,
         energy_cost: formData.energyCost ? parseFloat(formData.energyCost) : 0,
         other_costs: formData.otherCosts ? parseFloat(formData.otherCosts) : 0,
-        markup: formData.markup ? parseFloat(formData.markup) : 0,
-        target_price: formData.targetPrice ? parseFloat(formData.targetPrice) : null,
-        praca: formData.praca || null,
+        // markup: formData.markup ? parseFloat(formData.markup) : 0,
+        // target_price: formData.targetPrice ? parseFloat(formData.targetPrice) : null,
+        // praca: formData.praca || null,
       };
 
       if (editingSheet) {
@@ -668,20 +501,7 @@ export default function Fichas() {
         {/* Cadastro Tab */}
         <TabsContent value="cadastro">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
-            <Card
-              className="cursor-pointer hover:border-primary hover:shadow-lg transition-all group"
-              onClick={() => setVoiceDialogOpen(true)}
-            >
-              <CardHeader className="text-center pb-2">
-                <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2 group-hover:bg-primary/20 transition-colors">
-                  <Mic className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle className="text-base">Falar Ingredientes</CardTitle>
-                <CardDescription className="text-xs">
-                  Dite a receita e a IA cadastra
-                </CardDescription>
-              </CardHeader>
-            </Card>
+
 
             <Card
               className="cursor-pointer hover:border-primary hover:shadow-lg transition-all group"
@@ -716,15 +536,7 @@ export default function Fichas() {
         </TabsContent>
       </Tabs>
 
-      {/* Voice Import Dialog */}
-      <VoiceImportDialog
-        open={voiceDialogOpen}
-        onOpenChange={setVoiceDialogOpen}
-        onImport={handleVoiceImport}
-        title="Falar Ingredientes da Receita"
-        description="Fale os ingredientes da receita. Ex: 'Farinha de trigo 500 gramas, açúcar 200 gramas, ovos 3 unidades'"
-        mode="recipe"
-      />
+
 
       {/* File Import Dialog */}
       <RecipeFileImportDialog
@@ -880,71 +692,7 @@ export default function Fichas() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!pendingConfirmation} onOpenChange={(open) => !open && cancelUpdate()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirmar Ingrediente por Voz</DialogTitle>
-            <DialogDescription>
-              IA identificou este ingrediente para sua ficha técnica:
-            </DialogDescription>
-          </DialogHeader>
 
-          {pendingConfirmation && (
-            <div className="space-y-4 py-4">
-              <div className="p-4 bg-muted rounded-lg border border-primary/10">
-                <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Ingrediente</div>
-                <div className="font-semibold text-lg">{pendingConfirmation.itemName}</div>
-              </div>
-
-              <div className="p-4 bg-muted rounded-lg border border-primary/10">
-                <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Quantidade Sugerida</div>
-                <div className="font-semibold text-lg">
-                  {pendingConfirmation.quantity ?? '---'} {pendingConfirmation.unit}
-                </div>
-              </div>
-
-              {transcript && (
-                <div className="p-3 bg-secondary/30 rounded italic text-sm text-muted-foreground border-l-4 border-primary/30">
-                  " {transcript} "
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter className="flex gap-2 sm:justify-end">
-            <Button variant="outline" onClick={cancelUpdate}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => {
-                if (pendingConfirmation) {
-                  // Logic to add to current stage in Fichas
-                  const newIngredient = {
-                    stockItemId: pendingConfirmation.itemId,
-                    quantidade: (pendingConfirmation.quantity || 0).toString(),
-                    unidade: pendingConfirmation.unit || 'un',
-                    nome: pendingConfirmation.itemName
-                  };
-
-                  if (stages.length > 0) {
-                    const lastStageIndex = stages.length - 1;
-                    const updatedStages = [...stages];
-                    updatedStages[lastStageIndex].ingredients.push(newIngredient as any);
-                    setStages(updatedStages);
-                    toast.success(`${pendingConfirmation.itemName} adicionado ao último estágio`);
-                  } else {
-                    toast.error('Crie um estágio primeiro para adicionar o ingrediente');
-                  }
-                  cancelUpdate();
-                }
-              }}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              Adicionar à Ficha
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Create/Edit Dialog */}
       <Dialog open={formDialogOpen} onOpenChange={(open) => {
@@ -986,41 +734,7 @@ export default function Fichas() {
                           placeholder="Ex: Bolo de Chocolate"
                           className="flex-1"
                         />
-                        <Button
-                          type="button"
-                          variant={isListening ? "destructive" : "outline"}
-                          size="icon"
-                          className={`shrink-0 transition-all ${isListening ? 'animate-pulse shadow-lg shadow-destructive/20' : ''}`}
-                          onMouseDown={handleMicMouseDown}
-                          onMouseUp={handleMicMouseUp}
-                          onTouchStart={handleMicMouseDown}
-                          onTouchEnd={handleMicMouseUp}
-                          title="Segure para falar ingrediente"
-                        >
-                          {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="video_url">URL do Vídeo (YouTube/Instagram)</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="video_url"
-                          value={formData.video_url}
-                          onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
-                          placeholder="https://..."
-                          className="flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleExtractFromVideo}
-                          disabled={isSaving || !formData.video_url}
-                        >
-                          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Extrair do Vídeo'}
-                        </Button>
                       </div>
                     </div>
                   </div>

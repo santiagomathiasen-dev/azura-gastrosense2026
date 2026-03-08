@@ -135,7 +135,7 @@ export default function Gestores() {
     if (editingGestor) {
       await updatePermissions.mutateAsync({ gestorId: editingGestor.id, permissions });
     } else {
-      if (password !== confirmPassword) {
+      if (password.trim() !== confirmPassword.trim()) {
         toast.error('As senhas não coincidem!');
         return;
       }
