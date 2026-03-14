@@ -4,14 +4,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
-import { CollaboratorProvider } from "@/contexts/CollaboratorContext";
+import { AuthProvider } from "@/contexts/AuthProvider";
+import { CollaboratorProvider } from "@/contexts/CollaboratorProvider";
 import { ThemeProvider } from "next-themes";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { MainLayout } from "@/layouts/MainLayout";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { Loader2 } from "lucide-react";
-import { NavigationProvider } from "@/contexts/NavigationContext";
+import { NavigationProvider } from "@/contexts/NavigationProvider";
 
 // Lazy loading components
 const Auth = lazy(() => import("@/v-pages/Auth"));

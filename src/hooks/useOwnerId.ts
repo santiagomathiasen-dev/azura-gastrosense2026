@@ -46,6 +46,7 @@ export function useOwnerId() {
     },
     enabled: !!user?.id || isCollaboratorMode || isImpersonating,
     staleTime: Infinity,
+    retry: false,
   });
 
   return {

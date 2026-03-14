@@ -20,6 +20,8 @@ import { CATEGORY_LABELS, UNIT_LABELS } from '../modules/stock/types';
 export type { StockItem, StockItemInsert, StockItemUpdate, StockCategory, StockUnit };
 export { CATEGORY_LABELS, UNIT_LABELS };
 
+const EMPTY_ARRAY: any[] = [];
+
 export function useStockItems() {
   const { user } = useAuth();
   const { ownerId, isLoading: isOwnerLoading } = useOwnerId();
@@ -27,7 +29,7 @@ export function useStockItems() {
 
   // Query uses RLS - no need to filter by user_id client-side
   // RLS policies use can_access_owner_data() which handles gestor/collaborator access
-  const { data: items = [], isLoading, error } = useQuery({
+  const { data: items = EMPTY_ARRAY, isLoading, error } = useQuery({
     queryKey: ['stock_items', ownerId],
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];

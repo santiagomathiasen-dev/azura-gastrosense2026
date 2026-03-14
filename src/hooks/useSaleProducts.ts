@@ -41,13 +41,15 @@ export interface ComponentInput {
   unit: string;
 }
 
+const EMPTY_ARRAY: any[] = [];
+
 export function useSaleProducts() {
   const { user } = useAuth();
   const { ownerId, isLoading: isOwnerLoading } = useOwnerId();
   const queryClient = useQueryClient();
 
   // Query uses RLS - no need to filter by user_id client-side
-  const { data: saleProducts = [], isLoading, error } = useQuery({
+  const { data: saleProducts = EMPTY_ARRAY, isLoading, error } = useQuery({
     queryKey: ['sale_products', ownerId],
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];

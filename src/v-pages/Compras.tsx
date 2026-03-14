@@ -109,6 +109,13 @@ export default function Compras() {
   // Pending deliveries (ordered items)
   const { pendingItems, markAsOrdered } = usePendingDeliveries();
 
+  // Memoize planned productions to avoid reference changes during renders
+  // which causes loops in PurchasePeriodSelector's useEffect
+  const plannedProductions = useMemo(() =>
+    productions.filter(p => p.status === 'planned'),
+    [productions]
+  );
+
   // Purchase schedules
   const {
     schedules,
@@ -508,7 +515,7 @@ export default function Compras() {
 
       {/* Period Selector - NEW! */}
       <PurchasePeriodSelector
-        productions={productions.filter(p => p.status === 'planned')}
+        productions={plannedProductions}
         onPeriodChange={handlePeriodChange}
       />
 

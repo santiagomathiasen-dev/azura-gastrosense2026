@@ -34,13 +34,15 @@ export interface TechnicalSheetWithIngredients extends TechnicalSheet {
   })[];
 }
 
+const EMPTY_ARRAY: any[] = [];
+
 export function useTechnicalSheets() {
   const { user } = useAuth();
   const { ownerId, isLoading: isOwnerLoading } = useOwnerId();
   const queryClient = useQueryClient();
 
   // Query uses RLS - no need to filter by user_id client-side
-  const { data: sheets = [], isLoading, error } = useQuery({
+  const { data: sheets = EMPTY_ARRAY, isLoading, error } = useQuery({
     queryKey: ['technical_sheets', ownerId],
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];

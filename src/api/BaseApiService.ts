@@ -9,7 +9,8 @@ export abstract class BaseApiService {
     protected async get<T>(query: string = ''): Promise<T[]> {
         const path = `${this.endpoint}${query ? `?${query}` : ''}`;
         const result = await supabaseFetch(path);
-        return (Array.isArray(result) ? result : [result]) as T[];
+        if (!result) return [];
+        return (Array.isArray(result) ? result : [result]).filter(Boolean) as T[];
     }
 
     /**

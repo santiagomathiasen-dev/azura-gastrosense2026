@@ -37,47 +37,55 @@ export function usePurchaseCalculationByPeriod({ productions }: UsePurchaseCalcu
   const { saleProducts, isLoading: saleProductsLoading } = useSaleProducts();
   const { sheets, isLoading: sheetsLoading } = useTechnicalSheets();
 
-  // Helper to explode technical sheet ingredients
-  const getSheetIngredientNeed = (sheetId: string, multiplier: number, targetStockItemId: string): number => {
-    const sheet = sheets.find(s => s.id === sheetId);
-    if (!sheet) return 0;
-
-    let total = 0;
-    const sheetYield = Number(sheet.yield_quantity || 1);
-    const finalMultiplier = multiplier / sheetYield;
-
-    for (const ingredient of sheet.ingredients) {
-      if (ingredient.stock_item_id === targetStockItemId) {
-        total += Number(ingredient.quantity) * finalMultiplier;
-      }
-    }
-    return total;
-  };
-
-  // Recursive helper to explode sale product components into base ingredients
-  const getSaleProductIngredientNeed = (productId: string, multiplier: number, targetStockItemId: string): number => {
-    const product = saleProducts.find(p => p.id === productId);
-    if (!product || !product.components) return 0;
-
-    let total = 0;
-    for (const component of product.components) {
-      const compQty = Number(component.quantity) * multiplier;
-
-      if (component.component_type === 'stock_item') {
-        if (component.component_id === targetStockItemId) {
-          total += compQty;
-        }
-      } else if (component.component_type === 'finished_production') {
-        total += getSheetIngredientNeed(component.component_id, compQty, targetStockItemId);
-      } else if (component.component_type === 'sale_product') {
-        total += getSaleProductIngredientNeed(component.component_id, compQty, targetStockItemId);
-      }
-    }
-    return total;
-  };
-
   // Calculate projected consumption for productions AND sale product stock gaps
   const getTotalProjectedDemand = useMemo(() => {
+    // Helper to explode technical sheet ingredients
+    const getSheetIngredientNeed = (sheetId: string, multiplier: number, targetStockItemId: string): number => {
+      const sheet = sheets.find(s => s.id === sheetId);
+      if (!sheet) return 0;
+
+      let total = 0;
+      const sheetYield = Number(sheet.yield_quantity || 1);
+      const finalMultiplier = multiplier / sheetYield;
+
+      if (!sheet.ingredients) return 0;
+
+      for (const ingredient of sheet.ingredients) {
+        if (ingredient.stock_item_id === targetStockItemId) {
+          total += Number(ingredient.quantity) * finalMultiplier;
+        }
+      }
+      return total;
+    };
+
+    // Recursive helper to explode sale product components into base ingredients
+    const getSaleProductIngredientNeed = (productId: string, multiplier: number, targetStockItemId: string, depth = 0): number => {
+      // Prevent infinite recursion on circular dependencies
+      if (depth > 10) {
+        console.warn('Circular dependency detected in sale products for component:', productId);
+        return 0;
+      }
+
+      const product = saleProducts.find(p => p.id === productId);
+      if (!product || !product.components) return 0;
+
+      let total = 0;
+      for (const component of product.components) {
+        const compQty = Number(component.quantity) * multiplier;
+
+        if (component.component_type === 'stock_item') {
+          if (component.component_id === targetStockItemId) {
+            total += compQty;
+          }
+        } else if (component.component_type === 'finished_production') {
+          total += getSheetIngredientNeed(component.component_id, compQty, targetStockItemId);
+        } else if (component.component_type === 'sale_product') {
+          total += getSaleProductIngredientNeed(component.component_id, compQty, targetStockItemId, depth + 1);
+        }
+      }
+      return total;
+    };
+
     return (stockItemId: string): number => {
       let totalDemand = 0;
 
@@ -89,7 +97,8 @@ export function usePurchaseCalculationByPeriod({ productions }: UsePurchaseCalcu
         const plannedQty = Number(production.planned_quantity);
         const multiplier = plannedQty / yieldQty;
 
-        for (const ingredient of production.technical_sheet.ingredients) {
+        const ingredients = production.technical_sheet.ingredients || [];
+        for (const ingredient of ingredients) {
           if (ingredient.stock_item_id === stockItemId) {
             totalDemand += Number(ingredient.quantity) * multiplier;
           }

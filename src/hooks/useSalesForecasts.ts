@@ -26,20 +26,13 @@ export function useSalesForecasts(targetDate?: string) {
         queryFn: async () => {
             if (!user?.id && !ownerId) return [];
 
-            let query = supabase
-                .from('sales_forecasts')
-                .select(`
-          *,
-          sale_product:sale_products(id, name, image_url)
-        `)
-                .order('created_at', { ascending: false });
+            let url = `sales_forecasts?select=*,sale_product:sale_products(id,name,image_url)&order=created_at.desc`;
 
             if (targetDate) {
-                query = query.eq('target_date', targetDate);
+                url += `&target_date=eq.${targetDate}`;
             }
 
-            const { data, error } = await query;
-            if (error) throw error;
+            const data = await supabaseFetch(url);
             return data as SalesForecast[];
         },
         enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
@@ -69,6 +62,7 @@ export function useSalesForecasts(targetDate?: string) {
                     notes: forecast.notes || null,
                 })
             });
+            return response;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sales_forecasts'] });
@@ -122,8 +116,8 @@ export function useSalesForecasts(targetDate?: string) {
             const products = await supabaseFetch(`sale_products?user_id=eq.${ownerId}&is_active=eq.true&select=id,name`);
             const productsArray = Array.isArray(products) ? products : (products ? [products] : []);
 
-            // 2. Fetch sales from baseDate
-            const sales = await supabaseFetch(`sales?sale_date=eq.${baseDate}&select=sale_product_id,quantity_sold`);
+            // 2. Fetch sales from baseDate (full day range)
+            const sales = await supabaseFetch(`sales?sale_date=gte.${baseDate}T00:00:00&sale_date=lte.${baseDate}T23:59:59&select=sale_product_id,quantity_sold`);
             const salesArray = Array.isArray(sales) ? sales : (sales ? [sales] : []);
 
             // 3. Check for events on target date

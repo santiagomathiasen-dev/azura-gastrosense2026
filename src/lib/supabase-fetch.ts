@@ -36,20 +36,22 @@ export async function supabaseFetch(path: string, options: RequestInit = {}) {
 
     if (!headers.has('Authorization')) {
         try {
-            // Extrai o project ref de forma robusta (ex: lqktevnjfywrujdhetlo)
-            const hostname = new URL(baseUrl).hostname;
-            const projectRef = hostname.split('.')[0];
-            const storageKey = `sb-${projectRef}-auth-token`;
+            // Tenta obter o token de forma mais segura
+            if (typeof window !== 'undefined') {
+                const hostname = new URL(baseUrl).hostname;
+                const projectRef = hostname.split('.')[0];
+                const storageKey = `sb-${projectRef}-auth-token`;
 
-            const authStorage = localStorage.getItem(storageKey);
-            if (authStorage) {
-                const session = JSON.parse(authStorage);
-                if (session?.access_token) {
-                    headers.set('Authorization', `Bearer ${session.access_token}`);
+                const authStorage = localStorage.getItem(storageKey);
+                if (authStorage) {
+                    const sessionData = JSON.parse(authStorage);
+                    if (sessionData?.access_token) {
+                        headers.set('Authorization', `Bearer ${sessionData.access_token}`);
+                    }
                 }
             }
         } catch (e) {
-            console.warn("Supabase Fetch: Could not extract auth token from localStorage", e);
+            console.warn("Supabase Fetch: Could not extract auth token", e);
         }
     }
 
@@ -62,7 +64,12 @@ export async function supabaseFetch(path: string, options: RequestInit = {}) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error(`Supabase Fetch Error [${response.status}] [${url}]:`, errorText);
-            throw new Error(`Erro na conexão: ${response.status}`);
+            
+            // Criar erro enriquecido
+            const error = new Error(errorText || `Erro na conexão: ${response.status}`);
+            (error as any).status = response.status;
+            (error as any).url = url;
+            throw error;
         }
 
         // Caso de 204 No Content ou corpo vazio

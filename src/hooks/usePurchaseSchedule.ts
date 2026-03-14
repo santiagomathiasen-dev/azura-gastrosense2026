@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { getNow } from '@/lib/utils';
 import { useProductions } from './useProductions';
 import { useSuppliers } from './useSuppliers';
+import { supabaseFetch } from '@/lib/supabase-fetch';
 import type { Database } from '@/integrations/supabase/types';
 
 type PurchaseSchedule = Database['public']['Tables']['purchase_schedule']['Row'];
@@ -27,14 +28,7 @@ export function usePurchaseSchedule() {
     queryKey: ['purchase_schedule', ownerId],
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
-      const { data, error } = await supabase
-        .from('purchase_schedule')
-        .select(`
-          *,
-          supplier:suppliers(name)
-        `)
-        .order('day_of_week');
-      if (error) throw error;
+      const data = await supabaseFetch(`purchase_schedule?select=*,supplier:suppliers(name)&order=day_of_week`);
       return data as (PurchaseSchedule & { supplier: { name: string } | null })[];
     },
     enabled: !!user?.id || !!ownerId,
@@ -67,13 +61,12 @@ export function usePurchaseSchedule() {
   const createSchedule = useMutation({
     mutationFn: async (schedule: Omit<PurchaseScheduleInsert, 'user_id'>) => {
       if (!ownerId) throw new Error('Usuário não autenticado');
-      const { data, error } = await supabase
-        .from('purchase_schedule')
-        .insert({ ...schedule, user_id: ownerId })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      const data = await supabaseFetch(`purchase_schedule`, {
+        method: 'POST',
+        body: JSON.stringify({ ...schedule, user_id: ownerId }),
+        headers: { 'Prefer': 'return=representation' }
+      });
+      return data[0];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase_schedule'] });
@@ -87,14 +80,12 @@ export function usePurchaseSchedule() {
   // Update schedule
   const updateSchedule = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<PurchaseSchedule> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('purchase_schedule')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      const data = await supabaseFetch(`purchase_schedule?id=eq.${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+        headers: { 'Prefer': 'return=representation' }
+      });
+      return data[0];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase_schedule'] });
@@ -108,11 +99,9 @@ export function usePurchaseSchedule() {
   // Delete schedule entry
   const deleteSchedule = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('purchase_schedule')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      await supabaseFetch(`purchase_schedule?id=eq.${id}`, {
+        method: 'DELETE'
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase_schedule'] });

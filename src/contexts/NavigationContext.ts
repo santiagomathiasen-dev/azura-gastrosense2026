@@ -2,27 +2,13 @@
 
 import { createContext, useContext } from 'react';
 
-type NavigateFunction = (to: string | number, options?: { replace?: boolean; state?: any }) => void;
+export type NavigateFunction = (to: string | number, options?: { replace?: boolean; state?: any }) => void;
 
 interface NavigationContextType {
     navigate: NavigateFunction;
 }
 
-const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
-
-export function NavigationProvider({
-    children,
-    navigate
-}: {
-    children: React.ReactNode;
-    navigate: NavigateFunction;
-}) {
-    return (
-        <NavigationContext.Provider value={{ navigate }}>
-            {children}
-        </NavigationContext.Provider>
-    );
-}
+export const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
 
 export function useAppNavigation() {
     const context = useContext(NavigationContext);

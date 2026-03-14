@@ -3,9 +3,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
-import { AuthProvider } from '@/hooks/useAuth';
-import { NavigationProvider } from '@/contexts/NavigationContext';
-import { CollaboratorProvider } from '@/contexts/CollaboratorContext';
+import { AuthProvider } from '@/contexts/AuthProvider';
+import { NavigationProvider } from '@/contexts/NavigationProvider';
+import { CollaboratorProvider } from '@/contexts/CollaboratorProvider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';

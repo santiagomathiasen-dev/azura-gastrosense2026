@@ -37,13 +37,15 @@ export const PERIOD_LABELS: Record<ProductionPeriod, string> = {
   custom: 'Personalizada',
 };
 
+const EMPTY_ARRAY: any[] = [];
+
 export function useProductions() {
   const { user } = useAuth();
   const { ownerId, isLoading: isOwnerLoading } = useOwnerId();
   const queryClient = useQueryClient();
 
   // Query uses RLS - no need to filter by user_id client-side
-  const { data: productions = [], isLoading, error } = useQuery({
+  const { data: productions = EMPTY_ARRAY, isLoading, error } = useQuery({
     queryKey: ['productions', ownerId],
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
@@ -326,7 +328,8 @@ export function useProductions() {
       const plannedQty = Number(production.planned_quantity);
       const multiplier = plannedQty / yieldQty;
 
-      for (const ingredient of production.technical_sheet.ingredients) {
+      const ingredients = production.technical_sheet.ingredients || [];
+      for (const ingredient of ingredients) {
         if (ingredient.stock_item_id === stockItemId) {
           totalConsumption += Number(ingredient.quantity) * multiplier;
         }

@@ -18,11 +18,11 @@ interface StageEditorProps {
 }
 
 export function StageEditor({ technicalSheetId }: StageEditorProps) {
-  const { 
-    stages, 
-    isLoading, 
-    createStage, 
-    updateStage, 
+  const {
+    stages,
+    isLoading,
+    createStage,
+    updateStage,
     deleteStage,
     createStep,
     updateStep,
@@ -62,7 +62,7 @@ export function StageEditor({ technicalSheetId }: StageEditorProps) {
   };
 
   const handleDeleteStage = async (stageId: string, stageName: string) => {
-    if (!confirm(`Excluir a etapa \"${stageName}\" e todos os seus passos?`)) return;
+    if (!confirm(`Excluir a etapa "${stageName}" e todos os seus passos?`)) return;
     await deleteStage.mutateAsync(stageId);
   };
 

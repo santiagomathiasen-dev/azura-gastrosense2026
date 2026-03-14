@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useOwnerId } from './useOwnerId';
+import { supabaseFetch } from '@/lib/supabase-fetch';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, subDays } from 'date-fns';
 import { getNow } from '@/lib/utils';
 import { parseSafeDate } from './useExpiryDates';
@@ -95,19 +96,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
 
-      const { data, error } = await supabase
-        .from('sales')
-        .select(`
-          id,
-          quantity_sold,
-          sale_date,
-          sale_product:sale_products!inner(name, sale_price)
-        `)
-        .gte('sale_date', `${startDate}T00:00:00`)
-        .lte('sale_date', `${endDate}T23:59:59`)
-        .order('sale_date', { ascending: false });
-
-      if (error) throw error;
+      const data = await supabaseFetch(`sales?select=id,quantity_sold,sale_date,sale_product:sale_products!inner(name,sale_price)&sale_date=gte.${startDate}T00:00:00&sale_date=lte.${endDate}T23:59:59&order=sale_date.desc`);
 
       return (data as any[]).map(sale => {
         const dateObj = sale.sale_date ? new Date(sale.sale_date) : getNow();
@@ -133,32 +122,10 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
       if (!user?.id && !ownerId) return [];
 
       // Get losses from the new unified losses table
-      const { data: lossesData, error: lossesError } = await supabase
-        .from('losses')
-        .select('*')
-        .gte('created_at', `${startDate}T00:00:00`)
-        .lte('created_at', `${endDate}T23:59:59`)
-        .order('created_at', { ascending: false });
-
-      if (lossesError) throw lossesError;
+      const lossesData = await supabaseFetch(`losses?select=*&created_at=gte.${startDate}T00:00:00&created_at=lte.${endDate}T23:59:59&order=created_at.desc`);
 
       // Also get legacy losses from stock_movements (for backwards compatibility)
-      const { data: legacyData, error: legacyError } = await supabase
-        .from('stock_movements')
-        .select(`
-          id,
-          quantity,
-          created_at,
-          notes,
-          stock_item:stock_items!inner(name, unit_price)
-        `)
-        .eq('type', 'exit')
-        .ilike('notes', '%perda%')
-        .gte('created_at', `${startDate}T00:00:00`)
-        .lte('created_at', `${endDate}T23:59:59`)
-        .order('created_at', { ascending: false });
-
-      if (legacyError) throw legacyError;
+      const legacyData = await supabaseFetch(`stock_movements?select=id,quantity,created_at,notes,stock_item:stock_items!inner(name,unit_price)&type=eq.exit&notes=ilike.*perda*&created_at=gte.${startDate}T00:00:00&created_at=lte.${endDate}T23:59:59&order=created_at.desc`);
 
       // Combine both sources
       const newLosses = (lossesData || []).map(loss => {
@@ -206,22 +173,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
 
-      const { data, error } = await supabase
-        .from('purchase_list_items')
-        .select(`
-          id,
-          ordered_quantity,
-          actual_delivery_date,
-          stock_item:stock_items!inner(name, unit, unit_price),
-          supplier:suppliers(name)
-        `)
-        .eq('status', 'delivered')
-        .not('actual_delivery_date', 'is', null)
-        .gte('actual_delivery_date', startDate)
-        .lte('actual_delivery_date', endDate)
-        .order('actual_delivery_date', { ascending: false });
-
-      if (error) throw error;
+      const data = await supabaseFetch(`purchase_list_items?select=id,ordered_quantity,actual_delivery_date,stock_item:stock_items!inner(name,unit,unit_price),supplier:suppliers(name)&status=eq.delivered&actual_delivery_date=not.is.null&actual_delivery_date=gte.${startDate}&actual_delivery_date=lte.${endDate}&order=actual_delivery_date.desc`);
 
       return (data as any[]).map(item => {
         const stockItem = item.stock_item;
@@ -244,22 +196,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
 
-      const { data, error } = await supabase
-        .from('stock_movements')
-        .select(`
-          id,
-          quantity,
-          created_at,
-          source,
-          notes,
-          stock_item:stock_items!inner(name, unit)
-        `)
-        .eq('type', 'exit')
-        .gte('created_at', `${startDate}T00:00:00`)
-        .lte('created_at', `${endDate}T23:59:59`)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await supabaseFetch(`stock_movements?select=id,quantity,created_at,source,notes,stock_item:stock_items!inner(name,unit)&type=eq.exit&created_at=gte.${startDate}T00:00:00&created_at=lte.${endDate}T23:59:59&order=created_at.desc`);
 
       return (data as any[]).map(movement => {
         const stockItem = movement.stock_item;
@@ -282,23 +219,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
 
-      const { data, error } = await supabase
-        .from('purchase_list_items')
-        .select(`
-          id,
-          suggested_quantity,
-          ordered_quantity,
-          status,
-          created_at,
-          order_date,
-          stock_item:stock_items!inner(name, unit, unit_price),
-          supplier:suppliers(name)
-        `)
-        .gte('created_at', `${startDate}T00:00:00`)
-        .lte('created_at', `${endDate}T23:59:59`)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await supabaseFetch(`purchase_list_items?select=id,suggested_quantity,ordered_quantity,status,created_at,order_date,stock_item:stock_items!inner(name,unit,unit_price),supplier:suppliers(name)&created_at=gte.${startDate}T00:00:00&created_at=lte.${endDate}T23:59:59&order=created_at.desc`);
 
       const statusLabels: Record<string, string> = {
         pending: 'Pendente',
@@ -331,22 +252,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
 
-      const { data, error } = await supabase
-        .from('stock_movements')
-        .select(`
-          id,
-          type,
-          quantity,
-          created_at,
-          source,
-          notes,
-          stock_item:stock_items!inner(name, unit)
-        `)
-        .gte('created_at', `${startDate}T00:00:00`)
-        .lte('created_at', `${endDate}T23:59:59`)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await supabaseFetch(`stock_movements?select=id,type,quantity,created_at,source,notes,stock_item:stock_items!inner(name,unit)&created_at=gte.${startDate}T00:00:00&created_at=lte.${endDate}T23:59:59&order=created_at.desc`);
 
       return (data as any[]).map(movement => {
         const stockItem = movement.stock_item;
