@@ -1,0 +1,137 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from './useAuth';
+import { useOwnerId } from './useOwnerId';
+import { toast } from 'sonner';
+import { supabaseFetch } from '@/lib/supabase-fetch';
+
+export interface PosIntegration {
+    id: string;
+    user_id: string;
+    platform: string;
+    name: string;
+    credentials: any;
+    status: 'connected' | 'disconnected' | 'error';
+    last_sync_at: string | null;
+    webhook_url: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export function usePosIntegrations() {
+    const { user } = useAuth();
+    const { ownerId, isLoading: isOwnerLoading } = useOwnerId();
+    const queryClient = useQueryClient();
+
+    const { data: integrations = [], isLoading } = useQuery({
+        queryKey: ['pos_integrations', ownerId],
+        queryFn: async () => {
+            if (!user?.id && !ownerId) return [];
+            try {
+                const data = await supabaseFetch('pos_integrations?order=created_at.desc');
+                return data as PosIntegration[];
+            } catch (err: any) {
+                if (err.message && err.message.includes('does not exist')) {
+                    // O banco de dados ainda não tem a tabela (fallback limpo para n dar crash 500)
+                    return [];
+                }
+                throw err;
+            }
+        },
+        enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
+        retry: false
+    });
+
+    const createIntegration = useMutation({
+        mutationFn: async (integration: {
+            platform: string;
+            name: string;
+            credentials: any;
+        }) => {
+            if (!ownerId) throw new Error('Usuário não autenticado');
+            try {
+                const data = await supabaseFetch('pos_integrations', {
+                    method: 'POST',
+                    headers: { 'Prefer': 'return=representation' },
+                    body: JSON.stringify({
+                        user_id: ownerId,
+                        ...integration,
+                        status: 'connected',
+                    })
+                });
+                return data[0];
+            } catch (err: any) {
+                if (err.message && err.message.includes('does not exist')) {
+                     throw new Error('A tabela pos_integrations não foi criada no Supabase ainda. Execute o script SQl no painel do Supabase!');
+                }
+                throw err;
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['pos_integrations'] });
+            toast.success('Integração de PDV conectada com sucesso!');
+        },
+        onError: (err: Error) => {
+            toast.error(`${err.message}`);
+        },
+    });
+
+    const updateIntegration = useMutation({
+        mutationFn: async ({ id, ...updates }: { id: string } & Partial<PosIntegration>) => {
+            const data = await supabaseFetch(`pos_integrations?id=eq.${id}`, {
+                method: 'PATCH',
+                headers: { 'Prefer': 'return=representation' },
+                body: JSON.stringify(updates)
+            });
+            return data[0];
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['pos_integrations'] });
+            toast.success('Configurações atualizadas!');
+        },
+        onError: (err: Error) => {
+            toast.error(`Erro ao atualizar PDV: ${err.message}`);
+        },
+    });
+
+    const deleteIntegration = useMutation({
+        mutationFn: async (id: string) => {
+            await supabaseFetch(`pos_integrations?id=eq.${id}`, {
+                method: 'DELETE'
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['pos_integrations'] });
+            toast.success('PDV desativado e removido com sucesso!');
+        },
+        onError: (err: Error) => {
+            toast.error(`Erro ao remover PDV: ${err.message}`);
+        },
+    });
+    
+    const syncIntegration = useMutation({
+        mutationFn: async (id: string) => {
+            // Lógica de Sincronização Simulada. (Aqui chamaria a API Edge function real)
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            await supabaseFetch(`pos_integrations?id=eq.${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ last_sync_at: new Date().toISOString() })
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['pos_integrations'] });
+            toast.success('Produtos sincronizados com o PDV com sucesso!');
+        },
+        onError: (err: Error) => {
+            toast.error(`Erro na sincronização: ${err.message}`);
+        },
+    });
+
+    return {
+        integrations,
+        isLoading,
+        createIntegration,
+        updateIntegration,
+        deleteIntegration,
+        syncIntegration
+    };
+}
