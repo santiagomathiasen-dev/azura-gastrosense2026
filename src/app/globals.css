@@ -112,8 +112,6 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Outfit', sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -126,17 +124,12 @@
     @apply bg-card rounded-xl border border-border/50 p-4 shadow-sm hover:shadow-md transition-all duration-300;
   }
 
-  .stat-card:hover {
-    transform: translateY(-1px);
-  }
-
   .nav-item {
     @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200;
   }
 
   .nav-item-active {
     @apply bg-sidebar-primary text-sidebar-primary-foreground;
-    box-shadow: 0 2px 8px hsl(152 40% 45% / 0.25);
   }
 
   .mobile-nav-item {
@@ -154,16 +147,6 @@
 
   .compact-card {
     @apply p-3 space-y-2;
-  }
-
-  /* Smooth fade-in animation */
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-out;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
   }
 
   /* Force hide Next.js development badges and overlays */
