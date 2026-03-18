@@ -18,7 +18,8 @@ import {
   UserCog,
   Store,
   Zap,
-  CalendarClock
+  CalendarClock,
+  CreditCard
 } from 'lucide-react';
 import { Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -42,6 +43,7 @@ const navItems = [
   { to: '/produtos-venda', icon: ShoppingBag, label: 'Venda', permission: 'can_access_produtos_venda' },
   { to: '/relatorios', icon: BarChart3, label: 'Relatórios', permission: 'can_access_relatorios' },
   { to: '/financeiro', icon: Calculator, label: 'Financeiro', permission: 'can_access_financeiro' },
+  { to: '/assinatura', icon: CreditCard, label: 'Assinatura', permission: null },
   { to: '/colaboradores', icon: UserCog, label: 'Colab.', permission: null, managementOnly: true },
   { to: '/gestores', icon: Store, label: 'Gestores', permission: null, managementOnly: true, adminOnly: true },
 ];

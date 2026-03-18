@@ -6,7 +6,7 @@ import { supabaseFetch } from '@/lib/supabase-fetch';
 export function useProfile() {
     const { user } = useAuth();
 
-    const { data: profile, isLoading, error } = useQuery({
+    const { data: profile, isLoading, error, refetch } = useQuery({
         queryKey: ['profile', user?.id],
         queryFn: async () => {
             if (!user?.id) return null;
@@ -49,5 +49,6 @@ export function useProfile() {
         profile,
         isLoading,
         error,
+        refetch,
     };
 }

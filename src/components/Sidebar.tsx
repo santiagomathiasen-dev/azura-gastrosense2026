@@ -25,7 +25,8 @@ import {
   UserCog,
   Store,
   Zap,
-  ShieldCheck
+  ShieldCheck,
+  CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -50,6 +51,7 @@ const navItems = [
   { to: '/produtos-venda', icon: ShoppingBag, label: 'Produtos p/ Venda', permission: 'can_access_produtos_venda' },
   { to: '/relatorios', icon: BarChart3, label: 'Relatórios', permission: 'can_access_relatorios' },
   { to: '/financeiro', icon: Calculator, label: 'Financeiro', permission: 'can_access_financeiro' },
+  { to: '/assinatura', icon: CreditCard, label: 'Assinatura', permission: null },
   { to: '/cadastros', icon: ShieldCheck, label: 'Cadastros', permission: null, managementOnly: true },
 ];
 
