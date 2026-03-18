@@ -20,8 +20,8 @@ test.describe("Full flow: product → stock → ficha → production", () => {
     test.beforeEach(async ({ page }) => {
         // ---- 1️⃣ Login -----------------------------------------------------
         await page.goto("/auth");
-        await page.fill("input[name='email']", "admin@example.com");
-        await page.fill("input[name='password']", "adminpassword");
+        await page.fill("#email", "admin@example.com");
+        await page.fill("#password", "adminpassword");
         await page.click("button:has-text('Entrar')");
         // Wait for dashboard to load
         await expect(page).toHaveURL(/\/dashboard/);

@@ -8,13 +8,13 @@ try {
     console.warn("Could not read .env file");
 }
 
-let SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
-let SUPABASE_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+let SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+let SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 if (envStr) {
     envStr.split('\n').forEach(line => {
-        if (line.includes('VITE_SUPABASE_URL=')) SUPABASE_URL = line.split('=')[1].trim().replace(/^"|"$/g, '');
-        if (line.includes('VITE_SUPABASE_PUBLISHABLE_KEY=')) SUPABASE_KEY = line.split('=')[1].trim().replace(/^"|"$/g, '');
+        if (line.includes('NEXT_PUBLIC_SUPABASE_URL=')) SUPABASE_URL = line.split('=')[1].trim().replace(/^"|"$/g, '');
+        if (line.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY=')) SUPABASE_KEY = line.split('=')[1].trim().replace(/^"|"$/g, '');
     });
 }
 
@@ -26,16 +26,16 @@ async function runTests() {
     const tests = [
         {
             name: "1. Admin/Gestor/Colaborador (Profiles)", check: async () => {
-                const { data, error } = await supabase.from('profiles').select('id, role, business_role').limit(5);
+                const { data, error } = await supabase.from('profiles').select('id, role').limit(5);
                 if (error) throw error;
                 return `✅ Encontrados ${data.length} perfis.`;
             }
         },
         {
             name: "4. Cadastro Ingredientes", check: async () => {
-                const { data, error } = await supabase.from('ingredients').select('id, name').limit(5);
+                const { data, error } = await supabase.from('stock_items').select('id, name').limit(5);
                 if (error) throw error;
-                return `✅ Encontrados ${data.length} ingredientes.`;
+                return `✅ Encontrados ${data.length} itens de estoque (insumos).`;
             }
         },
         {
@@ -47,9 +47,9 @@ async function runTests() {
         },
         {
             name: "6. Modificação da Data de Validade", check: async () => {
-                const { data, error } = await supabase.from('expiry_dates').select('*').limit(5);
+                const { data, error } = await supabase.from('item_expiry_dates').select('*').limit(5);
                 if (error) {
-                    if (error.code === '42P01') return '⚠️ Tabela expiry_dates não existe ou erro de política.';
+                    if (error.code === '42P01') return '⚠️ Tabela item_expiry_dates não existe ou erro de política.';
                     throw error;
                 }
                 return `✅ Encontradas ${data ? data.length : 0} datas de validade.`;
@@ -57,7 +57,7 @@ async function runTests() {
         },
         {
             name: "7. Fichas Técnicas", check: async () => {
-                const { data, error } = await supabase.from('technical_sheets').select('id, product_name').limit(5);
+                const { data, error } = await supabase.from('technical_sheets').select('id, name').limit(5);
                 if (error) throw error;
                 return `✅ Encontradas ${data.length} fichas técnicas.`;
             }
@@ -85,29 +85,29 @@ async function runTests() {
         },
         {
             name: "11. Pedidos (Compras)", check: async () => {
-                const { data, error } = await supabase.from('purchases').select('id').limit(5);
+                const { data, error } = await supabase.from('purchase_schedule').select('id').limit(5);
                 if (error) throw error;
-                return `✅ Tabela purchases ok.`;
+                return `✅ Tabela purchase_schedule ok.`;
             }
         },
         {
             name: "12. Financeiro", check: async () => {
-                const { data, error } = await supabase.from('financial_transactions').select('id').limit(5);
+                const { data, error } = await supabase.from('financial_expenses').select('id').limit(5);
                 if (error) {
-                    if (error.code === '42P01') return '⚠️ Tabela financial_transactions não existe.';
+                    if (error.code === '42P01') return '⚠️ Tabela financial_expenses não existe.';
                     throw error;
                 }
-                return `✅ Tabela financial_transactions ok.`;
+                return `✅ Tabela financial_expenses ok.`;
             }
         },
         {
             name: "13. Perdas", check: async () => {
-                const { data, error } = await supabase.from('loss_reports').select('id').limit(5);
+                const { data, error } = await supabase.from('losses').select('id').limit(5);
                 if (error) {
-                    if (error.code === '42P01') return '⚠️ Tabela loss_reports não existe.';
+                    if (error.code === '42P01') return '⚠️ Tabela losses não existe.';
                     throw error;
                 }
-                return `✅ Tabela loss_reports ok.`;
+                return `✅ Tabela losses ok.`;
             }
         },
         {

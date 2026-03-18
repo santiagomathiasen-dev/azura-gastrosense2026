@@ -24,7 +24,7 @@ try {
     console.log("Could not read .env");
 }
 
-const supabaseUrl = env.VITE_SUPABASE_URL;
+const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
 const webhookUrl = `${supabaseUrl}/functions/v1/loyverse-webhook`;
 
 console.log(`Testing Webhook URL: ${webhookUrl}`);
