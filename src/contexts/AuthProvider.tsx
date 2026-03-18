@@ -108,8 +108,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const loginWithGoogle = async (redirectTo?: string): Promise<{ error?: string }> => {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
         const callbackUrl = `${origin}/auth/v1/callback`;
+        
+        // Ensure we don't have double slashes if origin ends with /
+        const cleanOrigin = origin.replace(/\/$/, '');
         const nextPath = redirectTo || '/dashboard';
-        const finalRedirectUrl = `${callbackUrl}?next=${encodeURIComponent(nextPath)}`;
+        
+        // Supabase expects a clean URL, and our callback route will handle the 'next' param
+        const finalRedirectUrl = `${cleanOrigin}/auth/v1/callback?next=${encodeURIComponent(nextPath)}`;
+
+        console.log("AuthProvider: Initiating Google Login with redirect:", finalRedirectUrl);
 
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
@@ -123,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         if (error) {
+            console.error("AuthProvider: Google Login Error:", error);
             return { error: error.message };
         }
 

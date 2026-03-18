@@ -111,25 +111,30 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // Check payment/active status for non-admin profiles
-  const isSantiago = profile?.email === 'santiago.aloom@gmail.com';
+  const isSantiago = profile?.email === 'santiago.aloom@gmail.com' || profile?.email === 'santiagomathiasen@gmail.com';
   const isBlocked = profile?.status === 'inativo';
-  const isPaymentPending = profile?.status_pagamento === false;
+  // If status_pagamento is false OR subscription_end_date is in the past
+  const isPaymentPending = profile?.status_pagamento === false || (profile?.subscription_end_date && new Date(profile.subscription_end_date) < new Date());
 
   // Admins and Santiago are never blocked/payment-restricted here for management purposes
   if (user && !isAdmin && !isSantiago && profile) {
     if (isBlocked) {
+      console.log("ProtectedRoute: User is blocked (inativo)");
       return (
         <div className="flex items-center justify-center min-h-[60vh] w-full p-4 text-center">
           <div className="max-w-md space-y-4">
             <h1 className="text-2xl font-bold text-destructive">Conta Bloqueada</h1>
             <p className="text-muted-foreground">Sua conta foi desativada pelo administrador.</p>
-            <Navigate to="/auth" replace />
+            <button onClick={() => window.location.href = '/auth'} className="text-sm underline mt-4">
+              Voltar ao Login
+            </button>
           </div>
         </div>
       );
     }
 
     if (isPaymentPending && pathname !== '/payment-required') {
+      console.log("ProtectedRoute: Payment pending or trial expired, redirecting to /payment-required");
       return <Navigate to="/payment-required" replace />;
     }
   }
