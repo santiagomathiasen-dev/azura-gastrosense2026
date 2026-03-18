@@ -12,8 +12,10 @@ import {
   QrCode, 
   MessageSquare,
   Copy,
-  Calendar
+  Calendar,
+  RefreshCw
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -22,6 +24,7 @@ import { ptBR } from "date-fns/locale";
 export default function AssinaturaPage() {
     const { profile } = useProfile();
     const [copied, setCopied] = useState(false);
+    const [loading, setLoading] = useState(false);
     
     const pixKey = "santiago.aloom@gmail.com";
     const phone = "61982452669";
@@ -36,6 +39,39 @@ export default function AssinaturaPage() {
     const openWhatsApp = () => {
         const message = "Olá, gostaria de falar sobre minha assinatura do Azura.";
         window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    };
+    
+    const handleCheckout = async (planId: string, method: 'mercadopago' | 'paypal') => {
+        try {
+            setLoading(true);
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                toast.error("Você precisa estar logado para assinar.");
+                return;
+            }
+
+            const { data, error } = await supabase.functions.invoke('create-checkout', {
+                body: { 
+                    userId: user.id, 
+                    planId, 
+                    userEmail: user.email,
+                    paymentMethod: method 
+                }
+            });
+
+            if (error) throw error;
+            if (data?.checkoutUrl) {
+                window.open(data.checkoutUrl, '_blank');
+            } else {
+                throw new Error("Não foi possível gerar o link de pagamento.");
+            }
+        } catch (error: any) {
+            console.error("Checkout error:", error);
+            toast.error(error.message || "Erro ao processar checkout");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const isTrial = !profile?.status_pagamento;
@@ -110,17 +146,19 @@ export default function AssinaturaPage() {
                             <div className="space-y-3">
                                 <Button 
                                     className="w-full h-12 justify-center gap-3 bg-[#009EE3] hover:bg-[#0089C7] text-white font-bold rounded-lg transition-all shadow-sm"
-                                    onClick={() => window.open('https://www.mercadopago.com.br/', '_blank')}
+                                    onClick={() => handleCheckout('pro', 'mercadopago')}
+                                    disabled={loading}
                                 >
-                                    <Wallet className="h-5 w-5" />
+                                    {loading ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Wallet className="h-5 w-5" />}
                                     Mercado Pago
                                 </Button>
 
                                 <Button 
                                     className="w-full h-12 justify-center gap-3 bg-[#003087] hover:bg-[#00246B] text-white font-bold rounded-lg transition-all shadow-sm"
-                                    onClick={() => window.open('https://www.paypal.com/br/', '_blank')}
+                                    onClick={() => handleCheckout('pro', 'paypal')}
+                                    disabled={loading}
                                 >
-                                    <CreditCard className="h-5 w-5" />
+                                    {loading ? <RefreshCw className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
                                     PayPal / Cartão
                                 </Button>
                             </div>

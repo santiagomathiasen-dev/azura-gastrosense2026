@@ -136,6 +136,34 @@ export default function ConfiguracaoPDV() {
                                         {integration.last_sync_at ? format(new Date(integration.last_sync_at), 'dd/MM/yyyy HH:mm') : 'Nunca sincronizado'}
                                     </span>
                                 </div>
+                                {integration.platform === 'loyverse' && (
+                                    <div className="pt-2 border-t space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium">Webhook URL (Copiar)</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                readOnly
+                                                value={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/loyverse-webhook`}
+                                                className="h-8 text-xs bg-muted"
+                                            />
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 px-2"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/loyverse-webhook`);
+                                                    toast.success("Webhook URL copiada!");
+                                                }}
+                                            >
+                                                Copiar
+                                            </Button>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground leading-tight">
+                                            Cole esta URL nas configurações de Webhooks do Loyverse para receber as vendas em tempo real.
+                                        </p>
+                                    </div>
+                                )}
                                 
                                 <div className="grid grid-cols-2 gap-2 pt-2 border-t">
                                     <Button 

@@ -1,8 +1,10 @@
 'use client';
+// Triggering fresh build after resolving route conflict
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CreditCard, LogOut, MessageSquare, Copy, CheckCircle2, QrCode, RefreshCw, Wallet, ShieldCheck, Clock } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useRouter } from 'next/navigation';
@@ -16,6 +18,7 @@ export default function PaymentRequiredPage() {
     const router = useRouter();
     const [copied, setCopied] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
+    const [loading, setLoading] = useState(false);
     
     const pixKey = "santiago.aloom@gmail.com";
     const phone = "61982452669";
@@ -51,6 +54,39 @@ export default function PaymentRequiredPage() {
     const openWhatsApp = () => {
         const message = "Olá, realizei o pagamento da minha assinatura e gostaria de liberar meu acesso.";
         window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    };
+
+    const handleCheckout = async (planId: string, method: 'mercadopago' | 'paypal') => {
+        try {
+            setLoading(true);
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                toast.error("Você precisa estar logado para assinar.");
+                return;
+            }
+
+            const { data, error } = await supabase.functions.invoke('create-checkout', {
+                body: { 
+                    userId: user.id, 
+                    planId, 
+                    userEmail: user.email,
+                    paymentMethod: method 
+                }
+            });
+
+            if (error) throw error;
+            if (data?.checkoutUrl) {
+                window.open(data.checkoutUrl, '_blank');
+            } else {
+                throw new Error("Não foi possível gerar o link de pagamento.");
+            }
+        } catch (error: any) {
+            console.error("Checkout error:", error);
+            toast.error(error.message || "Erro ao processar checkout");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -110,10 +146,11 @@ export default function PaymentRequiredPage() {
                         <div className="space-y-3">
                             <Button 
                                 className="w-full h-14 justify-between px-6 bg-[#009EE3] hover:bg-[#0089C7] text-white font-bold text-lg rounded-xl transition-all shadow-md group"
-                                onClick={() => window.open('https://www.mercadopago.com.br/', '_blank')}
+                                onClick={() => handleCheckout('pro', 'mercadopago')}
+                                disabled={loading}
                             >
                                 <span className="flex items-center gap-3">
-                                    <Wallet className="h-6 w-6" />
+                                    {loading ? <RefreshCw className="h-6 w-6 animate-spin" /> : <Wallet className="h-6 w-6" />}
                                     Mercado Pago
                                 </span>
                                 <span className="text-sm font-normal opacity-0 group-hover:opacity-100 transition-opacity underline">Pagar agora →</span>
@@ -121,10 +158,11 @@ export default function PaymentRequiredPage() {
 
                             <Button 
                                 className="w-full h-14 justify-between px-6 bg-[#003087] hover:bg-[#00246B] text-white font-bold text-lg rounded-xl transition-all shadow-md group"
-                                onClick={() => window.open('https://www.paypal.com/br/', '_blank')}
+                                onClick={() => handleCheckout('pro', 'paypal')}
+                                disabled={loading}
                             >
                                 <span className="flex items-center gap-3">
-                                    <CreditCard className="h-6 w-6" />
+                                    {loading ? <RefreshCw className="h-6 w-6 animate-spin" /> : <CreditCard className="h-6 w-6" />}
                                     PayPal / Cartão
                                 </span>
                                 <span className="text-sm font-normal opacity-0 group-hover:opacity-100 transition-opacity underline">Checkout →</span>
