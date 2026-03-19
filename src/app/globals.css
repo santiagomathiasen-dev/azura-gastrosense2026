@@ -155,3 +155,87 @@
     display: none !important;
   }
 }
+/* Estilos de Impresso */
+@media print {
+  /* Esconder elementos de interface */
+  nav, 
+  aside, 
+  header .btn, 
+  button, 
+  .print-hidden,
+  .no-print,
+  [role="navigation"],
+  [role="banner"],
+  .sidebar-container,
+  .mobile-nav,
+  .tabs-list {
+    display: none !important;
+  }
+
+  /* Resetar layout para ocupao total da pgina */
+  main, 
+  .main-content,
+  .container {
+    padding: 0 !important;
+    margin: 0 !important;
+    padding-top: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    background: white !important;
+    position: static !important;
+    overflow: visible !important;
+  }
+
+  /* Tipografia e cores para papel */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+  }
+
+  h1 { font-size: 18pt !important; margin: 0 0 10pt 0 !important; border-bottom: 2px solid #333 !important; padding-bottom: 5pt !important; }
+  h2 { font-size: 14pt !important; margin-top: 20pt !important; }
+  
+  /* Tabelas */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  
+  th, td {
+    border: 1px solid #ddd !important;
+    padding: 8px !important;
+    text-align: left !important;
+    font-size: 10pt !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+  }
+
+  /* Remover sombras e fundos desnecessrios */
+  .card, .shadow-sm, .shadow-md, .shadow-lg, .badge, .table-header-group {
+    box-shadow: none !important;
+    border: 1px solid #eee !important;
+    background: white !important;
+    color: #333 !important;
+  }
+
+  .bg-primary, .bg-destructive, .bg-secondary, .bg-muted {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #ccc !important;
+  }
+
+  /* Forar exibio de tabelas */
+  .overflow-x-auto {
+    overflow-x: visible !important;
+  }
+
+  /* Links */
+  a { text-decoration: none !important; color: black !important; }
+}

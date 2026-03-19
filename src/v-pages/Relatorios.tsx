@@ -206,7 +206,31 @@ export default function Relatorios() {
   }
 
   return (
-    <div className="space-y-4 print:space-y-2">
+    <div className="space-y-4 print:space-y-6">
+      {/* Printable Header - Only visible on print */}
+      <div className="hidden print:block border-b-2 border-black pb-4 mb-6">
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-2xl font-bold uppercase tracking-wider">Azura GastroSense</h1>
+            <p className="text-sm font-medium">Gestão Inteligente para Gastronomia</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-bold">{activeTab.toUpperCase()} - RELATÓRIO</p>
+            <p className="text-xs text-muted-foreground">Gerado em: {format(getNow(), 'dd/MM/yyyy HH:mm')}</p>
+          </div>
+        </div>
+        <div className="mt-4 pt-2 border-t border-dashed border-gray-300">
+          <p className="text-sm">
+            <span className="font-bold">Período:</span> {
+              dateRange === 'today' ? 'Hoje' :
+              dateRange === 'week' ? 'Esta Semana' :
+              dateRange === 'month' ? 'Este Mês' :
+              `${format(customStart || getNow(), 'dd/MM/yyyy')} até ${format(customEnd || getNow(), 'dd/MM/yyyy')}`
+            }
+          </p>
+        </div>
+      </div>
+
       <div className="print:hidden">
         <PageHeader
           title="Relatórios"
@@ -271,31 +295,31 @@ export default function Relatorios() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Card>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 print:grid-cols-4">
+        <Card className="print:border print:border-gray-200">
           <CardContent className="p-3 text-center">
-            <DollarSign className="h-5 w-5 text-emerald-600 mx-auto mb-1" />
-            <p className="text-lg font-bold text-emerald-600">R$ {(totalSales || 0).toFixed(2)}</p>
+            <DollarSign className="h-5 w-5 text-emerald-600 mx-auto mb-1 print:hidden" />
+            <p className="text-lg font-bold text-emerald-600 print:text-black">R$ {(totalSales || 0).toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">Vendas</p>
           </CardContent>
         </Card>
-        <Card className="border-destructive/30 bg-destructive/5">
+        <Card className="border-destructive/30 bg-destructive/5 print:bg-white print:border-gray-200">
           <CardContent className="p-3 text-center">
-            <TrendingDown className="h-5 w-5 text-destructive mx-auto mb-1" />
-            <p className="text-lg font-bold text-destructive">R$ {(totalLosses || 0).toFixed(2)}</p>
+            <TrendingDown className="h-5 w-5 text-destructive mx-auto mb-1 print:hidden" />
+            <p className="text-lg font-bold text-destructive print:text-black">R$ {(totalLosses || 0).toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">Perdas</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="print:border print:border-gray-200">
           <CardContent className="p-3 text-center">
-            <Package className="h-5 w-5 text-primary mx-auto mb-1" />
+            <Package className="h-5 w-5 text-primary mx-auto mb-1 print:hidden" />
             <p className="text-lg font-bold">R$ {(totalPurchased || 0).toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">Insumos Comprados</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="print:border print:border-gray-200">
           <CardContent className="p-3 text-center">
-            <ShoppingCart className="h-5 w-5 text-orange-500 mx-auto mb-1" />
+            <ShoppingCart className="h-5 w-5 text-orange-500 mx-auto mb-1 print:hidden" />
             <p className="text-lg font-bold">R$ {(totalPurchaseList || 0).toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">Lista Compras</p>
           </CardContent>
@@ -378,8 +402,8 @@ export default function Relatorios() {
 
         {/* Sales Report */}
         <TabsContent value="vendas">
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="print:border-0 print:shadow-none">
+            <CardHeader className="pb-2 print:hidden">
               <CardTitle className="text-base flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
                 Relatório de Vendas

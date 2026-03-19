@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, DollarSign, Calculator, Clock, Users, ChefHat, Edit, Trash2, Plus, FileText, Loader2 } from 'lucide-react';
+import { Search, DollarSign, Calculator, Clock, Users, ChefHat, Edit, Trash2, Plus, FileText, Loader2, Printer } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Input } from '@/components/ui/input';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -602,6 +602,15 @@ export default function Fichas() {
                   Excluir
                 </Button>
                 <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => window.print()}
+                >
+                  <Printer className="h-4 w-4" />
+                  Imprimir
+                </Button>
+                <Button
                   variant="default"
                   size="sm"
                   className="gap-1"
@@ -613,7 +622,111 @@ export default function Fichas() {
               </div>
             </div>
           </DialogHeader>
-          <ScrollArea className="max-h-[70vh] pr-4">
+
+          {/* Printable Layout - Only visible on print */}
+          <div className="hidden print:block space-y-8 p-4 bg-white text-black">
+            <div className="border-b-2 border-black pb-4 flex justify-between items-start">
+              <div>
+                <h1 className="text-3xl font-bold uppercase">{selectedSheet?.nome}</h1>
+                <p className="text-sm text-gray-600 italic">{selectedSheet?.descricao || 'Sem descrição'}</p>
+              </div>
+              <div className="text-right text-xs">
+                <p className="font-bold">FICHA TÉCNICA OPERACIONAL</p>
+                <p>Setor: {selectedSheet?.praca || 'Geral'}</p>
+                <p>Data: {new Date().toLocaleDateString('pt-BR')}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 py-4 border-b border-gray-100 italic">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span>Tempo: {selectedSheet?.preparation_time || '--'} min</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                <span>Rendimento: {selectedSheet?.yield_quantity} {selectedSheet?.yield_unit}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ChefHat className="h-4 w-4" />
+                <span>Tipo: {selectedSheet?.production_type === 'insumo' ? 'Insumo Produzido' : 'Produto Final'}</span>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <section>
+                <h2 className="text-xl font-bold border-l-4 border-black pl-2 mb-4 uppercase tracking-tight">Ingredientes e Etapas</h2>
+                <div className="space-y-4">
+                  {sheetStages.length > 0 ? (
+                    sheetStages.map((stage, idx) => (
+                      <div key={idx} className="space-y-2 break-inside-avoid">
+                        <h3 className="font-bold text-lg bg-gray-50 px-2 py-1">{idx + 1}. {stage.name}</h3>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-200">
+                              <th className="text-left py-1">Insumo</th>
+                              <th className="text-right py-1">Quantidade</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stage.ingredients.map((ing, iidx) => {
+                              const stockItem = stockItems.find(si => si.id === ing.stockItemId);
+                              return (
+                                <tr key={iidx} className="border-b border-gray-50">
+                                  <td className="py-1">{stockItem?.name || 'Item não encontrado'}</td>
+                                  <td className="py-1 text-right">{ing.quantidade} {stockItem?.unit || ''}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        {stage.description && (
+                          <div className="mt-2 text-sm italic text-gray-700 bg-gray-50/50 p-2 rounded">
+                            <p className="font-bold underline text-xs uppercase mb-1">Procedimento:</p>
+                            {stage.description}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-1">Insumo</th>
+                          <th className="text-right py-1">Quantidade</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(selectedSheet?.ingredients || []).map((ing: any, idx: number) => {
+                          const stockItem = stockItems.find(si => si.id === ing.stockItemId);
+                          return (
+                            <tr key={idx} className="border-b border-gray-50">
+                              <td className="py-1">{stockItem?.name || 'Item não encontrado'}</td>
+                              <td className="py-1 text-right">{ing.quantidade} {stockItem?.unit || ''}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </section>
+
+              {selectedSheet?.preparation_method && sheetStages.length === 0 && (
+                <section className="break-inside-avoid">
+                  <h2 className="text-xl font-bold border-l-4 border-black pl-2 mb-4 uppercase tracking-tight">Modo de Preparo</h2>
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap text-gray-800">
+                    {selectedSheet.preparation_method}
+                  </div>
+                </section>
+              )}
+            </div>
+
+            <div className="mt-auto pt-10 text-[10px] text-gray-400 text-center uppercase tracking-widest border-t">
+              Documento Interno - Azura GastroSense
+            </div>
+          </div>
+
+          <ScrollArea className="max-h-[70vh] pr-4 print:hidden">
             {selectedSheet && (
               <div className="space-y-4 py-4">
                 <div className="flex flex-wrap gap-2">
