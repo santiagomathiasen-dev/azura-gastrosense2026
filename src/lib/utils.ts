@@ -98,11 +98,60 @@ export function formatCurrency(value: number): string {
  * This ensures consistent date handling regardless of the user's browser timezone.
  */
 export function getNow(): Date {
+  // Use Intl to get Brasília time parts
   const now = new Date();
-  const brasiliaTime = new Date(
-    now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const getPart = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0');
+  
+  // Create a new date that represents Brasília time but in the local environment's context
+  // Note: This "shifts" the date so that .getHours(), .getDate() etc returns Brasília values
+  return new Date(
+    getPart('year'),
+    getPart('month') - 1,
+    getPart('day'),
+    getPart('hour'),
+    getPart('minute'),
+    getPart('second')
   );
-  return brasiliaTime;
+}
+
+/**
+ * Format a date explicitly in Brasília timezone.
+ * Useful for displaying record dates from DB (UTC) correctly.
+ */
+export function formatInBrasilia(date: Date | string | number, formatStr: string = 'dd/MM/yyyy HH:mm'): string {
+  const d = typeof date === 'string' ? new Date(date) : date instanceof Date ? date : new Date(date);
+  
+  if (isNaN(d.getTime())) return '-';
+
+  // Using Intl for timezone-aware formatting is safer than shifting dates manually for display
+  const options: Intl.DateTimeFormatOptions = {};
+  
+  if (formatStr.includes('yyyy')) options.year = 'numeric';
+  if (formatStr.includes('MM')) options.month = '2-digit';
+  if (formatStr.includes('dd')) options.day = '2-digit';
+  if (formatStr.includes('HH')) options.hour = '2-digit';
+  options.hour12 = false;
+  if (formatStr.includes('mm')) options.minute = '2-digit';
+  if (formatStr.includes('ss')) options.second = '2-digit';
+
+  const formatter = new Intl.DateTimeFormat('pt-BR', {
+    ...options,
+    timeZone: 'America/Sao_Paulo'
+  });
+
+  return formatter.format(d);
 }
 
 /**

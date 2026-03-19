@@ -58,7 +58,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { cn, getNow } from '@/lib/utils';
+import { cn, getNow, formatInBrasilia } from '@/lib/utils';
 
 type PeriodType = 'day' | 'week' | 'month' | 'year';
 type PracaType = 'all' | 'gelateria' | 'confeitaria' | 'padaria' | 'praca_quente' | 'bar' | 'sem_praca';
@@ -125,13 +125,13 @@ export default function Producao() {
   const periodLabel = useMemo(() => {
     switch (periodType) {
       case 'day':
-        return format(currentDate, "EEEE, d 'de' MMMM", { locale: ptBR });
+        return formatInBrasilia(currentDate, "EEEE, d 'de' MMMM");
       case 'week':
-        return `${format(periodBoundaries.start, "d MMM", { locale: ptBR })} - ${format(periodBoundaries.end, "d MMM yyyy", { locale: ptBR })}`;
+        return `${formatInBrasilia(periodBoundaries.start, "d MMM")} - ${formatInBrasilia(periodBoundaries.end, "d MMM yyyy")}`;
       case 'month':
-        return format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
+        return formatInBrasilia(currentDate, "MMMM 'de' yyyy");
       case 'year':
-        return format(currentDate, "yyyy", { locale: ptBR });
+        return formatInBrasilia(currentDate, "yyyy");
     }
   }, [periodType, currentDate, periodBoundaries]);
 
@@ -385,7 +385,7 @@ export default function Producao() {
             <Clock className="h-3 w-3" />
             {(() => {
               const [year, month, day] = producao.scheduled_date.split('-').map(Number);
-              return format(new Date(year, month - 1, day), "dd/MM/yyyy", { locale: ptBR });
+              return formatInBrasilia(new Date(year, month - 1, day), "dd/MM/yyyy");
             })()}
           </span>
         </MobileListDetails>

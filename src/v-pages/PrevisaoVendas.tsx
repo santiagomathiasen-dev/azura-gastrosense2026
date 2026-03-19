@@ -47,7 +47,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn, getNow } from '@/lib/utils';
+import { cn, getNow, formatInBrasilia } from '@/lib/utils';
 import { format, addDays, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -83,7 +83,7 @@ function ForecastInputTab() {
     const [selectedProductId, setSelectedProductId] = useState('');
     const [quantity, setQuantity] = useState('');
 
-    const dateStr = format(targetDate, 'yyyy-MM-dd');
+    const dateStr = formatInBrasilia(targetDate, 'yyyy-MM-dd');
     const { forecasts, isLoading, createForecast, deleteForecast, generateForecast } = useSalesForecasts(dateStr);
     const { saleProducts = [] } = useSaleProducts();
     const { explode } = useForecastExplosion();
@@ -156,7 +156,7 @@ function ForecastInputTab() {
     const handleGenerateSuggestion = () => {
         generateForecast.mutate({
             targetDate: dateStr,
-            baseDate: format(baseDate, 'yyyy-MM-dd'),
+            baseDate: formatInBrasilia(baseDate, 'yyyy-MM-dd'),
             bufferPercent: 10,
             periodType,
         }, {
@@ -182,7 +182,7 @@ function ForecastInputTab() {
                     <PopoverTrigger asChild>
                         <Button variant="outline" className="gap-2">
                             <CalendarIcon className="h-4 w-4" />
-                            {format(targetDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                            {formatInBrasilia(targetDate, "EEEE, dd 'de' MMMM")}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -286,7 +286,7 @@ function ForecastInputTab() {
                     <DialogHeader>
                         <DialogTitle>Adicionar Previsão de Venda</DialogTitle>
                         <DialogDescription>
-                            Para {format(targetDate, "EEEE, dd/MM/yyyy", { locale: ptBR })}
+                            Para {formatInBrasilia(targetDate, "EEEE, dd/MM/yyyy")}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
@@ -357,7 +357,7 @@ function ForecastInputTab() {
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" className="w-full justify-start text-left font-normal">
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {baseDate ? format(baseDate, "EEEE, dd 'de' MMMM", { locale: ptBR }) : <span>Selecione uma data</span>}
+                                        {baseDate ? formatInBrasilia(baseDate, "EEEE, dd 'de' MMMM") : <span>Selecione uma data</span>}
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
@@ -404,7 +404,7 @@ function ForecastInputTab() {
 
 function ProductionOrdersTab() {
     const [selectedDate, setSelectedDate] = useState<Date>(getNow());
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const dateStr = formatInBrasilia(selectedDate, 'yyyy-MM-dd');
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
     const [sheetDialogOpen, setSheetDialogOpen] = useState(false);
 
@@ -444,14 +444,14 @@ function ProductionOrdersTab() {
             <div className="flex items-center gap-3 flex-wrap">
                 <Button
                     size="sm"
-                    variant={dateStr === format(getNow(), 'yyyy-MM-dd') ? 'default' : 'outline'}
+                    variant={dateStr === formatInBrasilia(getNow(), 'yyyy-MM-dd') ? 'default' : 'outline'}
                     onClick={() => setSelectedDate(getNow())}
                 >
                     Hoje
                 </Button>
                 <Button
                     size="sm"
-                    variant={dateStr === format(addDays(getNow(), 1), 'yyyy-MM-dd') ? 'default' : 'outline'}
+                    variant={dateStr === formatInBrasilia(addDays(getNow(), 1), 'yyyy-MM-dd') ? 'default' : 'outline'}
                     onClick={() => setSelectedDate(addDays(getNow(), 1))}
                 >
                     Amanhã
@@ -460,7 +460,7 @@ function ProductionOrdersTab() {
                     <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="gap-2">
                             <CalendarIcon className="h-4 w-4" />
-                            {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
+                            {formatInBrasilia(selectedDate, "dd/MM/yyyy")}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -511,7 +511,7 @@ function ProductionOrdersTab() {
                 <EmptyState
                     icon={ChefHat}
                     title="Nenhuma ordem de produção"
-                    description={`Não há ordens para ${format(selectedDate, "dd/MM/yyyy")}. Use a aba "Previsão" para criar previsões e gerar ordens.`}
+                    description={`Não há ordens para ${formatInBrasilia(selectedDate, "dd/MM/yyyy")}. Use a aba "Previsão" para criar previsões e gerar ordens.`}
                 />
             ) : (
                 <div className="space-y-4">
@@ -560,7 +560,7 @@ function ProductionOrdersTab() {
                                                     <ArrowRight className="h-3 w-3" />
                                                     <span>
                                                         Consumo:{' '}
-                                                        {format(parseSafeDate(order.target_consumption_date), 'dd/MM')}
+                                                        {formatInBrasilia(parseSafeDate(order.target_consumption_date), 'dd/MM')}
                                                     </span>
                                                 </div>
                                             </div>
@@ -626,7 +626,7 @@ function HistoryAnalysisTab() {
             return;
         }
 
-        const dateStr = format(targetDate, 'yyyy-MM-dd');
+        const dateStr = formatInBrasilia(targetDate, 'yyyy-MM-dd');
 
         try {
             // Delete existing pending orders for date
@@ -642,7 +642,7 @@ function HistoryAnalysisTab() {
                 .map(item => ({
                     user_id: ownerId,
                     technical_sheet_id: item.technicalSheetId,
-                    production_date: format(getNow(), 'yyyy-MM-dd'),
+                    production_date: formatInBrasilia(getNow(), 'yyyy-MM-dd'),
                     target_consumption_date: dateStr,
                     required_quantity: item.totalSales, // Or whatever logic the user wants
                     existing_stock: item.currentStock,
@@ -678,7 +678,7 @@ function HistoryAnalysisTab() {
                         <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className="w-[180px] justify-start text-left font-normal">
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {format(baseDate, "dd/MM/yyyy")}
+                                {formatInBrasilia(baseDate, "dd/MM/yyyy")}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
@@ -712,7 +712,7 @@ function HistoryAnalysisTab() {
                         <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className="w-[180px] justify-start text-left font-normal border-primary/30">
                                 <ChefHat className="mr-2 h-4 w-4 text-primary" />
-                                {format(targetDate, "dd/MM/yyyy")}
+                                {formatInBrasilia(targetDate, "dd/MM/yyyy")}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">

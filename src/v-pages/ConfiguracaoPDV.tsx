@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePosIntegrations, PosIntegration } from '@/hooks/usePosIntegrations';
-import { format } from 'date-fns';
+import { formatInBrasilia } from '@/lib/utils';
 
 export default function ConfiguracaoPDV() {
     const { integrations, isLoading, createIntegration, updateIntegration, deleteIntegration, syncIntegration } = usePosIntegrations();
@@ -133,7 +133,7 @@ export default function ConfiguracaoPDV() {
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-muted-foreground">Última Sincronização</span>
                                     <span className="font-medium">
-                                        {integration.last_sync_at ? format(new Date(integration.last_sync_at), 'dd/MM/yyyy HH:mm') : 'Nunca sincronizado'}
+                                        {integration.last_sync_at ? formatInBrasilia(integration.last_sync_at, 'dd/MM/yyyy HH:mm') : 'Nunca sincronizado'}
                                     </span>
                                 </div>
                                 {integration.platform === 'loyverse' && (

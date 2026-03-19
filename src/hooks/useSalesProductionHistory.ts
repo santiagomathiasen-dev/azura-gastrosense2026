@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOwnerId } from './useOwnerId';
-import { subDays, format } from 'date-fns';
+import { subDays } from 'date-fns';
+import { formatInBrasilia } from '@/lib/utils';
 
 export interface ProductionHistoryItem {
     technicalSheetId: string;
@@ -21,8 +22,8 @@ export function useSalesProductionHistory(baseDate: Date, days: number = 7) {
         queryFn: async () => {
             if (!ownerId) return [];
 
-            const startDate = format(subDays(baseDate, days), 'yyyy-MM-dd');
-            const endDate = format(baseDate, 'yyyy-MM-dd');
+            const startDate = formatInBrasilia(subDays(baseDate, days), 'yyyy-MM-dd');
+            const endDate = formatInBrasilia(baseDate, 'yyyy-MM-dd');
 
             // 1. Fetch all technical sheets
             const { data: sheets, error: sErr } = await supabase

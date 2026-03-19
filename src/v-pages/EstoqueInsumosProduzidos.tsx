@@ -26,9 +26,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { useProducedInputsStock, ProducedInputWithSheet } from '@/hooks/useProducedInputsStock';
 import { useTechnicalSheets } from '@/hooks/useTechnicalSheets';
-import { format, differenceInDays, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { getNow, getTodayStr } from '@/lib/utils';
+import { formatInBrasilia, getNow, getTodayStr } from '@/lib/utils';
+import { parseSafeDate } from '@/hooks/useExpiryDates';
 import { toast } from 'sonner';
 
 export default function EstoqueInsumosProduzidos() {
@@ -60,7 +59,7 @@ export default function EstoqueInsumosProduzidos() {
 
   const getExpirationStatus = (expirationDate: string | null): 'ok' | 'warning' | 'expired' => {
     if (!expirationDate) return 'ok';
-    const daysUntilExpiry = differenceInDays(parseISO(expirationDate), getNow());
+    const daysUntilExpiry = Math.ceil((parseSafeDate(expirationDate).getTime() - getNow().getTime()) / (1000 * 60 * 60 * 24));
     if (daysUntilExpiry < 0) return 'expired';
     if (daysUntilExpiry <= 3) return 'warning';
     return 'ok';
@@ -248,14 +247,14 @@ export default function EstoqueInsumosProduzidos() {
                   <span className="font-mono text-xs">{item.batch_code}</span>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {format(parseISO(item.production_date), 'dd/MM/yyyy')}
+                    {formatInBrasilia(parseSafeDate(item.production_date), 'dd/MM/yyyy')}
                   </span>
                   {item.expiration_date && (
                     <MobileListBadge
                       variant={status === 'expired' ? 'destructive' : status === 'warning' ? 'warning' : 'default'}
                     >
                       {status === 'expired' && <AlertTriangle className="h-3 w-3 mr-1" />}
-                      Val: {format(parseISO(item.expiration_date), 'dd/MM')}
+                      Val: {formatInBrasilia(parseSafeDate(item.expiration_date), 'dd/MM')}
                     </MobileListBadge>
                   )}
                 </MobileListDetails>

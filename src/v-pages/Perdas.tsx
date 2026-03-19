@@ -17,9 +17,7 @@ import { useLosses, LossInput } from '@/hooks/useLosses';
 import { useStockItems } from '@/hooks/useStockItems';
 import { useFinishedProductionsStock } from '@/hooks/useFinishedProductionsStock';
 import { useProductCosts } from '@/hooks/useProductCosts';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { formatQuantity } from '@/lib/utils';
+import { formatInBrasilia, formatQuantity } from '@/lib/utils';
 
 const SOURCE_TYPE_LABELS: Record<string, string> = {
   stock_item: 'Insumo',
@@ -166,7 +164,7 @@ export default function Perdas() {
                   {filteredLosses.map((loss) => (
                     <TableRow key={loss.id}>
                       <TableCell className="text-sm">
-                        {format(new Date(loss.created_at), 'dd/MM/yyyy', { locale: ptBR })}
+                        {formatInBrasilia(loss.created_at, 'dd/MM/yyyy')}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">

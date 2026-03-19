@@ -5,7 +5,7 @@ import { useAuth } from './useAuth';
 import { useOwnerId } from './useOwnerId';
 import { supabaseFetch } from '@/lib/supabase-fetch';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, subDays } from 'date-fns';
-import { getNow } from '@/lib/utils';
+import { getNow, formatInBrasilia } from '@/lib/utils';
 import { parseSafeDate } from './useExpiryDates';
 
 export interface SalesReportItem {
@@ -104,7 +104,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
         const unitPrice = sale.sale_product?.sale_price || 0;
 
         return {
-          date: isNaN(dateObj.getTime()) ? '-' : format(dateObj, 'dd/MM/yyyy HH:mm'),
+          date: isNaN(dateObj.getTime()) ? '-' : formatInBrasilia(dateObj, 'dd/MM/yyyy HH:mm'),
           productName,
           quantity: sale.quantity_sold,
           unitPrice,
@@ -131,7 +131,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
       const newLosses = (lossesData || []).map(loss => {
         const dateObj = loss.created_at ? new Date(loss.created_at) : getNow();
         return {
-          date: isNaN(dateObj.getTime()) ? '-' : format(dateObj, 'dd/MM/yyyy HH:mm'),
+          date: isNaN(dateObj.getTime()) ? '-' : formatInBrasilia(dateObj, 'dd/MM/yyyy HH:mm'),
           productName: loss.source_name,
           quantity: Number(loss.quantity),
           unit: loss.unit,
@@ -144,7 +144,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
         const dateObj = movement.created_at ? new Date(movement.created_at) : getNow();
         const stockItem = movement.stock_item;
         return {
-          date: isNaN(dateObj.getTime()) ? '-' : format(dateObj, 'dd/MM/yyyy HH:mm'),
+          date: isNaN(dateObj.getTime()) ? '-' : formatInBrasilia(dateObj, 'dd/MM/yyyy HH:mm'),
           productName: stockItem?.name || 'Item desconhecido',
           quantity: Number(movement.quantity),
           unit: 'unidade',
@@ -178,7 +178,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
       return (data as any[]).map(item => {
         const stockItem = item.stock_item;
         return {
-          date: item.actual_delivery_date ? format(parseSafeDate(item.actual_delivery_date), 'dd/MM/yyyy') : '-',
+          date: item.actual_delivery_date ? formatInBrasilia(parseSafeDate(item.actual_delivery_date), 'dd/MM/yyyy') : '-',
           itemName: stockItem?.name || 'Item desconhecido',
           quantity: item.ordered_quantity || 0,
           unit: stockItem?.unit || 'un',
@@ -201,7 +201,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
       return (data as any[]).map(movement => {
         const stockItem = movement.stock_item;
         return {
-          date: format(new Date(movement.created_at), 'dd/MM/yyyy HH:mm'),
+          date: formatInBrasilia(movement.created_at, 'dd/MM/yyyy HH:mm'),
           itemName: stockItem?.name || 'Item desconhecido',
           quantity: movement.quantity,
           unit: stockItem?.unit || 'un',
@@ -232,8 +232,8 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
         const stockItem = item.stock_item;
         return {
           date: item.order_date
-            ? format(parseSafeDate(item.order_date), 'dd/MM/yyyy')
-            : format(new Date(item.created_at), 'dd/MM/yyyy'),
+            ? formatInBrasilia(parseSafeDate(item.order_date), 'dd/MM/yyyy')
+            : formatInBrasilia(item.created_at, 'dd/MM/yyyy'),
           itemName: stockItem?.name || 'Item desconhecido',
           quantity: item.ordered_quantity || item.suggested_quantity,
           unit: stockItem?.unit || 'un',
@@ -257,7 +257,7 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
       return (data as any[]).map(movement => {
         const stockItem = movement.stock_item;
         return {
-          date: format(new Date(movement.created_at), 'dd/MM/yyyy HH:mm'),
+          date: formatInBrasilia(movement.created_at, 'dd/MM/yyyy HH:mm'),
           itemName: stockItem?.name || 'Item desconhecido',
           type: movement.type as 'entry' | 'exit',
           quantity: movement.quantity,

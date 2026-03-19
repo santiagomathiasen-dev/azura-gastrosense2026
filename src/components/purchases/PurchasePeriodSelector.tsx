@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import type { ProductionWithSheet } from '@/hooks/useProductions';
-import { getNow } from '@/lib/utils';
+import { getNow, formatInBrasilia } from '@/lib/utils';
 
 export type PeriodType = 'day' | 'week' | 'month' | 'year';
 
@@ -43,27 +43,27 @@ export function PurchasePeriodSelector({ productions, onPeriodChange }: Purchase
       case 'day':
         start = startOfDay(referenceDate);
         end = endOfDay(referenceDate);
-        label = format(referenceDate, "EEEE, dd 'de' MMMM", { locale: ptBR });
+        label = formatInBrasilia(referenceDate, "EEEE, dd 'de' MMMM");
         break;
       case 'week':
         start = startOfWeek(referenceDate, { weekStartsOn: 1 }); // Monday
         end = endOfWeek(referenceDate, { weekStartsOn: 1 });
-        label = `${format(start, 'dd/MM')} - ${format(end, 'dd/MM/yyyy')}`;
+        label = `${formatInBrasilia(start, 'dd/MM')} - ${formatInBrasilia(end, 'dd/MM/yyyy')}`;
         break;
       case 'month':
         start = startOfMonth(referenceDate);
         end = endOfMonth(referenceDate);
-        label = format(referenceDate, "MMMM 'de' yyyy", { locale: ptBR });
+        label = formatInBrasilia(referenceDate, "MMMM 'de' yyyy");
         break;
       case 'year':
         start = startOfYear(referenceDate);
         end = endOfYear(referenceDate);
-        label = format(referenceDate, 'yyyy');
+        label = formatInBrasilia(referenceDate, 'yyyy');
         break;
       default:
         start = startOfWeek(referenceDate, { weekStartsOn: 1 });
         end = endOfWeek(referenceDate, { weekStartsOn: 1 });
-        label = `${format(start, 'dd/MM')} - ${format(end, 'dd/MM/yyyy')}`;
+        label = `${formatInBrasilia(start, 'dd/MM')} - ${formatInBrasilia(end, 'dd/MM/yyyy')}`;
     }
 
     return { startDate: start, endDate: end, periodLabel: label };
@@ -206,7 +206,7 @@ export function PurchasePeriodSelector({ productions, onPeriodChange }: Purchase
             <Calendar className="h-4 w-4 text-primary" />
             <span className="text-xs">
               <strong>Data sugerida para compra:</strong>{' '}
-              {format(suggestedPurchaseDate, "EEEE, dd/MM", { locale: ptBR })}
+              {formatInBrasilia(suggestedPurchaseDate, "EEEE, dd/MM")}
             </span>
           </div>
         )}
@@ -218,7 +218,7 @@ export function PurchasePeriodSelector({ productions, onPeriodChange }: Purchase
               <div key={prod.id} className="flex items-center justify-between text-xs p-1.5 bg-background rounded border">
                 <span className="font-medium truncate flex-1">{prod.name}</span>
                 <span className="text-muted-foreground">
-                  {format(new Date(prod.scheduled_date), 'dd/MM')} • {prod.planned_quantity} un
+                  {formatInBrasilia(prod.scheduled_date, 'dd/MM')} • {prod.planned_quantity} un
                 </span>
               </div>
             ))}

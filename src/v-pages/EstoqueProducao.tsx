@@ -31,8 +31,7 @@ import { useProductionStock } from '@/hooks/useProductionStock';
 import { useStockRequests } from '@/hooks/useStockRequests';
 import { useStockVoiceControl } from '@/hooks/useStockVoiceControl';
 import { IngredientFileImportDialog, type ExtractedIngredient } from '@/components/IngredientFileImportDialog';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { formatInBrasilia } from '@/lib/utils';
 import { EmptyState } from '@/components/EmptyState';
 import { toast } from 'sonner';
 import { cn, getNow } from '@/lib/utils';
@@ -428,7 +427,7 @@ export default function EstoqueProducao() {
                           {remaining > 0 && request.status !== 'cancelled' && (
                             <span className="text-warning">Falta: {remaining.toFixed(1)}</span>
                           )}
-                          <span>{format(new Date(request.created_at), "dd/MM HH:mm", { locale: ptBR })}</span>
+                          <span>{formatInBrasilia(request.created_at, "dd/MM HH:mm")}</span>
                         </div>
                       </div>
                       {(request.status === 'pending' || request.status === 'partial') && (

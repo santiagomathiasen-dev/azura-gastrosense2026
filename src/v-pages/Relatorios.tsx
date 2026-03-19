@@ -26,7 +26,7 @@ import { useReports, DateRangeType } from '@/hooks/useReports';
 import { useProductCosts } from '@/hooks/useProductCosts';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn, getNow } from '@/lib/utils';
+import { cn, getNow, formatInBrasilia } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -160,7 +160,7 @@ export default function Relatorios() {
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${filename}_${format(getNow(), 'yyyy-MM-dd')}.csv`;
+    link.download = `${filename}_${formatInBrasilia(getNow(), 'yyyy-MM-dd')}.csv`;
     link.click();
   };
 
@@ -186,7 +186,7 @@ export default function Relatorios() {
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `planilha_financeira_${format(getNow(), 'yyyy-MM-dd')}.csv`;
+    link.download = `planilha_financeira_${formatInBrasilia(getNow(), 'yyyy-MM-dd')}.csv`;
     link.click();
   };
 
@@ -216,7 +216,7 @@ export default function Relatorios() {
           </div>
           <div className="text-right">
             <p className="text-sm font-bold">{activeTab.toUpperCase()} - RELATÓRIO</p>
-            <p className="text-xs text-muted-foreground">Gerado em: {format(getNow(), 'dd/MM/yyyy HH:mm')}</p>
+            <p className="text-xs text-muted-foreground">Gerado em: {formatInBrasilia(getNow(), 'dd/MM/yyyy HH:mm')}</p>
           </div>
         </div>
         <div className="mt-4 pt-2 border-t border-dashed border-gray-300">
@@ -225,7 +225,7 @@ export default function Relatorios() {
               dateRange === 'today' ? 'Hoje' :
               dateRange === 'week' ? 'Esta Semana' :
               dateRange === 'month' ? 'Este Mês' :
-              `${format(customStart || getNow(), 'dd/MM/yyyy')} até ${format(customEnd || getNow(), 'dd/MM/yyyy')}`
+              `${formatInBrasilia(customStart || getNow(), 'dd/MM/yyyy')} até ${formatInBrasilia(customEnd || getNow(), 'dd/MM/yyyy')}`
             }
           </p>
         </div>
