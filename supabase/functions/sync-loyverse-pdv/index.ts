@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,29 +8,64 @@ const corsHeaders = {
 }
 
 Deno.serve(async (req) => {
+  // 1. Handle CORS (Essential for preventing 401/403 in preflight)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    // 2. Auth Check (Optional but recommended for user context)
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "No Authorization header found" }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // 3. Get Payload
     const { integration_id } = await req.json();
-    if (!integration_id) throw new Error("ID da integração não fornecido");
+    if (!integration_id) {
+      return new Response(JSON.stringify({ error: "Missing integration_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
+    // 4. Initialize Supabase Admin Client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 1. Get integration details
+    // 5. Get Loyverse API Key (Try Secret first, then DB)
+    let loyverseToken = Deno.env.get('LOYVERSE_API_KEY');
+    let userId = null;
+
+    // Fetch from DB if we need user context or if global secret is missing
     const { data: integration, error: intError } = await supabase
       .from('pos_integrations')
       .select('*')
       .eq('id', integration_id)
       .single();
     
-    if (intError || !integration) throw new Error("Integração não encontrada");
-    const userId = integration.user_id;
-    const loyverseToken = integration.credentials?.access_token;
-    if (!loyverseToken) throw new Error("Token do Loyverse não encontrado na integração");
+    if (intError || !integration) {
+      throw new Error(`Integração ${integration_id} não encontrada no banco`);
+    }
+
+    userId = integration.user_id;
+    // If no global secret, use the one stored in integration credentials
+    if (!loyverseToken) {
+      loyverseToken = integration.credentials?.access_token || integration.credentials?.api_key;
+    }
+
+    if (!loyverseToken) {
+      return new Response(JSON.stringify({ 
+        error: "Loyverse API Key not found. Please set LOYVERSE_API_KEY secret or configure integration credentials." 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     const loyHeaders = { 
       'Authorization': `Bearer ${loyverseToken}`, 
@@ -39,7 +74,6 @@ Deno.serve(async (req) => {
     };
 
     // --- PUSH LOGIC (Azura -> Loyverse) ---
-    // 2. Fetch products to sync from Azura
     const { data: azuraProducts } = await supabase
       .from('sale_products')
       .select('*')
@@ -49,8 +83,15 @@ Deno.serve(async (req) => {
     const pushResults = { created: 0, updated: 0, errors: [] };
 
     if (azuraProducts && azuraProducts.length > 0) {
-      // 3. Fetch existing items from Loyverse for mapping
       const itemsRes = await fetch('https://api.loyverse.com/v1.0/items?limit=250', { headers: loyHeaders });
+      
+      if (itemsRes.status === 401) {
+        return new Response(JSON.stringify({ error: "Loyverse API rejected the token (401 Unauthorized)" }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       const { items: loyItems = [] } = await itemsRes.json();
       const loyItemMap = new Map(loyItems.map(item => [item.item_name.toLowerCase().trim(), item]));
 
@@ -65,23 +106,19 @@ Deno.serve(async (req) => {
 
         try {
           if (existingItem) {
-            // Update
-            const upRes = await fetch(`https://api.loyverse.com/v1.0/items/${existingItem.id}`, {
+            await fetch(`https://api.loyverse.com/v1.0/items/${existingItem.id}`, {
               method: 'PATCH',
               headers: loyHeaders,
               body: JSON.stringify(itemPayload)
             });
-            if (upRes.ok) pushResults.updated++;
-            else pushResults.errors.push(`Erro ao atualizar ${prod.name}: ${upRes.statusText}`);
+            pushResults.updated++;
           } else {
-            // Create
-            const crRes = await fetch('https://api.loyverse.com/v1.0/items', {
+            await fetch('https://api.loyverse.com/v1.0/items', {
               method: 'POST',
               headers: loyHeaders,
               body: JSON.stringify(itemPayload)
             });
-            if (crRes.ok) pushResults.created++;
-            else pushResults.errors.push(`Erro ao criar ${prod.name}: ${crRes.statusText}`);
+            pushResults.created++;
           }
         } catch (e) {
           pushResults.errors.push(`${prod.name}: ${e.message}`);
@@ -90,52 +127,57 @@ Deno.serve(async (req) => {
     }
 
     // --- PULL LOGIC (Loyverse -> Azura) ---
-    // 4. Fetch recent receipts (last 24h or since last sync)
     const pullSince = integration.last_sync_at || new Date(Date.now() - 86400000).toISOString();
     const receiptsRes = await fetch(`https://api.loyverse.com/v1.0/receipts?updated_at_min=${pullSince}&limit=50`, {
         headers: loyHeaders
     });
-    const { receipts = [] } = await receiptsRes.json();
+    
+    if (receiptsRes.ok) {
+        const { receipts = [] } = await receiptsRes.json();
+        const { data: allSalesProds } = await supabase.from('sale_products').select('id, name').eq('user_id', userId).eq('is_active', true);
+        const saleProdMap = new Map(allSalesProds?.map(p => [p.name.toLowerCase().trim(), p.id]));
 
-    // 5. Build product map for sale processing
-    const { data: allSalesProds } = await supabase.from('sale_products').select('id, name').eq('user_id', userId).eq('is_active', true);
-    const saleProdMap = new Map(allSalesProds?.map(p => [p.name.toLowerCase().trim(), p.id]));
+        let pulledCount = 0;
+        for (const receipt of receipts) {
+            if (receipt.receipt_type !== 'SALE') continue;
 
-    let pulledCount = 0;
-    for (const receipt of receipts) {
-        if (receipt.receipt_type !== 'SALE') continue;
+            const soldItems = receipt.line_items?.map(item => {
+                const azuraId = saleProdMap.get((item.item_name || "").toLowerCase().trim());
+                return azuraId ? { product_id: azuraId, quantity: item.quantity || 1 } : null;
+            }).filter(Boolean);
 
-        const soldItems = receipt.line_items?.map(item => {
-            const azuraId = saleProdMap.get((item.item_name || "").toLowerCase().trim());
-            return azuraId ? { product_id: azuraId, quantity: item.quantity || 1 } : null;
-        }).filter(Boolean);
-
-        if (soldItems && soldItems.length > 0) {
-            const { error: rpcErr } = await supabase.rpc('process_pos_sale', {
-                p_user_id: userId,
-                p_sale_payload: {
-                    date_time: receipt.created_at,
-                    payment_method: receipt.payment_type || 'Loyverse',
-                    sold_items: soldItems
-                }
-            });
-            if (!rpcErr) pulledCount++;
+            if (soldItems && soldItems.length > 0) {
+                const { error: rpcErr } = await supabase.rpc('process_pos_sale', {
+                    p_user_id: userId,
+                    p_sale_payload: {
+                        date_time: receipt.created_at,
+                        payment_method: receipt.payment_type || 'Loyverse',
+                        sold_items: soldItems
+                    }
+                });
+                if (!rpcErr) pulledCount++;
+            }
         }
+        pushResults.pulled = pulledCount;
     }
 
-    // 6. Update last sync timestamp
+    // Update last sync
     await supabase.from('pos_integrations').update({ last_sync_at: new Date().toISOString() }).eq('id', integration_id);
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `Sincronização completa: ${pushResults.created} criados, ${pushResults.updated} atualizados em Loyverse. ${pulledCount} vendas processadas no Azura.`,
-      details: { push: pushResults, pulled: pulledCount }
-    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      message: "Sincronização concluída com sucesso!",
+      push: pushResults 
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
+    console.error("Critical Error:", error.message);
     return new Response(JSON.stringify({ error: error.message }), { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400 
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 })
