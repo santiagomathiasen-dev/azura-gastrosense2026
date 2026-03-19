@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -19,27 +19,56 @@ export default function PaymentRequiredPage() {
     const [copied, setCopied] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [pixData, setPixData] = useState<{ qrCode: string, qrCodeBase64: string } | null>(null);
+    const [pixCopied, setPixCopied] = useState(false);
     
-    const pixKey = "santiago.aloom@gmail.com";
     const phone = "61982452669";
+
+    // Auto-redirect when payment is confirmed via Realtime
+    useEffect(() => {
+        if (!profile?.id) return;
+
+        const channel = supabase
+            .channel('profile_changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'profiles',
+                    filter: `id=eq.${profile.id}`
+                },
+                (payload) => {
+                    const newProfile = payload.new as any;
+                    if (newProfile.status_pagamento === true) {
+                        toast.success("Pagamento confirmado com sucesso!");
+                        router.push('/dashboard');
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [profile?.id, router]);
 
     const handleLogout = async () => {
         await logout();
         router.push('/auth');
     };
 
-    const handleCopyPix = () => {
-        navigator.clipboard.writeText(pixKey);
-        setCopied(true);
-        toast.success("Chave PIX copiada!");
-        setTimeout(() => setCopied(false), 2000);
+    const handleCopyPix = (text: string) => {
+        navigator.clipboard.writeText(text);
+        setPixCopied(true);
+        toast.success("Código PIX copiado!");
+        setTimeout(() => setPixCopied(false), 2000);
     };
 
     const handleVerifyPayment = async () => {
         setIsVerifying(true);
         const { data } = await refetch();
         
-        // If payment status updated or date is now in future
         const isPaid = data?.status_pagamento === true && (!data?.subscription_end_date || new Date(data.subscription_end_date) > new Date());
         
         if (isPaid) {
@@ -56,9 +85,10 @@ export default function PaymentRequiredPage() {
         window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
     };
 
-    const handleCheckout = async (planId: string, method: 'mercadopago' | 'paypal') => {
+    const handleCheckout = async (planId: string, method: 'mercadopago' | 'paypal' | 'pix') => {
         try {
             setLoading(true);
+            setPixData(null); // Reset pix data
             const { data: { user } } = await supabase.auth.getUser();
             
             if (!user) {
@@ -76,7 +106,14 @@ export default function PaymentRequiredPage() {
             });
 
             if (error) throw error;
-            if (data?.checkoutUrl) {
+
+            if (method === 'pix' && data?.qrCode) {
+                setPixData({
+                    qrCode: data.qrCode,
+                    qrCodeBase64: data.qrCodeBase64
+                });
+                toast.success("PIX Gerado! Pague agora para liberar o acesso.");
+            } else if (data?.checkoutUrl) {
                 window.open(data.checkoutUrl, '_blank');
             } else {
                 throw new Error("Não foi possível gerar o link de pagamento.");
@@ -101,32 +138,29 @@ export default function PaymentRequiredPage() {
                             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
                                 <ShieldCheck className="h-6 w-6 text-primary" />
                             </div>
-                            <h2 className="text-xl font-bold mb-4">Plano Pro</h2>
+                            <h2 className="text-xl font-bold mb-4 text-foreground">Plano Pro</h2>
+                            <p className="text-2xl font-bold text-primary mb-6">R$ 49,90 <span className="text-xs text-muted-foreground font-normal">/mês</span></p>
                             <ul className="space-y-4">
                                 <li className="flex gap-3 text-sm text-muted-foreground">
                                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                                    <span>Acesso total ao Dashboard e Relatórios</span>
+                                    <span>Dashboard e Relatórios Financeiros</span>
                                 </li>
                                 <li className="flex gap-3 text-sm text-muted-foreground">
                                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                                    <span>Gestão Completa de Estoque e Produção</span>
+                                    <span>Gestão de Estoque e Compras</span>
                                 </li>
                                 <li className="flex gap-3 text-sm text-muted-foreground">
                                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                                    <span>Fichas Técnicas e Cálculo de CMV</span>
+                                    <span>Engenharia de Cardápio (CVM)</span>
                                 </li>
                                 <li className="flex gap-3 text-sm text-muted-foreground">
                                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                                    <span>Suporte Prioritário via WhatsApp</span>
+                                    <span>Suporte via WhatsApp</span>
                                 </li>
                             </ul>
                         </div>
 
                         <div className="mt-8 pt-8 border-t border-border/50">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
-                                <Clock className="h-3 w-3" />
-                                <span>Teste grátis de 7 dias encerrado</span>
-                            </div>
                             <Button variant="ghost" className="w-full justify-start p-0 h-auto text-muted-foreground hover:text-destructive transition-colors text-xs" onClick={handleLogout}>
                                 <LogOut className="mr-2 h-3 w-3" />
                                 Sair da Conta
@@ -139,23 +173,25 @@ export default function PaymentRequiredPage() {
                         <div className="text-center md:text-left">
                             <CardTitle className="text-2xl font-bold tracking-tight text-foreground">Finalize sua Assinatura</CardTitle>
                             <CardDescription className="text-base mt-1">
-                                Escolha o método de pagamento para liberar seu acesso imediatamente.
+                                Libere seu acesso imediatamente com um dos métodos abaixo.
                             </CardDescription>
                         </div>
 
                         <div className="space-y-3">
+                            {/* PIX BUTTON */}
                             <Button 
-                                className="w-full h-14 justify-between px-6 bg-[#009EE3] hover:bg-[#0089C7] text-white font-bold text-lg rounded-xl transition-all shadow-md group"
-                                onClick={() => handleCheckout('pro', 'mercadopago')}
+                                className="w-full h-14 justify-between px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg rounded-xl transition-all shadow-md group"
+                                onClick={() => handleCheckout('pro', 'pix')}
                                 disabled={loading}
                             >
                                 <span className="flex items-center gap-3">
-                                    {loading ? <RefreshCw className="h-6 w-6 animate-spin" /> : <Wallet className="h-6 w-6" />}
-                                    Mercado Pago
+                                    {loading ? <RefreshCw className="h-6 w-6 animate-spin" /> : <QrCode className="h-6 w-6" />}
+                                    Pagar com PIX
                                 </span>
-                                <span className="text-sm font-normal opacity-0 group-hover:opacity-100 transition-opacity underline">Pagar agora →</span>
+                                <span className="text-sm font-normal opacity-0 group-hover:opacity-100 transition-opacity underline">Gerar QR →</span>
                             </Button>
 
+                            {/* PAYPAL BUTTON */}
                             <Button 
                                 className="w-full h-14 justify-between px-6 bg-[#003087] hover:bg-[#00246B] text-white font-bold text-lg rounded-xl transition-all shadow-md group"
                                 onClick={() => handleCheckout('pro', 'paypal')}
@@ -163,46 +199,73 @@ export default function PaymentRequiredPage() {
                             >
                                 <span className="flex items-center gap-3">
                                     {loading ? <RefreshCw className="h-6 w-6 animate-spin" /> : <CreditCard className="h-6 w-6" />}
-                                    PayPal / Cartão
+                                    Cartão / PayPal
                                 </span>
-                                <span className="text-sm font-normal opacity-0 group-hover:opacity-100 transition-opacity underline">Checkout →</span>
+                                <span className="text-sm font-normal opacity-0 group-hover:opacity-100 transition-opacity underline">Pagar →</span>
+                            </Button>
+
+                            {/* MERCADO PAGO FALLBACK */}
+                            <Button 
+                                variant="outline"
+                                className="w-full h-12 justify-center px-6 border-blue-200 hover:bg-blue-50 text-blue-600 font-medium rounded-xl transition-all"
+                                onClick={() => handleCheckout('pro', 'mercadopago')}
+                                disabled={loading}
+                            >
+                                Pagar com Mercado Pago
                             </Button>
                         </div>
 
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-border/50" />
-                            </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card px-2 text-muted-foreground">Ou via PIX</span>
-                            </div>
-                        </div>
-
-                        <div className="bg-muted/30 p-4 rounded-xl border border-border/50 space-y-3 shadow-inner">
-                            <div className="flex items-center justify-between gap-3 bg-background p-3 rounded-lg border border-primary/20 shadow-sm">
-                                <div className="flex items-center gap-2">
-                                    <QrCode className="h-4 w-4 text-primary" />
-                                    <code className="text-sm font-mono font-bold text-primary select-all">{pixKey}</code>
+                        {/* PIX DISPLAY AREA */}
+                        {pixData && (
+                            <div className="bg-emerald-50 p-6 rounded-2xl border-2 border-emerald-100 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                                <div className="text-center space-y-2">
+                                    <p className="text-sm font-bold text-emerald-800 uppercase tracking-wider">Escaneie o QR Code</p>
+                                    <div className="bg-white p-4 rounded-xl shadow-sm inline-block border border-emerald-200">
+                                        <img 
+                                            src={`data:image/jpeg;base64,${pixData.qrCodeBase64}`} 
+                                            alt="PIX QR Code" 
+                                            className="w-48 h-48 mx-auto"
+                                        />
+                                    </div>
                                 </div>
-                                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 hover:bg-primary/10 hover:text-primary transition-colors" onClick={handleCopyPix}>
-                                    {copied ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                                </Button>
+                                
+                                <div className="space-y-2">
+                                    <p className="text-xs font-medium text-emerald-700 text-center uppercase">Ou copie o código:</p>
+                                    <div className="flex items-center gap-2 bg-white p-3 rounded-lg border border-emerald-200 shadow-inner">
+                                        <code className="text-[10px] font-mono font-bold text-emerald-900 break-all line-clamp-2 flex-1">
+                                            {pixData.qrCode}
+                                        </code>
+                                        <Button 
+                                            size="icon" 
+                                            variant="ghost" 
+                                            className="h-10 w-10 shrink-0 text-emerald-600 hover:bg-emerald-50" 
+                                            onClick={() => handleCopyPix(pixData.qrCode)}
+                                        >
+                                            {pixCopied ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <Copy className="h-5 w-5" />}
+                                        </Button>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center justify-center gap-2 text-xs text-emerald-600 font-medium animate-pulse">
+                                    <Clock className="h-3 w-3" />
+                                    <span>Aguardando confirmação...</span>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-3 mt-auto">
                             <Button
-                                variant="outline"
-                                className="h-12 gap-2 border-border/50 hover:bg-accent transition-all font-medium text-sm"
+                                variant="ghost"
+                                className="h-12 gap-2 text-muted-foreground hover:bg-accent transition-all font-medium text-sm"
                                 onClick={handleVerifyPayment}
                                 disabled={isVerifying}
                             >
                                 <RefreshCw className={cn("h-4 w-4", isVerifying && "animate-spin")} />
-                                {isVerifying ? 'Verificando...' : 'Já Paguei'}
+                                Verificar Agora
                             </Button>
                             <Button
-                                variant="outline"
-                                className="h-12 gap-2 border-green-500/30 text-green-600 hover:bg-green-50 hover:text-green-700 hover:border-green-500 transition-all font-medium text-sm"
+                                variant="ghost"
+                                className="h-12 gap-2 text-green-600 hover:bg-green-50 hover:text-green-700 transition-all font-medium text-sm"
                                 onClick={openWhatsApp}
                             >
                                 <MessageSquare className="h-4 w-4" />

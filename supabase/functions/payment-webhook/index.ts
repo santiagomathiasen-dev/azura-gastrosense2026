@@ -12,76 +12,67 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const action = url.searchParams.get("topic") || url.searchParams.get("type"); // MercadoPago usually sends type or topic in URL
-    
-    // Parse the webhook payload
     const body = await req.json();
-    console.log("Recebido Webhook do MP:", body);
-    
-    // Validar se é uma notificação de pagamento
-    if (body.type === 'payment' || body.topic === 'payment' || body.action === 'payment.created' || body.action === 'payment.updated') {
-        const paymentId = body.data?.id;
-        
-        if (!paymentId) return new Response('No payment ID found', { status: 400, headers: corsHeaders });
+    console.log("Webhook Received:", body);
 
-        const mpAccessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN');
-        if (!mpAccessToken) throw new Error("Missing MP Token");
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // Obter detalhes do pagamento
-        const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-            headers: { 'Authorization': `Bearer ${mpAccessToken}` }
-        });
-        
-        const paymentData = await paymentResponse.json();
-        
-        // Verificar se pagamento foi aprovado
-        if (paymentData.status === 'approved') {
-            const externalReference = paymentData.external_reference; // Que nós definimos como o USER ID
-            
-            if (!externalReference) {
-                console.error("Payment approved, but no external_reference (user id) found.");
-                return new Response('No external reference', { status: 200, headers: corsHeaders });
-            }
+    let userId = null;
+    let provider = null;
 
-            console.log(`Payment approved for User ID: ${externalReference}. Updating database...`);
-
-            // Conectar ao banco via Service Role para bypass no RLS e fazer a tabela de updates
-            const supabaseUrl = Deno.env.get('SUPABASE_DB_URL') || Deno.env.get('SUPABASE_URL') || '';
-            const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-            
-            if (!supabaseUrl || !supabaseKey) {
-                 throw new Error("Missing Supabase Env variables for Service Role");
-            }
-            
-            const supabase = createClient(supabaseUrl, supabaseKey);
-            
-            // Adicionar 30 dias (ou 1 ano) ao vencimento atual a partir de hoje
-            const newExpiryDate = new Date();
-            newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
-
-            const { error: updateError } = await supabase
-                .from('profiles')
-                .update({ 
-                    status_pagamento: true,
-                    subscription_end_date: newExpiryDate.toISOString()
-                })
-                .eq('id', externalReference);
-
-            if (updateError) {
-                console.error("Error updating profile:", updateError);
-                throw new Error("Failed to update profile");
-            }
-            
-            console.log("Profile successfully updated and access liberated!");
-        }
+    // 1. PAYPAL WEBHOOK
+    if (body.event_type === 'CHECKOUT.ORDER.APPROVED' || body.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
+      provider = 'paypal';
+      const resource = body.resource;
+      // PayPal context: custom_id was set to userId during order creation
+      userId = resource.custom_id || (resource.purchase_units && resource.purchase_units[0]?.custom_id);
+      
+      console.log(`PayPal Payment Approved for User: ${userId}`);
     }
 
-    // Sempre responda 200 pro MP saber que recebemos
+    // 2. MERCADO PAGO WEBHOOK (PIX or Preference)
+    else if (body.type === 'payment' || body.action?.startsWith('payment.')) {
+      provider = 'mercadopago';
+      const paymentId = body.data?.id || body.id;
+      const mpAccessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN');
+
+      if (paymentId && mpAccessToken) {
+        const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+          headers: { 'Authorization': `Bearer ${mpAccessToken}` }
+        });
+        const paymentData = await paymentResponse.json();
+
+        if (paymentData.status === 'approved') {
+          userId = paymentData.external_reference;
+          console.log(`Mercado Pago Payment Approved for User: ${userId}`);
+        }
+      }
+    }
+
+    // 3. UPDATE USER PROFILE
+    if (userId) {
+      const newExpiryDate = new Date();
+      newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          status_pagamento: true,
+          subscription_end_date: newExpiryDate.toISOString()
+        })
+        .eq('id', userId);
+
+      if (updateError) throw updateError;
+      console.log(`Access liberated for user ${userId} via ${provider}`);
+    }
+
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
-    })
+    });
+
   } catch (error) {
     console.error("Webhook Error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
