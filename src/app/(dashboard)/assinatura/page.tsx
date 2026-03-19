@@ -1,197 +1,271 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useProfile } from "@/hooks/useProfile";
-import { 
-  CreditCard, 
-  CheckCircle2, 
-  Clock, 
-  ShieldCheck, 
-  Wallet, 
-  QrCode, 
-  MessageSquare,
-  Copy,
-  Calendar,
-  RefreshCw
+import { usePlanLimits, PLAN_PRICES } from "@/hooks/usePlanLimits";
+import {
+  CheckCircle2, XCircle, Clock, ShieldCheck, Wallet, CreditCard,
+  MessageSquare, Copy, RefreshCw, Zap, Star, Rocket
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+
+const plans = [
+  {
+    id: 'gratis',
+    icon: Clock,
+    name: 'Grátis',
+    price: 0,
+    period: '7 dias',
+    description: 'Teste todas as funcionalidades por 7 dias sem custos.',
+    color: 'text-muted-foreground',
+    border: 'border-border/50',
+    badge: null,
+    features: [
+      { label: 'Todas as funcionalidades', ok: true },
+      { label: '5 fichas técnicas', ok: true },
+      { label: '1 gestor', ok: true },
+      { label: '1 colaborador', ok: true },
+      { label: 'Bloqueio após 7 dias', ok: false },
+      { label: 'Dados podem ser apagados', ok: false },
+    ],
+  },
+  {
+    id: 'pro',
+    icon: Star,
+    name: 'Pro',
+    price: 197,
+    period: 'mês',
+    description: 'Para operações em crescimento com limites generosos.',
+    color: 'text-blue-600',
+    border: 'border-blue-400',
+    badge: 'Mais popular',
+    features: [
+      { label: 'Todas as funcionalidades', ok: true },
+      { label: '50 fichas técnicas', ok: true },
+      { label: '2 gestores', ok: true },
+      { label: '3 colaboradores', ok: true },
+      { label: 'Sem bloqueio por tempo', ok: true },
+      { label: 'Suporte prioritário', ok: true },
+    ],
+  },
+  {
+    id: 'ultra',
+    icon: Rocket,
+    name: 'Ultra',
+    price: 397,
+    period: 'mês',
+    description: 'Operações exigentes. Sem limites, sem restrições.',
+    color: 'text-amber-500',
+    border: 'border-amber-400',
+    badge: 'Sem limites',
+    features: [
+      { label: 'Todas as funcionalidades', ok: true },
+      { label: 'Fichas técnicas ilimitadas', ok: true },
+      { label: 'Gestores ilimitados', ok: true },
+      { label: 'Colaboradores ilimitados', ok: true },
+      { label: 'Sem bloqueio por tempo', ok: true },
+      { label: 'Suporte dedicado 24h', ok: true },
+    ],
+  },
+];
+
+const pixKey = "santiago.aloom@gmail.com";
+const phone = "61982452669";
 
 export default function AssinaturaPage() {
-    const { profile } = useProfile();
-    const [copied, setCopied] = useState(false);
-    const [loading, setLoading] = useState(false);
-    
-    const pixKey = "santiago.aloom@gmail.com";
-    const phone = "61982452669";
+  const { profile } = useProfile();
+  const { plan: currentPlan, isTrialExpired } = usePlanLimits();
+  const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
-    const handleCopyPix = () => {
-        navigator.clipboard.writeText(pixKey);
-        setCopied(true);
-        toast.success("Chave PIX copiada!");
-        setTimeout(() => setCopied(false), 2000);
-    };
+  const handleCopyPix = () => {
+    navigator.clipboard.writeText(pixKey);
+    setCopied(true);
+    toast.success("Chave PIX copiada!");
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-    const openWhatsApp = () => {
-        const message = "Olá, gostaria de falar sobre minha assinatura do Azura.";
-        window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
-    };
-    
-    const handleCheckout = async (planId: string, method: 'mercadopago' | 'paypal') => {
-        try {
-            setLoading(true);
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            if (!user) {
-                toast.error("Você precisa estar logado para assinar.");
-                return;
-            }
+  const openWhatsApp = (planName?: string) => {
+    const msg = planName
+      ? `Olá! Gostaria de assinar o plano ${planName} do Azura GastroSense.`
+      : "Olá, gostaria de falar sobre minha assinatura do Azura.";
+    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
 
-            const { data, error } = await supabase.functions.invoke('create-checkout', {
-                body: { 
-                    userId: user.id, 
-                    planId, 
-                    userEmail: user.email,
-                    paymentMethod: method 
-                }
-            });
+  const handleCheckout = async (planId: string, method: 'mercadopago' | 'paypal') => {
+    const key = `${planId}-${method}`;
+    try {
+      setLoading(key);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error("Você precisa estar logado."); return; }
 
-            if (error) throw error;
-            if (data?.checkoutUrl) {
-                window.open(data.checkoutUrl, '_blank');
-            } else {
-                throw new Error("Não foi possível gerar o link de pagamento.");
-            }
-        } catch (error: any) {
-            console.error("Checkout error:", error);
-            toast.error(error.message || "Erro ao processar checkout");
-        } finally {
-            setLoading(false);
-        }
-    };
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { userId: user.id, planId, userEmail: user.email, paymentMethod: method }
+      });
 
-    const isTrial = !profile?.status_pagamento;
-    const expiryDate = profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
-    const isExpired = expiryDate ? expiryDate < new Date() : false;
+      if (error) throw error;
+      if (data?.checkoutUrl) {
+        window.open(data.checkoutUrl, '_blank');
+      } else {
+        throw new Error("Não foi possível gerar o link de pagamento.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao processar checkout");
+    } finally {
+      setLoading(null);
+    }
+  };
 
-    return (
-        <div className="p-6 space-y-6 max-w-5xl mx-auto">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight">Minha Assinatura</h1>
-                <p className="text-muted-foreground text-lg">Gerencie seu plano e pagamentos do Azura GastroSense.</p>
-            </div>
+  return (
+    <div className="p-6 space-y-8 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="space-y-1">
+        <h1 className="text-3xl font-bold tracking-tight">Assinatura</h1>
+        <p className="text-muted-foreground text-base">
+          Escolha o plano ideal para o seu negócio gastronômico.
+        </p>
+      </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
-                {/* STATUS CARD */}
-                <Card className="md:col-span-1 border-primary/20 bg-primary/5 shadow-md">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <ShieldCheck className="h-5 w-5 text-primary" />
-                            Status Atual
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Plano</p>
-                            <p className="text-2xl font-bold text-primary">Azura Pro</p>
-                        </div>
-                        
-                        <div className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Estado</p>
-                            <div className="flex items-center gap-2">
-                                {isTrial ? (
-                                    <span className="flex items-center gap-2 text-amber-600 font-semibold bg-amber-50 px-3 py-1 rounded-full text-sm border border-amber-200">
-                                        <Clock className="h-4 w-4" />
-                                        Período de Teste
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-2 text-green-600 font-semibold bg-green-50 px-3 py-1 rounded-full text-sm border border-green-200">
-                                        <CheckCircle2 className="h-4 w-4" />
-                                        Assinatura Ativa
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-
-                        {expiryDate && (
-                            <div className="space-y-1">
-                                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Vencimento</p>
-                                <div className="flex items-center gap-2 text-foreground font-medium">
-                                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                                    {format(expiryDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                                </div>
-                                {isExpired && <p className="text-xs text-destructive font-bold mt-1">Sua assinatura expirou!</p>}
-                            </div>
-                        )}
-                    </CardContent>
-                    <CardFooter className="pt-0">
-                        <Button variant="outline" className="w-full text-xs h-8" onClick={openWhatsApp}>
-                            Alterar Plano / Cancelar
-                        </Button>
-                    </CardFooter>
-                </Card>
-
-                {/* PAYMENT OPTIONS */}
-                <Card className="md:col-span-2 shadow-sm border-border/50 overflow-hidden">
-                    <CardHeader className="bg-muted/30 border-b border-border/50">
-                        <CardTitle className="text-xl">Opções de Pagamento</CardTitle>
-                        <CardDescription>Escolha como deseja realizar a renovação ou upgrade da sua conta.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                        <div className="grid sm:grid-cols-2 gap-4">
-                            <div className="space-y-3">
-                                <Button 
-                                    className="w-full h-12 justify-center gap-3 bg-[#009EE3] hover:bg-[#0089C7] text-white font-bold rounded-lg transition-all shadow-sm"
-                                    onClick={() => handleCheckout('pro', 'mercadopago')}
-                                    disabled={loading}
-                                >
-                                    {loading ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Wallet className="h-5 w-5" />}
-                                    Mercado Pago
-                                </Button>
-
-                                <Button 
-                                    className="w-full h-12 justify-center gap-3 bg-[#003087] hover:bg-[#00246B] text-white font-bold rounded-lg transition-all shadow-sm"
-                                    onClick={() => handleCheckout('pro', 'paypal')}
-                                    disabled={loading}
-                                >
-                                    {loading ? <RefreshCw className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
-                                    PayPal / Cartão
-                                </Button>
-                            </div>
-
-                            <div className="bg-muted/40 p-4 rounded-xl border border-border/50 space-y-3 shadow-inner flex flex-col justify-center">
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] text-center">Pagamento via PIX</p>
-                                <div className="flex items-center justify-between gap-3 bg-background p-3 rounded-lg border border-primary/20 shadow-sm">
-                                    <code className="text-xs font-mono font-bold text-primary select-all truncate">{pixKey}</code>
-                                    <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 hover:bg-primary/10 hover:text-primary" onClick={handleCopyPix}>
-                                        {copied ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                                    </Button>
-                                </div>
-                                <p className="text-[10px] text-center text-muted-foreground leading-tight">
-                                    Envie o comprovante via WhatsApp para liberação manual imediata.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="mt-8 p-4 bg-primary/5 rounded-lg border border-primary/10">
-                            <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
-                                <MessageSquare className="h-4 w-4 text-primary" />
-                                Precisa de ajuda com o pagamento?
-                            </h3>
-                            <p className="text-xs text-muted-foreground mb-4">
-                                Nosso suporte financeiro está disponível para tirar dúvidas sobre faturamento, notas fiscais e formas de pagamento customizadas.
-                            </p>
-                            <Button className="bg-green-600 hover:bg-green-700 h-9 text-xs" onClick={openWhatsApp}>
-                                Falar com Suporte WhatsApp
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+      {/* Status atual */}
+      <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/15">
+        <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
+        <div className="flex-1">
+          <span className="text-sm text-muted-foreground">Seu plano atual: </span>
+          <span className="font-bold text-primary capitalize">{PLAN_PRICES[currentPlan]?.label || 'Grátis'}</span>
+          {isTrialExpired && (
+            <span className="ml-3 text-xs text-destructive font-semibold bg-destructive/10 px-2 py-0.5 rounded-full">
+              Trial expirado — faça upgrade para continuar
+            </span>
+          )}
         </div>
-    );
+      </div>
+
+      {/* Plan cards */}
+      <div className="grid md:grid-cols-3 gap-6">
+        {plans.map((plan) => {
+          const Icon = plan.icon;
+          const isCurrent = currentPlan === plan.id;
+          const isSelected = selectedPlan === plan.id;
+
+          return (
+            <Card
+              key={plan.id}
+              onClick={() => { if (plan.id !== 'gratis') setSelectedPlan(plan.id); }}
+              className={`relative flex flex-col border-2 transition-all duration-200 cursor-pointer
+                ${isCurrent ? 'ring-2 ring-primary ring-offset-2' : ''}
+                ${isSelected ? 'shadow-xl scale-[1.02]' : 'hover:shadow-md hover:scale-[1.01]'}
+                ${plan.border}
+              `}
+            >
+              {/* Badge top */}
+              {plan.badge && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <Badge className={`text-xs px-3 py-0.5 ${plan.id === 'pro' ? 'bg-blue-600' : 'bg-amber-500'} text-white border-0`}>
+                    {plan.badge}
+                  </Badge>
+                </div>
+              )}
+              {isCurrent && (
+                <div className="absolute -top-3 right-4">
+                  <Badge className="text-xs px-3 py-0.5 bg-primary text-primary-foreground border-0">Atual</Badge>
+                </div>
+              )}
+
+              <CardHeader className="pb-2 pt-6">
+                <div className={`flex items-center gap-2 ${plan.color}`}>
+                  <Icon className="h-5 w-5" />
+                  <CardTitle className="text-xl">{plan.name}</CardTitle>
+                </div>
+                <div className="mt-2">
+                  {plan.price === 0 ? (
+                    <p className="text-3xl font-extrabold">Grátis</p>
+                  ) : (
+                    <p className="text-3xl font-extrabold">
+                      R$ {plan.price.toLocaleString('pt-BR')}
+                      <span className="text-base font-normal text-muted-foreground">/{plan.period}</span>
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
+                </div>
+              </CardHeader>
+
+              <CardContent className="flex-1 py-4">
+                <ul className="space-y-2">
+                  {plan.features.map((feat, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      {feat.ok
+                        ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                        : <XCircle className="h-4 w-4 text-destructive/60 shrink-0" />
+                      }
+                      <span className={feat.ok ? '' : 'text-muted-foreground line-through'}>{feat.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+
+              <CardFooter className="flex flex-col gap-2 pt-0">
+                {plan.id === 'gratis' ? (
+                  <Button variant="outline" className="w-full" disabled>
+                    {isCurrent ? 'Plano atual' : 'Indisponível'}
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      className="w-full h-11 bg-[#009EE3] hover:bg-[#0089C7] text-white font-bold gap-2"
+                      onClick={(e) => { e.stopPropagation(); handleCheckout(plan.id, 'mercadopago'); }}
+                      disabled={!!loading}
+                    >
+                      {loading === `${plan.id}-mercadopago` ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
+                      Mercado Pago
+                    </Button>
+                    <Button
+                      className="w-full h-11 bg-[#003087] hover:bg-[#00246B] text-white font-bold gap-2"
+                      onClick={(e) => { e.stopPropagation(); handleCheckout(plan.id, 'paypal'); }}
+                      disabled={!!loading}
+                    >
+                      {loading === `${plan.id}-paypal` ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                      PayPal / Cartão
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full h-9 text-xs gap-2"
+                      onClick={(e) => { e.stopPropagation(); openWhatsApp(plan.name); }}
+                    >
+                      <MessageSquare className="h-3 w-3" /> PIX / WhatsApp
+                    </Button>
+                  </>
+                )}
+              </CardFooter>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* PIX info section */}
+      <Card className="border-border/40 bg-muted/20">
+        <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex-1 space-y-1">
+            <p className="text-sm font-semibold">Pagamento via PIX</p>
+            <p className="text-xs text-muted-foreground">
+              Envie para a chave abaixo e encaminhe o comprovante pelo WhatsApp para liberação manual imediata.
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <code className="text-sm font-mono font-bold text-primary select-all">{pixKey}</code>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleCopyPix}>
+                {copied ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
+          </div>
+          <Button className="bg-green-600 hover:bg-green-700 gap-2 shrink-0" onClick={() => openWhatsApp()}>
+            <MessageSquare className="h-4 w-4" /> Falar no WhatsApp
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

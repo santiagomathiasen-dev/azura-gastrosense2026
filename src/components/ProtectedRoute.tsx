@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useProfile } from '@/hooks/useProfile';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -25,6 +26,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isCollaboratorMode, hasAccess } = useCollaboratorContext();
   const { isAdmin, isLoading: roleLoading } = useUserRole();
   const { profile, isLoading: profileLoading } = useProfile();
+  const { isTrialExpired } = usePlanLimits();
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
   const pathname = usePathname();
 
@@ -133,8 +135,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       );
     }
 
-    if (isPaymentPending && pathname !== '/payment-required') {
-      console.log("ProtectedRoute: Payment pending or trial expired, redirecting to /payment-required");
+    // Block expired Grátis trial users
+    if ((isTrialExpired || isPaymentPending) && pathname !== '/payment-required') {
+      console.log("ProtectedRoute: Trial/payment expired → /payment-required");
       return <Navigate to="/payment-required" replace />;
     }
   }
