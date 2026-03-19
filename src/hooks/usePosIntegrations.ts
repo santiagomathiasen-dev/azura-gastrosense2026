@@ -111,10 +111,10 @@ export function usePosIntegrations() {
     
     const syncIntegration = useMutation({
         mutationFn: async (id: string) => {
-            const data = await supabaseFetch('functions/v1/sync-loyverse-pdv', {
-                method: 'POST',
-                body: JSON.stringify({ integration_id: id })
+            const { data, error } = await supabase.functions.invoke('sync-loyverse-pdv', {
+                body: { integration_id: id }
             });
+            if (error) throw error;
             return data;
         },
         onSuccess: (data) => {
