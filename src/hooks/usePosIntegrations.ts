@@ -3,6 +3,7 @@ import { useAuth } from './useAuth';
 import { useOwnerId } from './useOwnerId';
 import { toast } from 'sonner';
 import { supabaseFetch } from '@/lib/supabase-fetch';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface PosIntegration {
     id: string;
@@ -110,18 +111,19 @@ export function usePosIntegrations() {
     
     const syncIntegration = useMutation({
         mutationFn: async (id: string) => {
-            // Lógica de Sincronização Simulada. (Aqui chamaria a API Edge function real)
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            await supabaseFetch(`pos_integrations?id=eq.${id}`, {
-                method: 'PATCH',
-                body: JSON.stringify({ last_sync_at: new Date().toISOString() })
+            const { data, error } = await supabase.functions.invoke('sync-loyverse-pdv', {
+                body: { integration_id: id }
             });
+
+            if (error) throw error;
+            return data;
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['pos_integrations'] });
-            toast.success('Produtos sincronizados com o PDV com sucesso!');
+            toast.success(data.message || 'Sincronização concluída com sucesso!');
         },
         onError: (err: Error) => {
+            console.error('Sync Error:', err);
             toast.error(`Erro na sincronização: ${err.message}`);
         },
     });
