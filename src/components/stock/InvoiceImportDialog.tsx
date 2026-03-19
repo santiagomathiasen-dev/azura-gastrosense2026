@@ -62,6 +62,26 @@ export function InvoiceImportDialog({
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
+  const handleComplete = useCallback((data: any) => {
+    setNfeData(data);
+    
+    // Auto-match items by name
+    const initialMapping = data.items.map((item: any) => {
+      const match = existingItems.find(
+        ei => ei.name.toLowerCase() === item.name.toLowerCase()
+      );
+      return {
+        ...item,
+        matchedId: match ? match.id : null,
+        category: match ? match.category as StockCategory : (item.category || 'outros') as StockCategory
+      };
+    });
+    
+    setMappedItems(initialMapping);
+    setStep('mapping');
+    toast.success('Nota Fiscal processada pela IA!');
+  }, [existingItems]);
+
   // Realtime Subscription
   useEffect(() => {
     if (!importId || step !== 'ai_processing') return;
@@ -94,26 +114,6 @@ export function InvoiceImportDialog({
       supabase.removeChannel(channel);
     };
   }, [importId, step, handleComplete, resetState]);
-
-  const handleComplete = useCallback((data: any) => {
-    setNfeData(data);
-    
-    // Auto-match items by name
-    const initialMapping = data.items.map((item: any) => {
-      const match = existingItems.find(
-        ei => ei.name.toLowerCase() === item.name.toLowerCase()
-      );
-      return {
-        ...item,
-        matchedId: match ? match.id : null,
-        category: match ? match.category as StockCategory : (item.category || 'outros') as StockCategory
-      };
-    });
-    
-    setMappedItems(initialMapping);
-    setStep('mapping');
-    toast.success('Nota Fiscal processada pela IA!');
-  }, [existingItems]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
