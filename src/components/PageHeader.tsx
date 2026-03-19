@@ -8,6 +8,7 @@ interface PageHeaderProps {
     label: string;
     onClick: () => void;
     icon?: LucideIcon;
+    disabled?: boolean;
   };
   children?: React.ReactNode;
 }
@@ -26,7 +27,11 @@ export function PageHeader({ title, description, action, children }: PageHeaderP
       <div className="flex flex-wrap items-center gap-2">
         {children}
         {action && (
-          <Button onClick={action.onClick} className="w-full sm:w-auto shadow-sm">
+          <Button 
+            onClick={action.onClick} 
+            disabled={action.disabled}
+            className="w-full sm:w-auto shadow-sm"
+          >
             <ActionIcon className="h-4 w-4 mr-2" />
             {action.label}
           </Button>

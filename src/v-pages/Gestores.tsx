@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Search, Users, ShieldAlert, Plus, Pencil, Trash2, KeyRound, Shield, Eye, EyeOff } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useUserRole } from '@/hooks/useUserRole';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -44,6 +45,7 @@ export default function Gestores() {
   const navigate = (p: string) => router.push(p);
   const { profile: currentProfile, isLoading: profileLoading } = useProfile();
   const { isAdmin } = useUserRole();
+  const { canCreate, limits } = usePlanLimits();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -82,7 +84,9 @@ export default function Gestores() {
   const isSantiago = currentProfile?.email === 'santiago.aloom@gmail.com';
   const isOwnerRole = (currentProfile?.role as string) === 'owner' || (currentProfile?.role as string) === 'admin';
   // Allow access if admin, santiago, owner, OR if we are in development/bypass mode (no profile yet)
-  const hasAccess = isSantiago || isAdmin || isOwnerRole || (!currentProfile && !profileLoading);
+  const hasAccessAccess = isSantiago || isAdmin || isOwnerRole || (!currentProfile && !profileLoading);
+
+  const totalGestores = profiles.filter(p => p.role === 'gestor').length;
 
   if (isLoading || profileLoading) {
     return (
@@ -92,7 +96,7 @@ export default function Gestores() {
     );
   }
 
-  if (!hasAccess) {
+  if (!hasAccessAccess) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <ShieldAlert className="h-12 w-12 text-destructive mb-4" />
@@ -103,6 +107,10 @@ export default function Gestores() {
   }
 
   const handleOpenCreate = () => {
+    if (!canCreate('gestores', totalGestores)) {
+      toast.error(`Limite de gestores alcançado (${limits.gestores}). Faça upgrade do seu plano.`);
+      return;
+    }
     setEditingGestor(null);
     setName('');
     setEmail('');
@@ -148,11 +156,12 @@ export default function Gestores() {
     <div className="space-y-6">
       <PageHeader
         title="Gestão de Gestores"
-        description="Controle quem são os administradores de unidades e suas permissões"
+        description={`Controle quem são os administradores (${totalGestores}/${limits.gestores === Infinity ? '∞' : limits.gestores})`}
         action={{
           label: 'Novo Gestor',
           onClick: handleOpenCreate,
           icon: Plus,
+          disabled: !canCreate('gestores', totalGestores)
         }}
       />
 

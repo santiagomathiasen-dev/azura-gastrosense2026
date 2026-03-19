@@ -13,6 +13,7 @@ import { Plus, Pencil, Trash2, KeyRound, Users, Shield, Eye, EyeOff } from 'luci
 import { EmptyState } from '@/components/EmptyState';
 import { Loader2 } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { toast } from 'sonner';
 
 const defaultPermissions: CollaboratorPermissions = {
@@ -43,6 +44,7 @@ const permissionLabels: Record<keyof CollaboratorPermissions, string> = {
 
 export default function Colaboradores() {
   const { collaborators, isLoading, createCollaborator, updateCollaborator, deleteCollaborator, toggleActive } = useCollaborators();
+  const { canCreate, limits } = usePlanLimits();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCollaborator, setEditingCollaborator] = useState<Collaborator | null>(null);
   const [name, setName] = useState('');
@@ -57,6 +59,10 @@ export default function Colaboradores() {
   const [permissions, setPermissions] = useState<CollaboratorPermissions>(defaultPermissions);
 
   const handleOpenCreate = () => {
+    if (!canCreate('colaboradores', collaborators.length)) {
+      toast.error(`Limite de colaboradores alcançado (${limits.colaboradores}). Faça upgrade do seu plano.`);
+      return;
+    }
     setEditingCollaborator(null);
     setName('');
     setEmail('');
@@ -103,6 +109,10 @@ export default function Colaboradores() {
 
     // For new collaborators, email and password are required along with PIN
     if (!editingCollaborator) {
+      if (!canCreate('colaboradores', collaborators.length)) {
+        toast.error(`Limite de colaboradores alcançado (${limits.colaboradores}). Faça upgrade do seu plano.`);
+        return;
+      }
       if (!email.trim() || !password.trim()) {
         toast.error('Email e senha são obrigatórios');
         return;
@@ -162,11 +172,12 @@ export default function Colaboradores() {
     <div className="space-y-4 md:space-y-6">
       <PageHeader
         title="Colaboradores"
-        description="Gerencie os colaboradores e suas permissões de acesso"
+        description={`Gerencie quem opera seu sistema (${collaborators.length}/${limits.colaboradores === Infinity ? '∞' : limits.colaboradores})`}
         action={{
           label: 'Novo Colaborador',
           onClick: handleOpenCreate,
           icon: Plus,
+          disabled: !canCreate('colaboradores', collaborators.length)
         }}
       />
 

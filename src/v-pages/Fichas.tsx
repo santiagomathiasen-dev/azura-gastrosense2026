@@ -33,6 +33,8 @@ import { StageDisplay } from '@/components/fichas/StageDisplay';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import type { ExtractedIngredient, RecipeData } from '@/hooks/useIngredientImport';
+import { useProfile } from '@/hooks/useProfile';
+import { usePlanLimits, PLAN_PRICES } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 
 const calcularCustoTotal = (sheet: TechnicalSheetWithIngredients) => {
@@ -49,6 +51,7 @@ const calcularCustoPorcao = (sheet: TechnicalSheetWithIngredients) => {
 export default function Fichas() {
   const { sheets, isLoading, isOwnerLoading, createSheet, updateSheet, deleteSheet, addIngredient, removeIngredient } = useTechnicalSheets();
   const { items: stockItems, isOwnerLoading: stockOwnerLoading, createItem: createStockItem } = useStockItems();
+  const { plan, limits, canCreate } = usePlanLimits();
 
   const [search, setSearch] = useState('');
   const [selectedSheet, setSelectedSheet] = useState<TechnicalSheetWithIngredients | null>(null);
@@ -119,6 +122,12 @@ export default function Fichas() {
       toast.error('Aguarde o carregamento dos dados do usuário...');
       return;
     }
+
+    if (!canCreate('fichas', sheets.length)) {
+      toast.error(`Limite de fichas alcançado (${limits.fichas}). Por favor, faça upgrade do seu plano.`);
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -199,6 +208,10 @@ export default function Fichas() {
   };
 
   const openNewDialog = () => {
+    if (!canCreate('fichas', sheets.length)) {
+      toast.error(`Limite de fichas alcançado (${limits.fichas}). Por favor, faça upgrade do seu plano.`);
+      return;
+    }
     resetForm();
     // Add a default stage
     setStages([{
@@ -504,8 +517,14 @@ export default function Fichas() {
 
 
             <Card
-              className="cursor-pointer hover:border-primary hover:shadow-lg transition-all group"
-              onClick={() => setFileImportDialogOpen(true)}
+              className={`cursor-pointer transition-all group ${!canCreate('fichas', sheets.length) ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:border-primary hover:shadow-lg'}`}
+              onClick={() => {
+                if (canCreate('fichas', sheets.length)) {
+                  setFileImportDialogOpen(true);
+                } else {
+                  toast.error("Limite de fichas alcançado. Faça upgrade do seu plano.");
+                }
+              }}
             >
               <CardHeader className="text-center pb-2">
                 <div className="mx-auto w-12 h-12 rounded-full bg-accent flex items-center justify-center mb-2 group-hover:bg-accent/80 transition-colors">
@@ -519,8 +538,14 @@ export default function Fichas() {
             </Card>
 
             <Card
-              className="cursor-pointer hover:border-primary hover:shadow-lg transition-all group"
-              onClick={openNewDialog}
+              className={`cursor-pointer transition-all group ${!canCreate('fichas', sheets.length) ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:border-primary hover:shadow-lg'}`}
+              onClick={() => {
+                if (canCreate('fichas', sheets.length)) {
+                  openNewDialog();
+                } else {
+                  toast.error("Limite de fichas alcançado. Faça upgrade do seu plano.");
+                }
+              }}
             >
               <CardHeader className="text-center pb-2">
                 <div className="mx-auto w-12 h-12 rounded-full bg-secondary/50 flex items-center justify-center mb-2 group-hover:bg-secondary transition-colors">
@@ -532,6 +557,21 @@ export default function Fichas() {
                 </CardDescription>
               </CardHeader>
             </Card>
+          </div>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Uso de Fichas: <span className="font-bold text-foreground">{sheets.length}</span> de <span className="font-bold text-foreground">{limits.fichas === Infinity ? 'Ilimitado' : limits.fichas}</span>
+            </p>
+            {!canCreate('fichas', sheets.length) && (
+              <Button 
+                variant="link" 
+                className="text-primary font-bold"
+                onClick={() => window.location.href = '/assinatura'}
+              >
+                Fazer Upgrade do Plano
+              </Button>
+            )}
           </div>
         </TabsContent>
       </Tabs>
