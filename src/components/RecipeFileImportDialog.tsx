@@ -63,9 +63,9 @@ export function RecipeFileImportDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Arquivo muito grande. Máximo 5MB.');
+    // Limite 2MB — payloads maiores causam WORKER_LIMIT na Edge Function
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 2MB. Tente comprimir a imagem ou o PDF.');
       return;
     }
 
@@ -113,7 +113,8 @@ export function RecipeFileImportDialog({
 
         if (file.type.startsWith('image/')) {
           fileType = 'image';
-          content = await fileToBase64(file);
+          // Compressão agressiva: máx 800px, qualidade 0.6 para evitar WORKER_LIMIT
+          content = await compressImage(file, 800, 0.6);
         } else if (file.type === 'application/pdf') {
           fileType = 'pdf';
           content = await fileToBase64(file);
@@ -124,32 +125,15 @@ export function RecipeFileImportDialog({
           throw new Error('Tipo de arquivo não suportado');
         }
 
-        console.log(`Processing ${fileType} file for recipe extraction`);
+        console.log(`[RecipeImport] ${fileType} (${(content.length / 1024).toFixed(1)}KB) → Gemini`);
 
-        const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/extract-ingredients`;
-        console.log("Preparing fetch to edge function:", functionUrl);
-
-        const response = await fetch(functionUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`
-          },
-          body: JSON.stringify({ fileType, content, extractRecipe: true, mimeType: file.type })
+        const { data, error: funcError } = await supabase.functions.invoke('extract-ingredients', {
+          body: { fileType, content, extractRecipe: true, mimeType: file.type },
         });
 
-        console.log("Fetch requested, status:", response.status);
-
-        if (!response.ok) {
-          let errorMsg = `Status: ${response.status}`;
-          try {
-            const errData = await response.json();
-            errorMsg = errData.error || errData.message || errorMsg;
-          } catch (e) { /* ignore */ }
-          throw new Error(`Falha na nuvem: ${errorMsg}`);
-        }
-
-        return response.json();
+        if (funcError) throw new Error(funcError.message);
+        console.log('[RecipeImport] Extraction output:', data);
+        return data;
       };
 
       const data = await Promise.race([processTask(), timeoutPromise]) as any;
@@ -287,7 +271,7 @@ export function RecipeFileImportDialog({
             </div>
 
             <p className="text-xs text-center text-muted-foreground">
-              Formatos aceitos: JPG, PNG, PDF, TXT (máx. 5MB)
+              Formatos aceitos: JPG, PNG, PDF, TXT (máx. 2MB)
             </p>
           </div>
         )}
@@ -594,5 +578,32 @@ function fileToBase64(file: File): Promise<string> {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     }
+  });
+}
+
+/** Compress image to JPEG at maxPx and quality to avoid WORKER_LIMIT on Edge Functions */
+function compressImage(file: File, maxPx = 800, quality = 0.6): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new window.Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxPx || height > maxPx) {
+          if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
+          else { width = Math.round(width * maxPx / height); height = maxPx; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas context unavailable'));
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 }
