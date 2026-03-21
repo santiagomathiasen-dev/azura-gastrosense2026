@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
-export const maxDuration = 60; // Vercel timeout adjustment
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,49 +19,67 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 });
     }
 
-    // 1. Upload to Supabase Storage
-    const fileName = `${user.id}/${Date.now()}-${file.name}`;
-    const { data: storageData, error: storageError } = await supabase.storage
-      .from('invoices')
-      .upload(fileName, file);
+    // Convert file to base64 for direct Gemini extraction (no Storage needed)
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
 
-    if (storageError) throw storageError;
+    // Call extract-ingredients Edge Function directly with the base64 content
+    const { data: extractedData, error: extractError } = await supabase.functions.invoke(
+      'extract-ingredients',
+      {
+        body: {
+          content: base64,
+          fileType: file.type.startsWith('image/') ? 'image' : file.type === 'application/pdf' ? 'pdf' : 'text',
+          mimeType: file.type,
+          extractRecipe: false,
+        },
+      }
+    );
 
-    const fileUrl = storageData.path;
+    if (extractError) {
+      console.error('extract-ingredients error:', extractError);
+      return NextResponse.json(
+        { error: `Erro na extração: ${extractError.message}` },
+        { status: 500 }
+      );
+    }
 
-    // 2. Create record in invoice_imports (Status: pending)
+    if (extractedData?.error) {
+      return NextResponse.json(
+        { error: extractedData.error, details: extractedData.details },
+        { status: 422 }
+      );
+    }
+
+    // Optionally store the import record in the DB
     const { data: importRecord, error: importError } = await supabase
       .from('invoice_imports')
       .insert({
         user_id: user.id,
-        status: 'pending',
-        file_url: fileUrl,
+        status: 'completed',
+        supplier_name: extractedData?.fornecedor ?? null,
+        invoice_number: extractedData?.numero_nota ?? null,
+        emission_date: extractedData?.data_emissao ?? null,
+        total_value: extractedData?.valor_total ?? null,
+        items_count: extractedData?.ingredients?.length ?? 0,
+        extracted_data: extractedData,
       })
-      .select()
+      .select('id')
       .single();
 
-    if (importError) throw importError;
+    if (importError) {
+      // Log but don't fail — extraction already worked
+      console.error('invoice_imports insert error:', importError.message);
+    }
 
-    // 3. Trigger Background Processing (Async)
-    // We call our own internal API or use a background pattern
-    // In Vercel, we can use waitUntil if available or just a fetch without await (less reliable)
-    const processUrl = new URL('/api/invoices/process', req.url).toString();
-    
-    // Non-blocking trigger
-    fetch(processUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ importId: importRecord.id }),
-    }).catch(err => console.error('Background trigger error:', err));
-
-    return NextResponse.json({ 
-      success: true, 
-      importId: importRecord.id,
-      message: 'Upload concluído. Processamento iniciado em segundo plano.' 
+    return NextResponse.json({
+      success: true,
+      importId: importRecord?.id ?? null,
+      ...extractedData,
     });
 
   } catch (error: any) {
-    console.error('Upload error:', error);
+    console.error('Upload route error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
