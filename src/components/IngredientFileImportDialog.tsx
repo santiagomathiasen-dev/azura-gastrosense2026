@@ -18,7 +18,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { StockCategory, StockUnit } from '@/hooks/useStockItems';
-import { supabaseFetch } from '@/lib/supabase-fetch';
 
 export interface ExtractedIngredient {
   name: string;
@@ -88,9 +87,9 @@ export function IngredientFileImportDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (max 5MB) limits
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Arquivo muito grande. Máximo 5MB.');
+    // Limite reduzido para 2MB — payloads maiores causam WORKER_LIMIT (546) na Edge Function
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 2MB. Tente comprimir o PDF ou reduzir a imagem.');
       return;
     }
 
@@ -128,7 +127,8 @@ export function IngredientFileImportDialog({
 
         if (file.type.startsWith('image/')) {
           fileType = 'image';
-          content = await fileToBase64(file);
+          // Compressão agressiva: máx 800px, qualidade 0.6 para minimizar payload
+          content = await compressImage(file, 800, 0.6);
         } else if (file.type === 'application/pdf') {
           fileType = 'pdf';
           content = await fileToBase64(file);
@@ -139,13 +139,13 @@ export function IngredientFileImportDialog({
           throw new Error('Tipo de arquivo não suportado');
         }
 
-        console.log(`Processing ${fileType} file for ingredient extraction via supabaseFetch`);
+        console.log(`Processing ${fileType} (${(content.length / 1024).toFixed(1)}KB base64) via supabase.functions.invoke`);
 
-        const data = await supabaseFetch('functions/v1/extract-ingredients', {
-          method: 'POST',
-          body: JSON.stringify({ fileType, content, extractRecipe: false, mimeType: file.type })
+        const { data, error: funcError } = await supabase.functions.invoke('extract-ingredients', {
+          body: { fileType, content, extractRecipe: false, mimeType: file.type },
         });
 
+        if (funcError) throw new Error(funcError.message);
         console.log("Extraction output:", data);
         return data;
       };
@@ -517,5 +517,42 @@ function fileToBase64(file: File): Promise<string> {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     }
+  });
+}
+
+/**
+ * Compresses an image to JPEG with max dimension and quality to keep
+ * the base64 payload small and avoid WORKER_LIMIT (546) on Edge Functions.
+ */
+function compressImage(file: File, maxPx = 800, quality = 0.6): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new window.Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxPx || height > maxPx) {
+          if (width > height) {
+            height = Math.round(height * maxPx / width);
+            width = maxPx;
+          } else {
+            width = Math.round(width * maxPx / height);
+            height = maxPx;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas context unavailable'));
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl.split(',')[1]);
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 }
