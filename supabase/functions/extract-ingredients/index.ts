@@ -155,23 +155,24 @@ Deno.serve(async (req: any) => {
     }
     const isBase64 = mimeType !== "text/plain";
 
-    // ── Build Gemini request (JSON MODE) ────────────────────────────────────
+    // ── Build Gemini request ─────────────────────────────────────────────────
+    // NOTE: systemInstruction at root-level does NOT work reliably with inlineData.
+    // We put the instruction as the FIRST text part inside contents instead.
     const systemInstruction = extractRecipe
       ? SYSTEM_INSTRUCTION_RECIPE
       : SYSTEM_INSTRUCTION_INGREDIENT;
 
+    const filePart = isBase64
+      ? { inlineData: { mimeType, data: content } }
+      : { text: content };
+
     const geminiBody = {
-      // systemInstruction forces JSON-only output conforming to our schema
-      systemInstruction: {
-        parts: [{ text: systemInstruction }],
-      },
       contents: [
         {
           parts: [
-            isBase64
-              ? { inlineData: { mimeType, data: content } }
-              : { text: content },
-            { text: "Extraia os dados conforme as instruções e retorne o JSON." },
+            { text: systemInstruction },  // instruction first
+            filePart,                      // then the document
+            { text: "Retorne apenas o JSON conforme especificado acima. Nenhum texto fora do JSON." },
           ],
         },
       ],
