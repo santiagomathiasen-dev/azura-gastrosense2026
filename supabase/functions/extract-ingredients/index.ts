@@ -111,7 +111,7 @@ async function callGemini(apiKey: string, geminiBody: unknown): Promise<any> {
       // ── Capturar e logar o erro REAL da API do Google ──────────
       let errBody: any = {};
       try { errBody = await res.clone().json(); } catch (_) {
-        try { errBody = { raw: await res.text() }; } catch (_2) {}
+        try { errBody = { raw: await res.text() }; } catch (_2) { }
       }
       const errMsg = errBody?.error?.message ?? JSON.stringify(errBody);
       lastErrorDetails = `[${model}] HTTP ${res.status}: ${errMsg}`;
