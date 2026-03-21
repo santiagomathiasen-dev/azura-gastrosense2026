@@ -85,17 +85,20 @@ Retorne SOMENTE este JSON (nenhum texto fora do JSON):
 // ══════════════════════════════════════════════════════════════════
 // 4. GEMINI — chamada com retry automático + fallback de modelo
 // ══════════════════════════════════════════════════════════════════
-async function callGemini(apiKey: string, body: unknown): Promise<any> {
+async function callGemini(apiKey: string, geminiBody: unknown): Promise<any> {
   const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
+  let lastErrorDetails = "";
 
   for (const model of models) {
     for (let attempt = 0; attempt < 3; attempt++) {
+      console.log(`[Gemini] Tentando model=${model} attempt=${attempt}`);
+
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify(geminiBody),
         }
       );
 
@@ -105,26 +108,34 @@ async function callGemini(apiKey: string, body: unknown): Promise<any> {
         return json;
       }
 
+      // ── Capturar e logar o erro REAL da API do Google ──────────
+      let errBody: any = {};
+      try { errBody = await res.clone().json(); } catch (_) {
+        try { errBody = { raw: await res.text() }; } catch (_2) {}
+      }
+      const errMsg = errBody?.error?.message ?? JSON.stringify(errBody);
+      lastErrorDetails = `[${model}] HTTP ${res.status}: ${errMsg}`;
+      // ESTE log aparece no painel do Supabase → Functions → Logs
+      console.error("ERRO REAL DO GEMINI:", lastErrorDetails);
+      console.error("GEMINI PAYLOAD COMPLETO:", JSON.stringify(errBody));
+
       if (res.status === 429) {
         let waitMs = (attempt + 1) * 15000;
-        try {
-          const errJson = await res.clone().json();
-          const delay = errJson?.error?.details?.find((d: any) => d.retryDelay)?.retryDelay;
-          if (delay) waitMs = (parseInt(delay) + 3) * 1000;
-        } catch (_) {}
-        console.warn(`[Gemini 429] model=${model} aguardando ${waitMs}ms`);
+        const delay = errBody?.error?.details?.find((d: any) => d.retryDelay)?.retryDelay;
+        if (delay) waitMs = (parseInt(delay) + 3) * 1000;
+        console.warn(`[Gemini 429] model=${model} aguardando ${waitMs}ms (tentativa ${attempt + 1})`);
         await new Promise((r) => setTimeout(r, waitMs));
         continue;
       }
 
-      // Any other error on this model → try next model
-      const errText = await res.text();
-      console.warn(`[Gemini ${res.status}] model=${model}: ${errText.slice(0, 200)}`);
+      // Erro não-retryável neste modelo → tenta próximo
       break;
     }
   }
 
-  throw new Error("API do Gemini indisponível. Tente novamente em 1 minuto.");
+  const finalErr: any = new Error("Todos os modelos Gemini falharam.");
+  finalErr.details = lastErrorDetails;
+  throw finalErr;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -321,7 +332,20 @@ Deno.serve(async (req: any) => {
 
   } catch (error: any) {
     // ── 4. Retorno de Erro Seguro com corsHeaders ──────────────────
-    console.error("[extract-ingredients] CATCH:", error?.message ?? error);
-    return jsonError(error?.message ?? "Erro interno no servidor.", 500);
+    // Exibe o erro completo nos logs do Supabase (painel → Functions → Logs)
+    console.error("ERRO REAL DO GEMINI:", error?.message ?? error);
+    if (error?.details) console.error("DETALHES:", error.details);
+
+    return new Response(
+      JSON.stringify({
+        error: "Falha na IA",
+        details: error?.details ?? error?.message ?? "Erro interno.",
+        ingredients: [],
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });
