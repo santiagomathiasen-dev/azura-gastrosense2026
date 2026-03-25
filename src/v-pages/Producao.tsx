@@ -125,13 +125,13 @@ export default function Producao() {
   const periodLabel = useMemo(() => {
     switch (periodType) {
       case 'day':
-        return formatInBrasilia(currentDate, "EEEE, d 'de' MMMM");
+        return format(currentDate, "EEEE, d 'de' MMMM", { locale: ptBR });
       case 'week':
-        return `${formatInBrasilia(periodBoundaries.start, "d MMM")} - ${formatInBrasilia(periodBoundaries.end, "d MMM yyyy")}`;
+        return `${format(periodBoundaries.start, "d MMM", { locale: ptBR })} - ${format(periodBoundaries.end, "d MMM yyyy", { locale: ptBR })}`;
       case 'month':
-        return formatInBrasilia(currentDate, "MMMM 'de' yyyy");
+        return format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
       case 'year':
-        return formatInBrasilia(currentDate, "yyyy");
+        return format(currentDate, "yyyy", { locale: ptBR });
     }
   }, [periodType, currentDate, periodBoundaries]);
 
