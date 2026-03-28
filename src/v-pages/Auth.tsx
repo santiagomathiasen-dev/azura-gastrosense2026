@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ChefHat, Loader2, Mail, Lock, User, Eye, EyeOff, Users, KeyRound } from 'lucide-react';
+import { ChefHat, Loader2, Mail, Lock, User, Eye, EyeOff, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
@@ -262,24 +262,6 @@ export default function Auth() {
               </button>
             </div>
 
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-4 pt-4 border-t border-dashed border-border/50">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-[10px] h-7 gap-2 opacity-50 hover:opacity-100"
-                  onClick={() => {
-                    setEmail('test_44@azura.com');
-                    setPassword('password123');
-                    setIsLogin(true);
-                    setError('');
-                  }}
-                >
-                  <KeyRound className="h-3 w-3" />
-                  Preencher Dados de Login (Dev Only)
-                </Button>
-              </div>
-            )}
           </CardContent>
         </Card >
       </div >

@@ -78,6 +78,7 @@ export function AIImportDialog({
 
   const handleClose = () => {
     abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     resetState();
     onOpenChange(false);
   };
@@ -240,6 +241,7 @@ export function AIImportDialog({
 
   const handleCancel = useCallback(() => {
     abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     onOpenChange(false);
   }, [onOpenChange]);
 
