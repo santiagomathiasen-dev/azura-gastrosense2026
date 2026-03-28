@@ -5,47 +5,62 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
-    // if "next" is in search params, use it as the redirect URL
     const next = searchParams.get('next') ?? '/dashboard';
 
-    if (code) {
-        const cookieStore = await cookies();
-        const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                cookies: {
-                    getAll() {
-                        return cookieStore.getAll();
-                    },
-                    setAll(cookiesToSet) {
-                        try {
-                            cookiesToSet.forEach(({ name, value, options }) => {
-                                cookieStore.set({ name, value, ...options });
-                            });
-                        } catch (error) {
-                            // Ignored if called during a server component render
-                        }
-                    },
-                },
-            }
-        );
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error && data?.session) {
-            const user = data.session.user;
-            // Se o usuário acabou de ser criado (created_at é de poucos segundos atrás) e usou o google:
-            const isNewUser = new Date(user.created_at).getTime() > Date.now() - 15000;
-            
-            if (isNewUser) {
-                // Bloqueia e desloga o usuário, forçando ele a criar conta por email primeiro
-                await supabase.auth.signOut();
-                return NextResponse.redirect(`${origin}/auth?error=Sua conta não existe. Faça o cadastro pelo formulário de email primeiro.`);
-            }
-
-            return NextResponse.redirect(`${origin}${next}`);
-        }
+    if (!code) {
+        return NextResponse.redirect(`${origin}/auth?error=Código de autenticação ausente`);
     }
 
-    // return the user to an error page with instructions
-    return NextResponse.redirect(`${origin}/auth?error=Falha na autenticação do Google`);
+    const cookieStore = await cookies();
+
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() { return cookieStore.getAll(); },
+                setAll(cookiesToSet) {
+                    try {
+                        cookiesToSet.forEach(({ name, value, options }) =>
+                            cookieStore.set({ name, value, ...options })
+                        );
+                    } catch (_) { }
+                },
+            },
+        }
+    );
+
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (error || !data?.session) {
+        console.error('Auth callback: code exchange failed', error?.message);
+        return NextResponse.redirect(`${origin}/auth?error=Falha na autenticação do Google`);
+    }
+
+    const user = data.session.user;
+
+    // Ensure profile exists for Google OAuth users.
+    // ignoreDuplicates: true leaves existing profiles untouched.
+    try {
+        await supabase.from('profiles').upsert(
+            {
+                id: user.id,
+                email: user.email ?? '',
+                full_name:
+                    user.user_metadata?.full_name ||
+                    user.user_metadata?.name ||
+                    user.email?.split('@')[0] ||
+                    'Usuário',
+                role: 'user',
+                status: 'ativo',
+                status_pagamento: false,
+            },
+            { onConflict: 'id', ignoreDuplicates: true }
+        );
+    } catch (profileErr) {
+        // Non-fatal: useProfile hook will create it as a fallback if this fails
+        console.warn('Auth callback: profile upsert skipped:', profileErr);
+    }
+
+    return NextResponse.redirect(`${origin}${next}`);
 }

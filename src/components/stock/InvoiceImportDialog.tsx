@@ -57,7 +57,7 @@ async function extractTextFromPDF(file: File): Promise<string> {
   return text.trim();
 }
 
-async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promise<string> {
+async function compressImage(file: File, maxWidth = 800, quality = 0.6): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
