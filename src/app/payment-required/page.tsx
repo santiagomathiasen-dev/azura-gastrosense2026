@@ -1,13 +1,12 @@
 'use client';
-// Triggering fresh build after resolving route conflict
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { CreditCard, LogOut, MessageSquare, Copy, CheckCircle2, QrCode, RefreshCw, Wallet, ShieldCheck, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -16,12 +15,13 @@ export default function PaymentRequiredPage() {
     const { logout } = useAuth();
     const { profile, refetch } = useProfile();
     const router = useRouter();
-    const [copied, setCopied] = useState(false);
+    const searchParams = useSearchParams();
     const [isVerifying, setIsVerifying] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [capturingPaypal, setCapturingPaypal] = useState(false);
     const [pixData, setPixData] = useState<{ qrCode: string, qrCodeBase64: string } | null>(null);
     const [pixCopied, setPixCopied] = useState(false);
-    
+
     const phone = process.env.NEXT_PUBLIC_SUPPORT_PHONE || '';
 
     // Auto-redirect when payment is confirmed via Realtime
@@ -52,6 +52,31 @@ export default function PaymentRequiredPage() {
             supabase.removeChannel(channel);
         };
     }, [profile?.id, router]);
+
+    // Auto-capture PayPal order when user returns from PayPal approval
+    useEffect(() => {
+        const token = searchParams.get('token'); // PayPal order ID
+        const payerId = searchParams.get('PayerID');
+        if (!token || !payerId || !profile?.id || capturingPaypal) return;
+
+        const capturePaypal = async () => {
+            setCapturingPaypal(true);
+            toast.loading("Finalizando pagamento PayPal...", { id: 'paypal-capture' });
+            try {
+                const { data, error } = await supabase.functions.invoke('capture-paypal', {
+                    body: { orderId: token, userId: profile.id },
+                });
+                if (error) throw error;
+                toast.success("Pagamento confirmado! Liberando acesso...", { id: 'paypal-capture' });
+                router.push('/dashboard');
+            } catch (err: any) {
+                toast.error(err.message || "Erro ao finalizar pagamento PayPal", { id: 'paypal-capture' });
+                setCapturingPaypal(false);
+            }
+        };
+
+        capturePaypal();
+    }, [searchParams, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleLogout = async () => {
         await logout();
@@ -128,6 +153,15 @@ export default function PaymentRequiredPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4 font-sans">
+            {capturingPaypal && (
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4 text-center">
+                        <RefreshCw className="h-10 w-10 animate-spin text-primary" />
+                        <p className="text-lg font-semibold">Finalizando pagamento PayPal...</p>
+                        <p className="text-sm text-muted-foreground">Aguarde, estamos confirmando com o PayPal.</p>
+                    </div>
+                </div>
+            )}
             <Card className="max-w-2xl w-full border-border/50 shadow-2xl overflow-hidden bg-card">
                 <div className="h-2 bg-gradient-to-r from-primary via-primary/80 to-primary/60 w-full" />
                 
@@ -139,7 +173,7 @@ export default function PaymentRequiredPage() {
                                 <ShieldCheck className="h-6 w-6 text-primary" />
                             </div>
                             <h2 className="text-xl font-bold mb-4 text-foreground">Plano Pro</h2>
-                            <p className="text-2xl font-bold text-primary mb-6">R$ 49,90 <span className="text-xs text-muted-foreground font-normal">/mês</span></p>
+                            <p className="text-2xl font-bold text-primary mb-6">R$ 197 <span className="text-xs text-muted-foreground font-normal">/mês</span></p>
                             <ul className="space-y-4">
                                 <li className="flex gap-3 text-sm text-muted-foreground">
                                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />

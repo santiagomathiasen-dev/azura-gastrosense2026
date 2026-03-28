@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
             custom_id: externalRef  // userId|planId
           }],
           application_context: {
-            return_url: `${originUrl}/dashboard`,
+            return_url: `${originUrl}/payment-required`,
             cancel_url: `${originUrl}/payment-required`
           }
         })
