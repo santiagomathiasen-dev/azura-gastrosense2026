@@ -7,10 +7,15 @@ export const maxDuration = 60; // Vercel timeout adjustment
 export async function POST(req: NextRequest) {
   let importId: string | undefined;
   try {
+    const supabase = await createClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+
     ({ importId } = await req.json());
     if (!importId) throw new Error('Missing importId');
-
-    const supabase = await createClient();
 
     // 1. Update status to 'processing'
     await supabase

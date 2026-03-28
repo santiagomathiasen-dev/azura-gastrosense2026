@@ -89,25 +89,18 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     // Full admin / owner always sees everything
     if (isAdmin || isGestor || (profile?.role as string) === 'owner') return true;
 
-    // While loading profile, show items to prevent flashing an empty sidebar
-    if (!profile) return true;
+    // While profile is loading show nothing to avoid flashing management items
+    if (!profile) return false;
 
-    // Items marked as adminOnly are hidden for everyone except admins (handled above)
-    // In development/bypass mode (no profile), we show it to allow testing
-    if ((item as any).adminOnly) return isAdmin || !profile;
-
-    // Gestores see all standard and management items (except adminOnly)
-    if (profile?.role === 'gestor') return true;
+    // Management-only items (e.g. Cadastros) require admin or gestor role
+    if ((item as any).managementOnly) return false;
 
     // Colaboradores only see what they explicitly have permission for
-    if (profile?.role === 'colaborador') {
-      if (item.permission) {
-        return (profile as any)?.[item.permission] === true;
-      }
-      return false; // Hide managementOnly items from colaboradores
+    if (profile.role === 'colaborador') {
+      return item.permission ? (profile as any)[item.permission] === true : false;
     }
 
-    // Fallback default
+    // Fallback: regular user role sees standard items
     return true;
   }), [isAdmin, isGestor, profile]);
   return (
