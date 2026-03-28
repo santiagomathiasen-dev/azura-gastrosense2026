@@ -77,6 +77,9 @@ export function GestaoGestores() {
         setName('');
         setEmail('');
         setPassword('');
+        setConfirmPassword('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
         setRole('gestor');
         setDialogOpen(true);
     };

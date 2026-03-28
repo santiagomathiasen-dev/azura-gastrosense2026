@@ -19,8 +19,7 @@ export default function Cadastros() {
         );
     }
 
-    // Allow access if admin, gestor, OR if we are in development/bypass mode (no profile yet)
-    const hasAccess = isAdmin || isGestor || (!profile && !profileLoading);
+    const hasAccess = isAdmin || isGestor;
 
     if (!hasAccess) {
         return (
@@ -39,9 +38,9 @@ export default function Cadastros() {
                 description="Gerencie as contas de acesso e níveis de permissão do sistema"
             />
 
-            <Tabs defaultValue={(isAdmin || isGestor || !profile) ? "gestores" : "colaboradores"} className="w-full">
+            <Tabs defaultValue={isAdmin ? "gestores" : "colaboradores"} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 max-w-md">
-                    {(isAdmin || isGestor || !profile) && (
+                    {isAdmin && (
                         <TabsTrigger value="gestores" className="flex items-center gap-2">
                             <Shield className="h-4 w-4" /> Gestores
                         </TabsTrigger>
@@ -51,7 +50,7 @@ export default function Cadastros() {
                     </TabsTrigger>
                 </TabsList>
 
-                {(isAdmin || isGestor || !profile) && (
+                {isAdmin && (
                     <TabsContent value="gestores" className="mt-6 border-none p-0 shadow-none">
                         <GestaoGestores />
                     </TabsContent>

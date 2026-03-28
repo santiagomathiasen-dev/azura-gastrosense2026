@@ -50,7 +50,10 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
 
             const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-global-command`;
             const { data: { session } } = await supabase.auth.getSession();
-            const authToken = session?.access_token || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+            if (!session?.access_token) {
+                toast.error('Faça login para usar o assistente.');
+                return;
+            }
 
             const aiController = new AbortController();
             const aiTimer = setTimeout(() => aiController.abort(), 30_000);
@@ -58,7 +61,7 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`,
+                    'Authorization': `Bearer ${session.access_token}`,
                     'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
                 },
                 body: JSON.stringify({
@@ -75,7 +78,7 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
 
             const data = await response.json();
 
-            if (data.action === 'navigate') {
+            if (data.action === 'navigate' && data.target) {
                 router.push(data.target);
                 toast.success(`Navegando para ${data.label || data.target}`);
             } else if (data.action === 'toast') {
@@ -104,6 +107,7 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
 
         recognition.onresult = (event: any) => {
             const current = event.resultIndex;
+            if (!event.results[current]?.[0]) return;
             const transcriptText = event.results[current][0].transcript;
             setTranscript(transcriptText);
 

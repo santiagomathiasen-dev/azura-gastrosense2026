@@ -165,7 +165,7 @@ export default function Producao() {
     const parts = dateStr?.split('-');
     if (parts?.length === 3) {
       const [y, m, d] = parts.map(Number);
-      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return new Date(y, m - 1, d);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return new Date(Date.UTC(y, m - 1, d));
     }
     return new Date();
   };

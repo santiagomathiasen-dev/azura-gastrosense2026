@@ -67,6 +67,10 @@ interface PurchaseListItem {
   isManual?: boolean;
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export default function Compras() {
   const [search, setSearch] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -410,9 +414,11 @@ export default function Compras() {
 
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
+    const blobUrl = URL.createObjectURL(blob);
+    link.href = blobUrl;
     link.download = `lista_compras_${getNow().toISOString().split('T')[0]}.csv`;
     link.click();
+    URL.revokeObjectURL(blobUrl);
     toast.success('Lista exportada com sucesso!');
   };
 
@@ -456,11 +462,11 @@ export default function Compras() {
             <tbody>
               ${filteredItems.map(item => `
                 <tr class="${item.isPurchased ? 'purchased' : item.isUrgent ? 'urgent' : ''}">
-                  <td>${item.name}</td>
+                  <td>${escapeHtml(item.name)}</td>
                   <td class="text-right">${item.suggestedQuantity}</td>
-                  <td>${item.unit}</td>
+                  <td>${escapeHtml(item.unit)}</td>
                   <td>
-                    ${item.supplierName || '-'}
+                    ${escapeHtml(item.supplierName || '-')}
                     ${item.supplierPhone ? ' (WhatsApp)' : ''}
                   </td>
                   <td class="text-right">R$ ${item.estimatedCost.toFixed(2)}</td>
