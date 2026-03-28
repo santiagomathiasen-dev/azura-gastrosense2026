@@ -31,6 +31,8 @@ export function useProductionStock() {
       }
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   // Fetch transfer history
@@ -48,6 +50,8 @@ export function useProductionStock() {
       }
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   // Transfer from central to production stock

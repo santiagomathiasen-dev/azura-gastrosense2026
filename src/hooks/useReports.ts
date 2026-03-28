@@ -113,6 +113,8 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
       }) as SalesReportItem[];
     },
     enabled: !!user?.id || !!ownerId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   // Losses Report - from unified losses table + legacy stock_movements
@@ -165,6 +167,8 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
       }) as LossReportItem[];
     },
     enabled: !!user?.id || !!ownerId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   // Purchased Ingredients Report (delivered purchase items)
@@ -188,6 +192,8 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
       }) as PurchasedIngredientsItem[];
     },
     enabled: !!user?.id || !!ownerId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   // Used Ingredients Report (stock exits for production)
@@ -211,6 +217,8 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
       }) as UsedIngredientsItem[];
     },
     enabled: !!user?.id || !!ownerId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   // Purchase List Report (all purchase items)
@@ -244,6 +252,8 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
       }) as PurchaseReportItem[];
     },
     enabled: !!user?.id || !!ownerId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   // Movements Report (All stock movements)
@@ -270,6 +280,8 @@ export function useReports(dateRange: DateRangeType, customStart?: Date, customE
       }) as MovementReportItem[];
     },
     enabled: !!user?.id || !!ownerId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   // Calculate totals

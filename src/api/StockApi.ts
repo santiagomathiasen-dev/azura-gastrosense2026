@@ -7,7 +7,7 @@ export class StockApi extends BaseApiService {
     }
 
     async getAll(ownerId: string): Promise<StockItem[]> {
-        return this.get<StockItem>(`select=*&order=name.asc`);
+        return this.get<StockItem>(`select=*&order=name.asc&limit=2000`);
     }
 
     async getById(id: string): Promise<StockItem | null> {

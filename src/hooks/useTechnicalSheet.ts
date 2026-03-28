@@ -35,5 +35,7 @@ export function useTechnicalSheet(id: string | null) {
             } as TechnicalSheetWithIngredients;
         },
         enabled: !!id && (!!user?.id || !!ownerId) && !isOwnerLoading,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
     });
 }

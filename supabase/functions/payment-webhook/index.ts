@@ -6,6 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+const VALID_PLANS = ['pro', 'ultra'];
+
+// Parse "userId|planId" reference created by create-checkout
+function parseExternalRef(ref: string): { userId: string; planId: string } {
+  const parts = ref?.split('|');
+  if (parts?.length === 2 && VALID_PLANS.includes(parts[1])) {
+    return { userId: parts[0], planId: parts[1] };
+  }
+  // Legacy: ref was just userId, default to pro
+  return { userId: ref, planId: 'pro' };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -13,23 +25,27 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    console.log("Webhook Received:", body);
+    console.log("Webhook Received:", JSON.stringify(body).slice(0, 500));
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    let userId = null;
-    let provider = null;
+    let userId: string | null = null;
+    let planId: string = 'pro';
+    let provider: string | null = null;
 
     // 1. PAYPAL WEBHOOK
     if (body.event_type === 'CHECKOUT.ORDER.APPROVED' || body.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
       provider = 'paypal';
       const resource = body.resource;
-      // PayPal context: custom_id was set to userId during order creation
-      userId = resource.custom_id || (resource.purchase_units && resource.purchase_units[0]?.custom_id);
-      
-      console.log(`PayPal Payment Approved for User: ${userId}`);
+      const rawRef = resource.custom_id || resource.purchase_units?.[0]?.custom_id;
+      if (rawRef) {
+        const parsed = parseExternalRef(rawRef);
+        userId = parsed.userId;
+        planId = parsed.planId;
+      }
+      console.log(`PayPal Payment Approved — userId=${userId} plan=${planId}`);
     }
 
     // 2. MERCADO PAGO WEBHOOK (PIX or Preference)
@@ -45,27 +61,31 @@ Deno.serve(async (req) => {
         const paymentData = await paymentResponse.json();
 
         if (paymentData.status === 'approved') {
-          userId = paymentData.external_reference;
-          console.log(`Mercado Pago Payment Approved for User: ${userId}`);
+          const rawRef = paymentData.external_reference;
+          const parsed = parseExternalRef(rawRef);
+          userId = parsed.userId;
+          planId = parsed.planId;
+          console.log(`Mercado Pago Approved — userId=${userId} plan=${planId}`);
         }
       }
     }
 
-    // 3. UPDATE USER PROFILE
+    // 3. UPDATE USER PROFILE — status_pagamento + plan + subscription_end_date
     if (userId) {
       const newExpiryDate = new Date();
       newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
 
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
+          plan: planId,
           status_pagamento: true,
           subscription_end_date: newExpiryDate.toISOString()
         })
         .eq('id', userId);
 
       if (updateError) throw updateError;
-      console.log(`Access liberated for user ${userId} via ${provider}`);
+      console.log(`Access liberated — user=${userId} plan=${planId} via ${provider} until ${newExpiryDate.toISOString()}`);
     }
 
     return new Response(JSON.stringify({ received: true }), {

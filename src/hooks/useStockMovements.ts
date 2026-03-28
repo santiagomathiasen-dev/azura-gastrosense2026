@@ -50,6 +50,8 @@ export function useStockMovements(stockItemId?: string) {
       return data as StockMovement[];
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const createMovement = useMutation({

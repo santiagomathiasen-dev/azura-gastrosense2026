@@ -150,18 +150,29 @@ export default function Relatorios() {
         break;
     }
 
+    // Escape CSV values to prevent formula injection attacks
+    const escapeCsv = (v: unknown) => {
+      const s = String(v ?? '');
+      const dangerous = /^[=+\-@\t\r]/.test(s);
+      const clean = dangerous ? `'${s}` : s;
+      const needsQuote = clean.includes(';') || clean.includes('"') || clean.includes('\n');
+      return needsQuote ? `"${clean.replace(/"/g, '""')}"` : clean;
+    };
+
     // Convert to CSV
     const csvContent = [
       headers.join(';'),
-      ...data.map(row => Object.values(row).join(';'))
+      ...data.map(row => Object.values(row).map(escapeCsv).join(';'))
     ].join('\n');
 
     // Download
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
+    link.href = url;
     link.download = `${filename}_${formatInBrasilia(getNow(), 'yyyy-MM-dd')}.csv`;
     link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handlePrint = () => {
@@ -178,16 +189,26 @@ export default function Relatorios() {
       p.margin.toFixed(1)
     ]);
 
+    const escapeCsvFin = (v: unknown) => {
+      const s = String(v ?? '');
+      const dangerous = /^[=+\-@\t\r]/.test(s);
+      const clean = dangerous ? `'${s}` : s;
+      const needsQuote = clean.includes(';') || clean.includes('"') || clean.includes('\n');
+      return needsQuote ? `"${clean.replace(/"/g, '""')}"` : clean;
+    };
+
     const csvContent = [
       headers.join(';'),
-      ...data.map(row => row.join(';'))
+      ...data.map(row => row.map(escapeCsvFin).join(';'))
     ].join('\n');
 
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
+    const finUrl = URL.createObjectURL(blob);
+    link.href = finUrl;
     link.download = `planilha_financeira_${formatInBrasilia(getNow(), 'yyyy-MM-dd')}.csv`;
     link.click();
+    URL.revokeObjectURL(finUrl);
   };
 
   if (isLoading || isCostsLoading) {

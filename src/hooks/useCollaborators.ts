@@ -11,6 +11,7 @@ export interface Collaborator {
   email: string | null;
   pin_hash: string | null;
   auth_user_id: string | null;
+  role?: string;
   is_active: boolean;
   can_access_dashboard: boolean;
   can_access_estoque: boolean;
@@ -83,6 +84,8 @@ export function useCollaborators() {
       }
     },
     enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const createCollaborator = useMutation({

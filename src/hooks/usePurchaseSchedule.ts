@@ -32,6 +32,8 @@ export function usePurchaseSchedule() {
       return data as (PurchaseSchedule & { supplier: { name: string } | null })[];
     },
     enabled: !!user?.id || !!ownerId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   // Calculate suggested purchase days based on production schedule

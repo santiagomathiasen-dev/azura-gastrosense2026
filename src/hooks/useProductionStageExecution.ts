@@ -28,6 +28,8 @@ export function useProductionStageExecution(productionId?: string) {
             return data as ProductionStageExecution[];
         },
         enabled: !!productionId && (!!user?.id || !!ownerId),
+        staleTime: 60_000,
+        gcTime: 10 * 60 * 1000,
     });
 
     const startStage = useMutation({

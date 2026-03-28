@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { MoreHorizontal, Pencil, Trash2, ArrowUpDown, Check, X, ArrowRightLeft, Calendar, Mic } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, ArrowUpDown, Check, X, ArrowRightLeft, Calendar, Mic, Package } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -91,9 +92,11 @@ export function StockTable({
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground border rounded-lg bg-card">
-        Nenhum item de estoque cadastrado
-      </div>
+      <EmptyState
+        icon={Package}
+        title="Nenhum item no estoque"
+        description="Adicione ingredientes e insumos para começar a controlar seu estoque."
+      />
     );
   }
 

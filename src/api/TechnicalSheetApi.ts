@@ -7,7 +7,7 @@ export class TechnicalSheetApi extends BaseApiService {
     }
 
     async getAll(): Promise<any[]> {
-        const query = `select=*,ingredients:technical_sheet_ingredients(*,stock_item:stock_items(name,unit,unit_price))&order=name`;
+        const query = `select=*,ingredients:technical_sheet_ingredients(*,stock_item:stock_items(name,unit,unit_price))&order=name&limit=1000`;
         return this.get<any>(query);
     }
 

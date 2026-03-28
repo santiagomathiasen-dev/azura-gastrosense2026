@@ -34,6 +34,8 @@ export function useProductionStepExecution(productionId?: string) {
       return data as ProductionStepExecution[];
     },
     enabled: !!productionId && (!!user?.id || !!ownerId),
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const initializeStepExecutions = useMutation({

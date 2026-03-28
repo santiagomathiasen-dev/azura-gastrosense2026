@@ -12,6 +12,8 @@ export default function NextLanding() {
     const [isRedirecting, setIsRedirecting] = useState(false);
 
     useEffect(() => {
+        let mounted = true;
+
         // Detect if there is an access_token in the URL (Google Login return)
         if (typeof window !== 'undefined' && (window.location.hash.includes('access_token') || window.location.hash.includes('error'))) {
             setIsRedirecting(true);
@@ -19,7 +21,7 @@ export default function NextLanding() {
 
         // Redirect if already logged in
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            console.log("Landing Auth Event:", event, !!session);
+            if (!mounted) return;
             if (session) {
                 setIsRedirecting(true);
                 router.replace('/dashboard');
@@ -30,6 +32,7 @@ export default function NextLanding() {
 
         // Check current session immediately
         supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!mounted) return;
             if (session) {
                 setIsRedirecting(true);
                 router.replace('/dashboard');
@@ -48,6 +51,7 @@ export default function NextLanding() {
         reveals.forEach(el => obs.observe(el));
 
         return () => {
+            mounted = false;
             subscription.unsubscribe();
             obs.disconnect();
         };

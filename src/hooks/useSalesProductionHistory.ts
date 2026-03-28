@@ -104,5 +104,7 @@ export function useSalesProductionHistory(baseDate: Date, days: number = 7) {
             return results.filter(r => r.totalSales > 0 || r.currentStock > 0);
         },
         enabled: !!ownerId,
+        staleTime: 10 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
     });
 }

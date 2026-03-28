@@ -8,7 +8,7 @@ export class ProductionApi extends BaseApiService {
 
     async getAll(ownerId: string): Promise<ProductionWithSheet[]> {
         // Note: Complex join logic from hook
-        const query = `select=*,technical_sheet:technical_sheets(id,name,yield_quantity,yield_unit,preparation_method,ingredients:technical_sheet_ingredients(stock_item_id,quantity,unit,stage_id,stock_item:stock_items(name)))&order=scheduled_date.asc`;
+        const query = `select=*,technical_sheet:technical_sheets(id,name,yield_quantity,yield_unit,preparation_method,ingredients:technical_sheet_ingredients(stock_item_id,quantity,unit,stage_id,stock_item:stock_items(name)))&order=scheduled_date.asc&limit=500`;
         return this.get<ProductionWithSheet>(query);
     }
 

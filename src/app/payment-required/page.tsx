@@ -22,7 +22,7 @@ export default function PaymentRequiredPage() {
     const [pixData, setPixData] = useState<{ qrCode: string, qrCodeBase64: string } | null>(null);
     const [pixCopied, setPixCopied] = useState(false);
     
-    const phone = "61982452669";
+    const phone = process.env.NEXT_PUBLIC_SUPPORT_PHONE || '';
 
     // Auto-redirect when payment is confirmed via Realtime
     useEffect(() => {
@@ -263,12 +263,12 @@ export default function PaymentRequiredPage() {
                             </div>
                             
                             <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-primary/20 shadow-sm">
-                                <code className="text-sm font-mono font-bold text-primary select-all">santiago.aloom@gmail.com</code>
-                                <Button 
-                                    size="icon" 
-                                    variant="ghost" 
-                                    className="h-9 w-9 shrink-0 hover:bg-primary/10 hover:text-primary transition-colors" 
-                                    onClick={() => handleCopyPix("santiago.aloom@gmail.com")}
+                                <code className="text-sm font-mono font-bold text-primary select-all">{process.env.NEXT_PUBLIC_PIX_KEY}</code>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-9 w-9 shrink-0 hover:bg-primary/10 hover:text-primary transition-colors"
+                                    onClick={() => handleCopyPix(process.env.NEXT_PUBLIC_PIX_KEY || '')}
                                 >
                                     {pixCopied ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                                 </Button>

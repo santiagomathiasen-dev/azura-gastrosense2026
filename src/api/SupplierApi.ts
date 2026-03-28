@@ -7,7 +7,7 @@ export class SupplierApi extends BaseApiService {
     }
 
     async getAll(): Promise<Supplier[]> {
-        return this.get<Supplier>(`select=*&order=name.asc`);
+        return this.get<Supplier>(`select=*&order=name.asc&limit=500`);
     }
 
     async create(supplier: SupplierInsert): Promise<Supplier> {

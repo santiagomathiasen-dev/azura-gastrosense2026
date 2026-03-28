@@ -41,7 +41,7 @@ export function useProfile() {
                     try {
                         const { data: newProfile, error: insertError } = await supabase
                             .from('profiles')
-                            .insert([newProfileData])
+                            .upsert([newProfileData], { onConflict: 'id', ignoreDuplicates: true })
                             .select()
                             .maybeSingle();
                             

@@ -29,14 +29,15 @@ export function useStockAI(stockItems: StockItem[]) {
 
     try {
       const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-stock-input`;
-      console.log("Calling process-stock-input (voice):", functionUrl);
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+          'Authorization': `Bearer ${authToken}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
         },
         body: JSON.stringify({
           type: 'voice',
@@ -80,14 +81,15 @@ export function useStockAI(stockItems: StockItem[]) {
 
     try {
       const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-stock-input`;
-      console.log("Calling process-stock-input (image):", functionUrl);
+      const { data: { session: imgSession } } = await supabase.auth.getSession();
+      const imgAuthToken = imgSession?.access_token || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+          'Authorization': `Bearer ${imgAuthToken}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
         },
         body: JSON.stringify({
           type: 'image',

@@ -80,11 +80,8 @@ export default function Gestores() {
     });
   }, [profiles, searchTerm]);
 
-  // Allows: the main admin email, users with role 'admin' or 'owner'
-  const isSantiago = currentProfile?.email === 'santiago.aloom@gmail.com';
   const isOwnerRole = (currentProfile?.role as string) === 'owner' || (currentProfile?.role as string) === 'admin';
-  // Allow access if admin, santiago, owner, OR if we are in development/bypass mode (no profile yet)
-  const hasAccessAccess = isSantiago || isAdmin || isOwnerRole || (!currentProfile && !profileLoading);
+  const hasAccessAccess = isAdmin || isOwnerRole || (!currentProfile && !profileLoading);
 
   const totalGestores = profiles.filter(p => p.role === 'gestor').length;
 

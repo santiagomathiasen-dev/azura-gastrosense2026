@@ -51,6 +51,8 @@ export function useFinancials() {
             }
         },
         enabled: !!ownerId,
+        staleTime: 10 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
     });
 
     const { data: payroll = [], isLoading: payrollLoading } = useQuery({
@@ -66,6 +68,8 @@ export function useFinancials() {
             }
         },
         enabled: !!ownerId,
+        staleTime: 10 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
     });
 
     const addExpense = useMutation({

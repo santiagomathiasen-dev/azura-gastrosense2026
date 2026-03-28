@@ -32,10 +32,6 @@ export default function Cadastros() {
         );
     }
 
-    const isSantiagoAdmin = profile?.email === 'santiago.aloom@gmail.com';
-    // Admin (Santiago) can see both. Other admins or gestores according to logic.
-    // The user requested: "admin pode criar gestores e gestores podem criar colaboradores"
-
     return (
         <div className="space-y-6">
             <PageHeader

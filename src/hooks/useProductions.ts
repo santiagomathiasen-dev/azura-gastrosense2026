@@ -52,6 +52,8 @@ export function useProductions() {
       return productionApi.getAll(ownerId || '');
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
     refetchInterval: 30_000,
   });
 

@@ -38,6 +38,8 @@ export function useStockRequests() {
       }
     },
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
   });
 
   // Get pending requests only

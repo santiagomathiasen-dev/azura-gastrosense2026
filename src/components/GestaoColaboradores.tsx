@@ -90,7 +90,7 @@ export function GestaoColaboradores() {
         setPin('');
         setConfirmPin('');
         setPinError('');
-        setRole((collab as any).role || 'colaborador');
+        setRole((collab.role as 'admin' | 'gestor' | 'colaborador') || 'colaborador');
         setPermissions({
             can_access_dashboard: collab.can_access_dashboard,
             can_access_estoque: collab.can_access_estoque,

@@ -8,8 +8,8 @@ import { useState } from "react";
 export default function PaymentRequired() {
     const { logout } = useAuth();
     const [copied, setCopied] = useState(false);
-    const pixKey = "santiago.aloom@gmail.com"; // Updated to Santiago's email/PIX key as per logic
-    const phone = "61982452669";
+    const pixKey = process.env.NEXT_PUBLIC_PIX_KEY || '';
+    const phone = process.env.NEXT_PUBLIC_SUPPORT_PHONE || '';
 
     const handleCopyPix = () => {
         navigator.clipboard.writeText(pixKey);

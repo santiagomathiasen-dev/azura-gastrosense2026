@@ -73,8 +73,8 @@ const plans = [
   },
 ];
 
-const pixKey = "santiago.aloom@gmail.com";
-const phone = "61982452669";
+const pixKey = process.env.NEXT_PUBLIC_PIX_KEY || '';
+const phone = process.env.NEXT_PUBLIC_SUPPORT_PHONE || '';
 
 export default function AssinaturaPage() {
   const { profile } = useProfile();

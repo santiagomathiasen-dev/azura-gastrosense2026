@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -50,6 +51,7 @@ const AppContent = () => {
   const navigate = useNavigate();
   return (
     <NavigationProvider navigate={navigate}>
+      <ErrorBoundary>
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -75,9 +77,10 @@ const AppContent = () => {
             <Route path="/config-pdv" element={<ConfiguracaoPDV />} />
             <Route path="/payment-required" element={<PaymentRequired />} />
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </NavigationProvider>
   );
 };

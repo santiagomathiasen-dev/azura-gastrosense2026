@@ -39,6 +39,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [loginBlocked, setLoginBlocked] = useState(false);
 
   const from = searchParams.get('from') || '/dashboard';
 
@@ -59,6 +61,11 @@ export default function Auth() {
     e.preventDefault();
     setError('');
 
+    if (loginBlocked) {
+      setError('Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.');
+      return;
+    }
+
     if (!isLogin && password !== confirmPassword) {
       setError('As senhas não coincidem');
       return;
@@ -71,7 +78,20 @@ export default function Auth() {
       : await signup(email, password, name);
 
     if (result.error) {
+      if (isLogin) {
+        const newAttempts = loginAttempts + 1;
+        setLoginAttempts(newAttempts);
+        if (newAttempts >= 5) {
+          setLoginBlocked(true);
+          setTimeout(() => { setLoginBlocked(false); setLoginAttempts(0); }, 5 * 60 * 1000);
+          setError('Conta temporariamente bloqueada por segurança. Tente novamente em 5 minutos.');
+          setLoading(false);
+          return;
+        }
+      }
       setError(result.error);
+    } else {
+      setLoginAttempts(0);
     }
     setLoading(false);
   };
@@ -242,7 +262,7 @@ export default function Auth() {
               </button>
             </div>
 
-            {import.meta.env.DEV && (
+            {process.env.NODE_ENV === 'development' && (
               <div className="mt-4 pt-4 border-t border-dashed border-border/50">
                 <Button
                   variant="outline"

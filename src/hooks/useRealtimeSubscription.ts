@@ -24,9 +24,19 @@ interface UseRealtimeOptions {
   tables: TableName[];
 }
 
+// Related query keys that cascade on each table update
+const CASCADE_MAP: Partial<Record<TableName, string[]>> = {
+  stock_items: ['production_stock', 'technical_sheets'],
+  technical_sheets: ['productions', 'finished_productions_stock'],
+  productions: ['finished_productions_stock', 'stock_items'],
+  stock_movements: ['stock_items'],
+  technical_sheet_ingredients: ['technical_sheets'],
+  sale_product_components: ['sale_products'],
+};
+
 /**
- * Hook that subscribes to realtime changes on specified tables.
- * Automatically invalidates the relevant queries when data changes.
+ * Hook that subscribes to realtime changes using a SINGLE channel for all tables.
+ * This reduces from N WebSocket connections to 1, enabling proper scaling.
  */
 export function useRealtimeSubscription({ tables }: UseRealtimeOptions) {
   const queryClient = useQueryClient();
@@ -34,60 +44,32 @@ export function useRealtimeSubscription({ tables }: UseRealtimeOptions) {
   const { isCollaboratorMode, gestorId } = useCollaboratorContext();
 
   useEffect(() => {
-    // Only subscribe if we have a user or are in collaborator mode
     if (!user?.id && !isCollaboratorMode) return;
 
-    const channels = tables.map((table) => {
-      const channel = supabase
-        .channel(`realtime_${table}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: table,
-          },
-          (payload) => {
-            console.log(`Realtime update on ${table}:`, payload.eventType);
+    // One channel handles ALL tables — previously this was N channels
+    const channelName = `realtime_global_${user?.id || gestorId || 'collab'}`;
+    let channel = supabase.channel(channelName);
 
-            // Invalidate all related queries
-            queryClient.invalidateQueries({ queryKey: [table] });
-
-            // Also invalidate related queries based on table relationships
-            if (table === 'stock_items') {
-              queryClient.invalidateQueries({ queryKey: ['production_stock'] });
-              queryClient.invalidateQueries({ queryKey: ['technical_sheets'] });
-            }
-            if (table === 'technical_sheets') {
-              queryClient.invalidateQueries({ queryKey: ['productions'] });
-              queryClient.invalidateQueries({ queryKey: ['finished_productions_stock'] });
-            }
-            if (table === 'productions') {
-              queryClient.invalidateQueries({ queryKey: ['finished_productions_stock'] });
-              queryClient.invalidateQueries({ queryKey: ['stock_items'] });
-            }
-            if (table === 'stock_movements') {
-              queryClient.invalidateQueries({ queryKey: ['stock_items'] });
-            }
-            if (table === 'technical_sheet_ingredients') {
-              queryClient.invalidateQueries({ queryKey: ['technical_sheets'] });
-            }
-            if (table === 'sale_product_components') {
-              queryClient.invalidateQueries({ queryKey: ['sale_products'] });
-            }
-          }
-        )
-        .subscribe();
-
-      return channel;
+    tables.forEach((table) => {
+      channel = channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table },
+        (payload) => {
+          queryClient.invalidateQueries({ queryKey: [table] });
+          CASCADE_MAP[table]?.forEach((related) => {
+            queryClient.invalidateQueries({ queryKey: [related] });
+          });
+        }
+      );
     });
 
+    channel.subscribe();
+
     return () => {
-      channels.forEach((channel) => {
-        supabase.removeChannel(channel);
-      });
+      supabase.removeChannel(channel);
     };
-  }, [user?.id, isCollaboratorMode, gestorId, tables, queryClient]);
+  }, [user?.id, isCollaboratorMode, gestorId, queryClient]);
+  // Note: `tables` intentionally omitted from deps — list is stable (defined outside component)
 }
 
 const GLOBAL_TABLES: TableName[] = [
@@ -108,12 +90,8 @@ const GLOBAL_TABLES: TableName[] = [
 ];
 
 /**
- * Preset hook for subscribing to all main data tables
+ * Preset hook for subscribing to all main data tables via a single WebSocket channel.
  */
 export function useGlobalRealtimeSync() {
-  useRealtimeSubscription({
-    tables: GLOBAL_TABLES,
-  });
+  useRealtimeSubscription({ tables: GLOBAL_TABLES });
 }
-
-

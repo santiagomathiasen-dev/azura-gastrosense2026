@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { FileText, Upload, Camera, X, Loader2, Image } from 'lucide-react';
+import { FileText, Upload, Camera, X, Loader2, Image, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -28,6 +28,7 @@ interface RecipeFileImportDialogProps {
 }
 
 type Step = 'upload' | 'processing' | 'review';
+type ProcessingStage = 'reading' | 'sending' | 'processing' | null;
 
 export function RecipeFileImportDialog({
   open,
@@ -35,9 +36,11 @@ export function RecipeFileImportDialog({
   onImport,
 }: RecipeFileImportDialogProps) {
   const [step, setStep] = useState<Step>('upload');
+  const [processingStage, setProcessingStage] = useState<ProcessingStage>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
+  const [lastFile, setLastFile] = useState<File | null>(null);
 
   // Extracted data
   const [recipeData, setRecipeData] = useState<RecipeData>({});
@@ -49,8 +52,10 @@ export function RecipeFileImportDialog({
 
   const resetState = () => {
     setStep('upload');
+    setProcessingStage(null);
     setPreview(null);
     setFileName('');
+    setLastFile(null);
     setRecipeData({});
     setIngredients([]);
     setSummary('');
@@ -100,25 +105,30 @@ export function RecipeFileImportDialog({
 
   const processFile = async (file: File) => {
     setIsProcessing(true);
+    setLastFile(file);
     setStep('processing');
 
     try {
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Processamento demorou mais que 5 minutos. Tente um arquivo menor ou recarregue a página.')), 300000);
+        setTimeout(() => reject(new Error('Processamento demorou mais que 30 segundos. Tente novamente.')), 30000);
       });
 
       const processTask = async () => {
         let fileType: 'image' | 'pdf' | 'text';
         let content: string;
+        let mimeType: string = file.type;
 
         if (file.type.startsWith('image/')) {
+          setProcessingStage('reading');
           fileType = 'image';
-          // Compressão agressiva: máx 800px, qualidade 0.6 para evitar WORKER_LIMIT
-          content = await compressImage(file, 800, 0.6);
+          content = await compressImage(file, 1200, 0.8);
         } else if (file.type === 'application/pdf') {
-          fileType = 'pdf';
-          content = await fileToBase64(file);
+          setProcessingStage('reading');
+          fileType = 'text';
+          content = await extractTextFromPDF(file);
+          mimeType = 'text/plain';
         } else if (file.type === 'text/plain') {
+          setProcessingStage('reading');
           fileType = 'text';
           content = await file.text();
         } else {
@@ -127,10 +137,12 @@ export function RecipeFileImportDialog({
 
         console.log(`[RecipeImport] ${fileType} (${(content.length / 1024).toFixed(1)}KB) → Gemini`);
 
+        setProcessingStage('sending');
         const { data, error: funcError } = await supabase.functions.invoke('extract-ingredients', {
-          body: { fileType, content, extractRecipe: true, mimeType: file.type },
+          body: { fileType, content, extractRecipe: true, mimeType },
         });
 
+        setProcessingStage('processing');
         if (funcError) throw new Error(funcError.message);
         console.log('[RecipeImport] Extraction output:', data);
         return data;
@@ -279,7 +291,12 @@ export function RecipeFileImportDialog({
         {step === 'processing' && (
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-muted-foreground">Processando arquivo com IA...</p>
+            <p className="text-muted-foreground">
+              {processingStage === 'reading' && 'Lendo arquivo...'}
+              {processingStage === 'sending' && 'Enviando para IA...'}
+              {processingStage === 'processing' && 'Processando com IA...'}
+              {!processingStage && 'Processando arquivo com IA...'}
+            </p>
             {fileName && (
               <p className="text-sm text-muted-foreground">{fileName}</p>
             )}
@@ -474,6 +491,16 @@ export function RecipeFileImportDialog({
         )}
 
         <DialogFooter className="mt-4">
+          {step === 'upload' && lastFile && (
+            <Button
+              variant="outline"
+              onClick={() => processFile(lastFile)}
+              disabled={isProcessing}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Tentar novamente
+            </Button>
+          )}
           {step === 'review' && (
             <Button
               variant="outline"
@@ -503,6 +530,27 @@ export function RecipeFileImportDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+async function extractTextFromPDF(file: File): Promise<string> {
+  try {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages: string[] = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      pages.push(content.items.map((item: any) => item.str).join(' '));
+    }
+    const text = pages.join('\n').trim();
+    if (!text) throw new Error('PDF sem texto extraível');
+    return text;
+  } catch (err) {
+    console.warn('[extractTextFromPDF] fallback to base64:', err);
+    return fileToBase64(file);
+  }
 }
 
 function fileToBase64(file: File): Promise<string> {

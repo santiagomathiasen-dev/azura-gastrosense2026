@@ -83,7 +83,7 @@ export function GestaoGestores() {
 
     const handleOpenEdit = (gestor: Gestor) => {
         setEditingGestor(gestor);
-        setRole(gestor.role as any || 'gestor');
+        setRole((gestor.role as 'admin' | 'gestor' | 'colaborador') || 'gestor');
         setPermissions({
             can_access_dashboard: gestor.can_access_dashboard,
             can_access_estoque: gestor.can_access_estoque,

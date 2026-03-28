@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Upload, FileImage, FileSpreadsheet, FileText, X, Loader2, CheckCircle2, Sparkles, Plus, AlertCircle } from 'lucide-react';
 import {
   Dialog,
@@ -62,6 +62,7 @@ export function AIImportDialog({
   const [processedCount, setProcessedCount] = useState(0);
   const [allExtractedIngredients, setAllExtractedIngredients] = useState<ExtractedIngredient[]>([]);
   const [combinedRecipeData, setCombinedRecipeData] = useState<RecipeData | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { extractFromFile } = useIngredientImport();
@@ -76,6 +77,7 @@ export function AIImportDialog({
   };
 
   const handleClose = () => {
+    abortControllerRef.current?.abort();
     resetState();
     onOpenChange(false);
   };
@@ -166,6 +168,11 @@ export function AIImportDialog({
   const handleExtractAll = async () => {
     if (files.length === 0) return;
 
+    // Cancel any previous run
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setStep('processing');
     setProcessedCount(0);
 
@@ -173,6 +180,8 @@ export function AIImportDialog({
     let lastRecipeData: RecipeData | null = null;
 
     for (let i = 0; i < files.length; i++) {
+      if (controller.signal.aborted) break;
+
       const fileItem = files[i];
 
       // Update file status to processing
@@ -183,8 +192,9 @@ export function AIImportDialog({
       try {
         const result = await extractFromFile(fileItem.file, extractRecipe);
 
+        if (controller.signal.aborted) break;
+
         if (result && result.ingredients.length > 0) {
-          // Add source file info to each ingredient
           const ingredientsWithSource = result.ingredients.map(ing => ({
             ...ing,
             selected: true,
@@ -192,12 +202,10 @@ export function AIImportDialog({
 
           extractedIngredients.push(...ingredientsWithSource);
 
-          // Keep recipe data from last file that had it
           if (result.recipeData) {
             lastRecipeData = result.recipeData;
           }
 
-          // Update file status to done
           setFiles(prev => prev.map((f, idx) =>
             idx === i ? { ...f, status: 'done', extractedCount: result.ingredients.length } : f
           ));
@@ -207,13 +215,17 @@ export function AIImportDialog({
           ));
         }
       } catch (error) {
-        setFiles(prev => prev.map((f, idx) =>
-          idx === i ? { ...f, status: 'error', error: 'Erro ao processar' } : f
-        ));
+        if (!controller.signal.aborted) {
+          setFiles(prev => prev.map((f, idx) =>
+            idx === i ? { ...f, status: 'error', error: 'Erro ao processar' } : f
+          ));
+        }
       }
 
       setProcessedCount(i + 1);
     }
+
+    if (controller.signal.aborted) return;
 
     setAllExtractedIngredients(extractedIngredients);
     setCombinedRecipeData(lastRecipeData);
@@ -225,6 +237,11 @@ export function AIImportDialog({
       setStep('upload');
     }
   };
+
+  const handleCancel = useCallback(() => {
+    abortControllerRef.current?.abort();
+    onOpenChange(false);
+  }, [onOpenChange]);
 
   const toggleIngredient = (index: number) => {
     setAllExtractedIngredients(prev =>

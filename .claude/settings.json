@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /d/azura-gastrosense/src/context* /d/azura-gastrosense/src/store*)",
+      "Bash(find d:azura-gastrosense -maxdepth 2 -type f \\\\\\(-name .github -o -path */.github/* -o -name *.yml -o -name *.yaml \\\\\\))",
+      "Bash(grep -E \"\\\\.tsx$|\\\\.ts$\")",
+      "Bash(head -50 \"d:\\\\azura-gastrosense\\\\src\\\\app\\\\\\(dashboard\\)\\\\dashboard\\\\page.tsx\")"
+    ]
+  }
+}

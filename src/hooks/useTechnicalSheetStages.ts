@@ -53,6 +53,8 @@ export function useTechnicalSheetStages(technicalSheetId?: string) {
       }
     },
     enabled: !!technicalSheetId && (!!user?.id || !!ownerId),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const createStage = useMutation({

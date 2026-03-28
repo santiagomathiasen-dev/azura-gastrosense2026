@@ -56,6 +56,8 @@ export function useExpiryDates(stockItemId?: string) {
             }
         },
         enabled: !!ownerId,
+        staleTime: 30_000,
+        gcTime: 5 * 60 * 1000,
     });
 
     const addExpiryDate = useMutation({

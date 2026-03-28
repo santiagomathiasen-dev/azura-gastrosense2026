@@ -36,6 +36,8 @@ export function useEvents() {
             return (data as unknown) as CalendarEvent[];
         },
         enabled: !!ownerId,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
     });
 
     const createEvent = useMutation({

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { FileText, Upload, Camera, Loader2 } from 'lucide-react';
+import { FileText, Upload, Camera, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -38,6 +38,7 @@ interface IngredientFileImportDialogProps {
 }
 
 type Step = 'upload' | 'processing' | 'review';
+type ProcessingStage = 'reading' | 'sending' | 'processing' | null;
 
 const categoryLabels: Record<StockCategory, string> = {
   laticinios: 'Laticínios',
@@ -65,8 +66,10 @@ export function IngredientFileImportDialog({
   onImport,
 }: IngredientFileImportDialogProps) {
   const [step, setStep] = useState<Step>('upload');
+  const [processingStage, setProcessingStage] = useState<ProcessingStage>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileName, setFileName] = useState<string>('');
+  const [lastFile, setLastFile] = useState<File | null>(null);
   const [ingredients, setIngredients] = useState<ExtractedIngredient[]>([]);
   const [summary, setSummary] = useState('');
 
@@ -75,7 +78,9 @@ export function IngredientFileImportDialog({
 
   const resetState = () => {
     setStep('upload');
+    setProcessingStage(null);
     setFileName('');
+    setLastFile(null);
     setIngredients([]);
     setSummary('');
     setIsProcessing(false);
@@ -113,40 +118,46 @@ export function IngredientFileImportDialog({
   };
 
   const processFile = async (file: File) => {
+    setLastFile(file);
     setIsProcessing(true);
     setStep('processing');
 
     try {
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Processamento demorou mais que 5 minutos. Tente um arquivo menor ou recarregue a página.')), 300000);
+        setTimeout(() => reject(new Error('Tempo limite excedido (30s). Verifique sua conexão e tente novamente.')), 30_000);
       });
 
       const processTask = async () => {
-        let fileType: 'image' | 'pdf' | 'text';
+        let fileType: 'image' | 'text';
         let content: string;
+        let mimeType: string;
+
+        setProcessingStage('reading');
 
         if (file.type.startsWith('image/')) {
           fileType = 'image';
-          // Compressão agressiva: máx 800px, qualidade 0.6 para minimizar payload
-          content = await compressImage(file, 800, 0.6);
+          content = await compressImage(file, 1200, 0.8);
+          mimeType = 'image/jpeg';
         } else if (file.type === 'application/pdf') {
-          fileType = 'pdf';
-          content = await fileToBase64(file);
-        } else if (file.type === 'text/plain') {
+          // Extrai texto no browser: envia < 5KB em vez de ~320KB base64
+          fileType = 'text';
+          content = await extractTextFromPDF(file);
+          mimeType = 'text/plain';
+        } else {
           fileType = 'text';
           content = await file.text();
-        } else {
-          throw new Error('Tipo de arquivo não suportado');
+          mimeType = 'text/plain';
         }
 
-        console.log(`Processing ${fileType} (${(content.length / 1024).toFixed(1)}KB base64) via supabase.functions.invoke`);
+        setProcessingStage('sending');
+        console.log(`Processing ${fileType} (${(content.length / 1024).toFixed(1)}KB) via supabase.functions.invoke`);
 
         const { data, error: funcError } = await supabase.functions.invoke('extract-ingredients', {
-          body: { fileType, content, extractRecipe: false, mimeType: file.type },
+          body: { fileType, content, extractRecipe: false, mimeType },
         });
 
         if (funcError) throw new Error(funcError.message);
-        console.log("Extraction output:", data);
+        setProcessingStage('processing');
         return data;
       };
 
@@ -158,7 +169,6 @@ export function IngredientFileImportDialog({
         return;
       }
 
-      // Set extracted data
       const extractedIngredients = (data.ingredients || []).map((ing: ExtractedIngredient) => ({
         ...ing,
         selected: true,
@@ -166,7 +176,6 @@ export function IngredientFileImportDialog({
 
       setIngredients(extractedIngredients);
       setSummary(data.summary || '');
-
       setStep('review');
 
       if (extractedIngredients.length > 0) {
@@ -180,6 +189,7 @@ export function IngredientFileImportDialog({
       setStep('upload');
     } finally {
       setIsProcessing(false);
+      setProcessingStage(null);
     }
   };
 
@@ -298,10 +308,26 @@ export function IngredientFileImportDialog({
         {step === 'processing' && (
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-muted-foreground">Processando arquivo com IA...</p>
-            {fileName && (
-              <p className="text-sm text-muted-foreground">{fileName}</p>
-            )}
+            <div className="text-center space-y-1">
+              {processingStage === 'reading' && (
+                <>
+                  <p className="font-medium">Lendo arquivo...</p>
+                  <p className="text-xs text-muted-foreground">Extraindo texto localmente</p>
+                </>
+              )}
+              {processingStage === 'sending' && (
+                <>
+                  <p className="font-medium">Enviando para IA...</p>
+                  <p className="text-xs text-muted-foreground">Payload otimizado</p>
+                </>
+              )}
+              {(processingStage === 'processing' || !processingStage) && (
+                <>
+                  <p className="font-medium">Processando com IA...</p>
+                  <p className="text-xs text-muted-foreground">{fileName}</p>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -416,6 +442,15 @@ export function IngredientFileImportDialog({
           </ScrollArea>
         )}
 
+        {step === 'upload' && lastFile && (
+          <DialogFooter>
+            <Button variant="outline" onClick={() => processFile(lastFile)} disabled={isProcessing}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Tentar novamente
+            </Button>
+          </DialogFooter>
+        )}
+
         {step === 'review' && (
           <DialogFooter>
             <Button
@@ -444,6 +479,20 @@ export function IngredientFileImportDialog({
     </Dialog>
   );
 }
+async function extractTextFromPDF(file: File): Promise<string> {
+  const pdfjsLib = await import('pdfjs-dist');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map((item: any) => item.str).join(' ') + '\n';
+  }
+  return text.trim();
+}
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const skipResize = file.size < 1024 * 1024; // Less than 1MB

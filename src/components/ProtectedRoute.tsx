@@ -113,7 +113,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // Check payment/active status for non-admin profiles
-  const isSantiago = profile?.email === 'santiago.aloom@gmail.com' || profile?.email === 'santiagomathiasen@gmail.com';
+  const isSantiago = isAdmin; // Admins bypass payment restriction; removed hardcoded emails
   const isBlocked = profile?.status === 'inativo';
   // If status_pagamento is false OR subscription_end_date is in the past
   const isPaymentPending = profile?.status_pagamento === false || (profile?.subscription_end_date && new Date(profile.subscription_end_date) < new Date());

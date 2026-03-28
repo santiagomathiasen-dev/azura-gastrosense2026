@@ -161,11 +161,19 @@ export default function Producao() {
     }
   };
 
+  const parseProductionDate = (dateStr: string): Date => {
+    const parts = dateStr?.split('-');
+    if (parts?.length === 3) {
+      const [y, m, d] = parts.map(Number);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return new Date(y, m - 1, d);
+    }
+    return new Date();
+  };
+
   // Filter productions by period and search
   const filteredProducoes = useMemo(() => {
     return productions.filter(prod => {
-      const [year, month, day] = prod.scheduled_date.split('-').map(Number);
-      const prodDate = new Date(year, month - 1, day);
+      const prodDate = parseProductionDate(prod.scheduled_date);
       const inPeriod = isWithinInterval(prodDate, { start: periodBoundaries.start, end: periodBoundaries.end });
       const matchesSearch = prod.name.toLowerCase().includes(search.toLowerCase());
       const matchesPraca = pracaFilter === 'all'
@@ -178,9 +186,7 @@ export default function Producao() {
   const producoesPorStatus = {
     late: productions.filter(p => {
       if (p.status === 'completed' || p.status === 'cancelled') return false;
-      const [year, month, day] = p.scheduled_date.split('-').map(Number);
-      const prodDate = new Date(year, month - 1, day);
-      return prodDate < startOfDay(getNow());
+      return parseProductionDate(p.scheduled_date) < startOfDay(getNow());
     }),
     requested: filteredProducoes.filter(p => p.status === 'requested'),
     planned: filteredProducoes.filter(p => p.status === 'planned'),

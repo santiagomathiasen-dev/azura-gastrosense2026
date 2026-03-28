@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
 // gemini-2.0-flash is stable → use v1 (v1beta returns 404 for this model)
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "", { apiVersion: "v1" });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export const nfeSchema = {
   description: "Extracted data from a Brazilian NF-e invoice",
@@ -32,13 +32,16 @@ export const nfeSchema = {
 };
 
 export const extractInvoiceData = async (content: string) => {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: nfeSchema as any,
+  const model = genAI.getGenerativeModel(
+    {
+      model: "gemini-2.0-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: nfeSchema as any,
+      },
     },
-  });
+    { apiVersion: "v1" }
+  );
 
   const prompt = `
     Extração de NF-e (Brasil).
@@ -50,7 +53,10 @@ export const extractInvoiceData = async (content: string) => {
     ${content}
   `;
 
-  const result = await model.generateContent(prompt);
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Gemini timeout: resposta não recebida em 30s')), 30_000)
+  );
+  const result = await Promise.race([model.generateContent(prompt), timeoutPromise]);
   const response = await result.response;
   const text = response.text();
   try {

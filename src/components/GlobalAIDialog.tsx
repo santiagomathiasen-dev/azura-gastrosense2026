@@ -49,21 +49,25 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
             const currentPath = pathname;
 
             const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-global-command`;
-            console.log("Calling process-global-command:", functionUrl);
+            const { data: { session } } = await supabase.auth.getSession();
+            const authToken = session?.access_token || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
+            const aiController = new AbortController();
+            const aiTimer = setTimeout(() => aiController.abort(), 30_000);
             const response = await fetch(functionUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
-                    'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+                    'Authorization': `Bearer ${authToken}`,
+                    'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
                 },
                 body: JSON.stringify({
                     text,
                     path: currentPath,
                     context: pageContent
-                })
-            });
+                }),
+                signal: aiController.signal,
+            }).finally(() => clearTimeout(aiTimer));
 
             if (!response.ok) {
                 throw new Error(`Cloud Error: ${response.status}`);

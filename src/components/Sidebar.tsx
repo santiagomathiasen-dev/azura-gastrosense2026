@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
 import { NavigationLink } from '@/components/NavigationLink';
 import { Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -83,17 +84,17 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     }, 100);
   };
 
-  // Build visible nav items
-  const visibleNavItems = navItems.filter(item => {
+  // Build visible nav items — memoized to avoid recalculating on every parent render
+  const visibleNavItems = useMemo(() => navItems.filter(item => {
     // Full admin / owner always sees everything
-    if (isAdmin || isGestor || user?.email === 'santiago.aloom@gmail.com' || (profile?.role as string) === 'owner') return true;
+    if (isAdmin || isGestor || (profile?.role as string) === 'owner') return true;
 
     // While loading profile, show items to prevent flashing an empty sidebar
     if (!profile) return true;
 
     // Items marked as adminOnly are hidden for everyone except admins (handled above)
     // In development/bypass mode (no profile), we show it to allow testing
-    if ((item as any).adminOnly) return isAdmin || user?.email === 'santiago.aloom@gmail.com' || !profile;
+    if ((item as any).adminOnly) return isAdmin || !profile;
 
     // Gestores see all standard and management items (except adminOnly)
     if (profile?.role === 'gestor') return true;
@@ -108,7 +109,7 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
     // Fallback default
     return true;
-  });
+  }), [isAdmin, isGestor, profile]);
   return (
     <aside
       className={cn(

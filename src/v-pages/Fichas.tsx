@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, DollarSign, Calculator, Clock, Users, ChefHat, Edit, Trash2, Plus, FileText, Loader2, Printer } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
 import { PageHeader } from '@/components/PageHeader';
 import { Input } from '@/components/ui/input';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -129,10 +130,10 @@ export default function Fichas() {
     }
 
     setIsSaving(true);
+    const newlyCreatedStockItems: Map<string, string> = new Map();
 
     try {
       const ingredientStockIds: Map<string, string> = new Map();
-      const newlyCreatedStockItems: Map<string, string> = new Map();
 
       for (const ing of items) {
         if (newlyCreatedStockItems.has(ing.name.toLowerCase())) {
@@ -195,7 +196,12 @@ export default function Fichas() {
       toast.success(`Receita "${recipeInfo.recipeName}" criada com ${items.length} ingredientes!`);
     } catch (error) {
       console.error('Error creating recipe from file:', error);
-      toast.error('Erro ao criar receita');
+      // Rollback: remove stock items that were newly created for this import
+      if (newlyCreatedStockItems.size > 0) {
+        const idsToDelete = Array.from(newlyCreatedStockItems.values());
+        await supabase.from('stock_items').delete().in('id', idsToDelete);
+      }
+      toast.error('Erro ao criar receita. Insumos temporários foram removidos.');
     } finally {
       setIsSaving(false);
     }
@@ -453,11 +459,11 @@ export default function Fichas() {
 
           {/* Empty State */}
           {filteredSheets.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <ChefHat className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhuma ficha técnica cadastrada ainda.</p>
-              <p className="text-sm mt-1">Use a aba "Cadastro" para adicionar suas receitas.</p>
-            </div>
+            <EmptyState
+              icon={ChefHat}
+              title="Nenhuma ficha técnica"
+              description={search ? 'Nenhuma ficha encontrada para essa busca.' : 'Crie sua primeira ficha técnica para controlar custos e padronizar receitas.'}
+            />
           )}
 
           {/* List */}

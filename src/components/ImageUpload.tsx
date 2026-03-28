@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import { Camera, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -94,10 +95,13 @@ export function ImageUpload({
 
       {currentImageUrl ? (
         <div className="relative w-full h-full rounded-lg overflow-hidden border">
-          <img
+          <Image
             src={currentImageUrl}
             alt="Imagem"
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
+            sizes="128px"
+            unoptimized={!currentImageUrl.startsWith('https://')}
           />
           <Button
             type="button"

@@ -82,6 +82,7 @@ export function VoiceImportDialog({
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasSpokenRef = useRef(false);
+  const isProcessingRef = useRef(false); // mutex to prevent double-processing
 
   const isSupported = typeof window !== 'undefined' &&
     !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -231,10 +232,10 @@ export function VoiceImportDialog({
     setIsListening(false);
   }, [clearSilenceTimeout]);
 
-  // Auto-process when listening stops and we have speech
+  // Auto-process when listening stops and we have speech (mutex prevents double-firing)
   useEffect(() => {
     if (!isListening && hasSpokenRef.current && (finalTranscript.trim() || transcript.trim())) {
-      // Auto-process the voice input
+      if (isProcessingRef.current) return;
       processVoiceInput();
       hasSpokenRef.current = false;
     }
@@ -253,12 +254,14 @@ export function VoiceImportDialog({
   }, [open, isSupported, step, startListening]);
 
   const processVoiceInput = async () => {
+    if (isProcessingRef.current) return;
     const textToProcess = (finalTranscript + ' ' + transcript).trim();
     if (!textToProcess) {
       toast.error('Nenhum texto capturado. Fale novamente.');
       return;
     }
 
+    isProcessingRef.current = true;
     stopListening();
     setStep('processing');
 
@@ -311,20 +314,24 @@ IMPORTANTE:
 - Se não houver preço, use null.`;
 
       const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-voice-text`;
-      console.log("Calling process-voice-text (batch import):", functionUrl);
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
+      const voiceController = new AbortController();
+      const voiceTimer = setTimeout(() => voiceController.abort(), 30_000);
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+          'Authorization': `Bearer ${authToken}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
         },
         body: JSON.stringify({
           text: textToProcess,
           systemPrompt,
-        })
-      });
+        }),
+        signal: voiceController.signal,
+      }).finally(() => clearTimeout(voiceTimer));
 
       if (!response.ok) {
         throw new Error(`Cloud Error: ${response.status}`);
@@ -362,10 +369,13 @@ IMPORTANTE:
 
       // Auto-import without confirmation
       await handleImport(items, recipeData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing voice input:', error);
-      toast.error('Erro ao processar. Tente novamente.');
+      const msg = error?.name === 'AbortError' ? 'Tempo esgotado. Tente novamente.' : 'Erro ao processar. Tente novamente.';
+      toast.error(msg);
       setStep('listening');
+    } finally {
+      isProcessingRef.current = false;
     }
   };
 

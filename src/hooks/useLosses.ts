@@ -46,6 +46,8 @@ export function useLosses() {
       }
     },
     enabled: !!user?.id || !!ownerId,
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const createLoss = useMutation({
