@@ -57,7 +57,6 @@ export function useIngredientImport() {
         return null;
       }
 
-      console.log(`Processing file: ${file.name}, size: ${(file.size / 1024).toFixed(2)}KB, type: ${file.type}`);
 
       if (file.type.startsWith('image/')) {
         fileType = 'image';
@@ -77,15 +76,10 @@ export function useIngredientImport() {
       }
 
       const mimeType = file.type;
-      console.log(`Sending ${fileType} to extract-ingredients, mimeType: ${mimeType}, base64 length: ${content.length}`);
-
-      console.log(`Processing pdf file for ingredient extraction via supabaseFetch`);
 
       const { data, error: funcError } = await supabase.functions.invoke('extract-ingredients', {
         body: { fileType, content, extractRecipe, mimeType },
       });
-
-      console.log("Edge function response:", { data, funcError });
 
       if (funcError) {
         throw new Error(`Falha na nuvem (Edge Function): ${funcError.message}`);
@@ -176,7 +170,6 @@ export function useIngredientImport() {
 }
 
 function fileToBase64(file: File): Promise<string> {
-  console.log("Converting file to base64, size:", file.size);
   return new Promise((resolve, reject) => {
     const skipResize = file.size < 1024 * 1024; // Less than 1MB
     const isHeic = file.type.toLowerCase().includes('heic') || file.name.toLowerCase().endsWith('.heic');

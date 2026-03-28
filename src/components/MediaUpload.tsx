@@ -95,7 +95,7 @@ export function MediaUpload({ media, onMediaChange, maxItems = 5 }: MediaUploadP
 
   const handleRemove = (id: string) => {
     const item = media.find(m => m.id === id);
-    if (item) {
+    if (item?.url.startsWith('blob:')) {
       URL.revokeObjectURL(item.url);
     }
     onMediaChange(media.filter(m => m.id !== id));
