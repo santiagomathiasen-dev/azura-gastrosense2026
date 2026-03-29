@@ -43,39 +43,28 @@ interface MappedItem extends ExtractionItem {
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-// Converts any file to a raw base64 string (no data: prefix).
-// Gemini supports application/pdf natively, so we send the full binary — works
-// for both digital and scanned/image-based PDFs, unlike text extraction.
-function pdfToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      resolve(result.split(',')[1]);
-    };
-    reader.onerror = () => reject(new Error('Falha ao ler PDF'));
-    reader.readAsDataURL(file);
-  });
-}
-
-async function compressImage(file: File, maxWidth = 800, quality = 0.6): Promise<string> {
-  return new Promise((resolve, reject) => {
+// Compress image and return as File (JPEG). Falls back to original on error.
+function compressImageToFile(file: File, maxPx = 1200, quality = 0.75): Promise<File> {
+  return new Promise((resolve) => {
     const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
+    const url = URL.createObjectURL(file);
     img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      const scale = Math.min(1, maxWidth / img.width);
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
+        else { width = Math.round(width * maxPx / height); height = maxPx; }
+      }
       const canvas = document.createElement('canvas');
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { reject(new Error('Canvas não suportado')); return; }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', quality);
-      resolve(dataUrl.split(',')[1]);
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => resolve(new File([blob!], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })),
+        'image/jpeg', quality
+      );
     };
-    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Falha ao ler imagem')); };
-    img.src = objectUrl;
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
   });
 }
 
@@ -168,111 +157,44 @@ export function InvoiceImportDialog({
     setIsProcessing(true);
     setStep('ai_processing');
 
-    // Timeout de 90s — Gemini pode ter até 3 retries com 15-45s de espera
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 90_000);
 
     try {
-      let content: string;
-      let fileType: string;
-      let mimeType: string;
+      setProcessingStage('reading');
+      let fileToSend: File = file;
 
-      const isPdf = file.type === 'application/pdf';
-      const isImage = file.type.startsWith('image/');
-
-      if (isPdf) {
-        // Envia PDF via Supabase Storage para evitar limite de 1MB do Edge Function.
-        // PDF em base64 costuma ultrapassar o limite → erro 546 WORKER_LIMIT.
-        setProcessingStage('reading');
-        const { data: { session } } = await supabase.auth.getSession();
-        const uid = session?.user?.id;
-        if (!uid) throw new Error('Usuário não autenticado.');
-        const tempPath = `${uid}/temp_${Date.now()}_${file.name}`;
-        const { error: uploadErr } = await supabase.storage.from('invoices').upload(tempPath, file);
-        if (uploadErr) throw new Error(`Falha ao preparar arquivo: ${uploadErr.message}`);
-        // Passa o path — Edge Function baixa diretamente do Storage
-        setProcessingStage('sending');
-        const { data: extractedData, error: extractError } = await supabase.functions.invoke(
-          'extract-ingredients',
-          { body: { storagePath: tempPath, fileType: 'pdf', mimeType: 'application/pdf', extractRecipe: false } }
-        );
-        clearTimeout(timeout);
-        if (extractError) throw new Error(`Erro na extração: ${extractError.message}`);
-        if (extractedData?.error) throw new Error(extractedData.error);
-        setProcessingStage('processing');
-        const { data: { session: s2 } } = await supabase.auth.getSession();
-        if (s2?.user) {
-          const { data: importRecord } = await supabase.from('invoice_imports').insert({
-            user_id: s2.user.id, status: 'completed',
-            supplier_name: extractedData.fornecedor ?? null,
-            invoice_number: extractedData.numero_nota ?? null,
-            emission_date: extractedData.data_emissao ?? null,
-            total_value: extractedData.valor_total ?? null,
-            items_count: extractedData.ingredients?.length ?? 0,
-            extracted_data: extractedData,
-          }).select('id').single();
-          if (importRecord?.id) setImportId(importRecord.id);
-        }
-        const normalized = {
-          supplierName: extractedData.fornecedor ?? 'Fornecedor não identificado',
-          supplierCnpj: null, invoiceNumber: extractedData.numero_nota ?? '-',
-          totalValue: extractedData.valor_total ?? 0,
-          items: (extractedData.ingredients ?? []).map((ing: any) => ({
-            name: ing.name, quantity: ing.quantity, unit: ing.unit,
-            unitPrice: ing.price ?? 0, category: ing.category,
-          })),
-        };
-        setProcessingStage(null);
-        handleComplete(normalized);
-        return; // handled above — skip rest of processFile
-      } else if (isImage) {
-        // Comprime imagem — reduz payload em ~70%
-        setProcessingStage('reading');
-        content = await compressImage(file);
-        fileType = 'image';
-        mimeType = 'image/jpeg';
-      } else {
-        throw new Error('Tipo de arquivo não suportado. Use PDF ou imagem.');
+      // Compress images client-side to reduce upload bandwidth
+      if (file.type.startsWith('image/')) {
+        fileToSend = await compressImageToFile(file, 1200, 0.75);
       }
 
-      // 3. Envia para Edge Function
       setProcessingStage('sending');
-      const { data: extractedData, error: extractError } = await supabase.functions.invoke(
-        'extract-ingredients',
-        {
-          body: { content, fileType, mimeType, extractRecipe: false },
-        }
-      );
+      const formData = new FormData();
+      formData.append('file', fileToSend, fileToSend.name);
+      formData.append('extractRecipe', 'false');
+      formData.append('saveToDb', 'true');
+
+      const res = await fetch('/api/invoices/upload', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
 
       clearTimeout(timeout);
 
-      if (extractError) throw new Error(`Erro na extração: ${extractError.message}`);
-      if (extractedData?.error) throw new Error(extractedData.error);
-
-      // 4. Processa resultado
-      setProcessingStage('processing');
-
-      // Salva registro no banco
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: importRecord } = await supabase
-          .from('invoice_imports')
-          .insert({
-            user_id: session.user.id,
-            status: 'completed',
-            supplier_name: extractedData.fornecedor ?? null,
-            invoice_number: extractedData.numero_nota ?? null,
-            emission_date: extractedData.data_emissao ?? null,
-            total_value: extractedData.valor_total ?? null,
-            items_count: extractedData.ingredients?.length ?? 0,
-            extracted_data: extractedData,
-          })
-          .select('id')
-          .single();
-        if (importRecord?.id) setImportId(importRecord.id);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Erro HTTP ${res.status}`);
       }
 
-      // Normaliza campos para o formato interno
+      setProcessingStage('processing');
+      const extractedData = await res.json();
+
+      if (extractedData?.error) throw new Error(extractedData.error);
+
+      if (extractedData.importId) setImportId(extractedData.importId);
+
       const normalized = {
         supplierName: extractedData.fornecedor ?? 'Fornecedor não identificado',
         supplierCnpj: null,

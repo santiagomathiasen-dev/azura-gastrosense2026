@@ -16,7 +16,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import type { StockCategory, StockUnit } from '@/hooks/useStockItems';
 
 export interface ExtractedIngredient {
@@ -92,9 +91,8 @@ export function IngredientFileImportDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Limite reduzido para 2MB — payloads maiores causam WORKER_LIMIT (546) na Edge Function
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Arquivo muito grande. Máximo 2MB. Tente comprimir o PDF ou reduzir a imagem.');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 10MB.');
       return;
     }
 
@@ -122,54 +120,37 @@ export function IngredientFileImportDialog({
     setIsProcessing(true);
     setStep('processing');
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90_000);
+
     try {
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Tempo limite excedido (90s). Verifique sua conexão e tente novamente.')), 90_000);
+      setProcessingStage('reading');
+      let fileToSend: File = file;
+
+      if (file.type.startsWith('image/')) {
+        fileToSend = await compressImageToFile(file, 1200, 0.75);
+      }
+
+      setProcessingStage('sending');
+      const formData = new FormData();
+      formData.append('file', fileToSend, fileToSend.name);
+      formData.append('extractRecipe', 'false');
+
+      const res = await fetch('/api/invoices/upload', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
       });
 
-      const processTask = async () => {
-        let fileType: 'image' | 'text';
-        let content: string;
-        let mimeType: string;
+      clearTimeout(timeout);
 
-        setProcessingStage('reading');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Erro HTTP ${res.status}`);
+      }
 
-        if (file.type.startsWith('image/')) {
-          fileType = 'image';
-          content = await compressImage(file, 800, 0.6);
-          mimeType = 'image/jpeg';
-        } else if (file.type === 'application/pdf') {
-          // Upload to Storage to bypass the 1MB Edge Function body limit (error 546).
-          const { data: { session: s } } = await supabase.auth.getSession();
-          const uid = s?.user?.id;
-          if (!uid) throw new Error('Usuário não autenticado.');
-          const tempPath = `${uid}/temp_${Date.now()}_${file.name}`;
-          const { error: upErr } = await supabase.storage.from('invoices').upload(tempPath, file);
-          if (upErr) throw new Error(`Falha ao preparar arquivo: ${upErr.message}`);
-          const { data, error: funcError } = await supabase.functions.invoke('extract-ingredients', {
-            body: { storagePath: tempPath, fileType: 'pdf', mimeType: 'application/pdf', extractRecipe: false },
-          });
-          if (funcError) throw new Error(funcError.message);
-          setProcessingStage('processing');
-          return data; // early return — handled entirely here
-        } else {
-          fileType = 'text';
-          content = await file.text();
-          mimeType = 'text/plain';
-        }
-
-        setProcessingStage('sending');
-
-        const { data, error: funcError } = await supabase.functions.invoke('extract-ingredients', {
-          body: { fileType, content, extractRecipe: false, mimeType },
-        });
-
-        if (funcError) throw new Error(funcError.message);
-        setProcessingStage('processing');
-        return data;
-      };
-
-      const data = await Promise.race([processTask(), timeoutPromise]) as any;
+      setProcessingStage('processing');
+      const data = await res.json();
 
       if (data?.error) {
         toast.error(data.error);
@@ -192,6 +173,7 @@ export function IngredientFileImportDialog({
         toast.info(data.summary || 'Nenhum ingrediente encontrado. Verifique o arquivo.');
       }
     } catch (err) {
+      clearTimeout(timeout);
       const message = err instanceof Error ? err.message : 'Erro ao processar arquivo';
       toast.error(message);
       setStep('upload');
@@ -308,7 +290,7 @@ export function IngredientFileImportDialog({
             </div>
 
             <p className="text-xs text-center text-muted-foreground">
-              Formatos aceitos: JPG, PNG, PDF, TXT (máx. 5MB)
+              Formatos aceitos: JPG, PNG, PDF, TXT (máx. 10MB)
             </p>
           </div>
         )}
@@ -487,129 +469,27 @@ export function IngredientFileImportDialog({
     </Dialog>
   );
 }
-async function extractTextFromPDF(file: File): Promise<string> {
-  const pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-  const buffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-  let text = '';
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    text += content.items.map((item: any) => item.str).join(' ') + '\n';
-  }
-  return text.trim();
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const skipResize = file.size < 1024 * 1024; // Less than 1MB
-    const isHeic = file.type.toLowerCase().includes('heic') || file.name.toLowerCase().endsWith('.heic');
-
-    // For images (that are large, and NOT HEIC), resize them before base64 encoding to reduce payload size
-    if (!skipResize && !isHeic && file.type.startsWith('image/')) {
-      const img = new window.Image();
-      const objectUrl = URL.createObjectURL(file);
-      let isResolved = false;
-
-      const resolveFallback = () => {
-        if (isResolved) return;
-        isResolved = true;
-        URL.revokeObjectURL(objectUrl);
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.includes(',') ? result.split(',')[1] : result);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      };
-
-      const fallbackTimer = setTimeout(resolveFallback, 3000);
-
-      img.onload = () => {
-        if (isResolved) return;
-        clearTimeout(fallbackTimer);
-        isResolved = true;
-        URL.revokeObjectURL(objectUrl);
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        const MAX_SIZE = 1200; // max width/height
-
-        if (width > height && width > MAX_SIZE) {
-          height *= MAX_SIZE / width;
-          width = MAX_SIZE;
-        } else if (height > MAX_SIZE) {
-          width *= MAX_SIZE / height;
-          height = MAX_SIZE;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.7);
-          resolve(dataUrl.split(',')[1]);
-        } else {
-          resolveFallback(); // if canvas context fails
-        }
-      };
-
-      img.onerror = () => {
-        if (isResolved) return;
-        clearTimeout(fallbackTimer);
-        resolveFallback();
-      };
-
-      img.src = objectUrl;
-    } else {
-      // For PDFs, Text, small images, or HEIC
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        resolve(result.includes(',') ? result.split(',')[1] : result);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    }
-  });
-}
-
-/**
- * Compresses an image to JPEG with max dimension and quality to keep
- * the base64 payload small and avoid WORKER_LIMIT (546) on Edge Functions.
- */
-function compressImage(file: File, maxPx = 800, quality = 0.6): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new window.Image();
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > maxPx || height > maxPx) {
-          if (width > height) {
-            height = Math.round(height * maxPx / width);
-            width = maxPx;
-          } else {
-            width = Math.round(width * maxPx / height);
-            height = maxPx;
-          }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return reject(new Error('Canvas context unavailable'));
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(dataUrl.split(',')[1]);
-      };
-      img.onerror = reject;
-      img.src = e.target?.result as string;
+// Compress image and return as File (JPEG). Falls back to original on error.
+function compressImageToFile(file: File, maxPx = 1200, quality = 0.75): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
+        else { width = Math.round(width * maxPx / height); height = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => resolve(new File([blob!], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })),
+        'image/jpeg', quality
+      );
     };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
   });
 }
