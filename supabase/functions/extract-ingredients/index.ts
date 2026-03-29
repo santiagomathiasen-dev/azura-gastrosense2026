@@ -178,20 +178,56 @@ Deno.serve(async (req: any) => {
     }
 
     const {
-      content,
+      content: bodyContent,
       fileType,
       extractRecipe = false,
       mimeType: customMimeType,
       userId,
       saveToDb = false,
+      storagePath,       // NEW: path in 'invoices' bucket (avoids 1MB body limit)
     } = body ?? {};
 
+    // ── Download from Storage if storagePath provided ──────────────
+    // Supabase Edge Functions limit request body to ~1MB. PDFs sent as
+    // base64 often exceed this (546 WORKER_LIMIT error). Uploading to
+    // Storage first and passing the path bypasses the limit entirely.
+    let content = bodyContent;
+    let resolvedMimeType = customMimeType;
+
+    if (storagePath) {
+      if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+        return jsonError("Variáveis SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY não configuradas.");
+      }
+      // @ts-ignore
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+      const { data: fileBlob, error: dlErr } = await sb.storage
+        .from("invoices")
+        .download(storagePath);
+
+      if (dlErr || !fileBlob) {
+        return jsonError(`Falha ao baixar arquivo do storage: ${dlErr?.message ?? "arquivo não encontrado"}`);
+      }
+
+      // Convert blob → base64
+      const arrayBuffer = await fileBlob.arrayBuffer();
+      const uint8 = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+      content = btoa(binary);
+      resolvedMimeType = fileBlob.type || "application/pdf";
+
+      // Delete temp file — fire-and-forget (don't block the response)
+      sb.storage.from("invoices").remove([storagePath]).catch(() => {});
+    }
+
     if (!content) {
-      return jsonError("Campo 'content' ausente no body.");
+      return jsonError("Campo 'content' ou 'storagePath' ausente no body.");
     }
 
     // ── Determinar MIME type ───────────────────────────────────────
-    let mimeType = customMimeType;
+    let mimeType = resolvedMimeType;
     if (!mimeType) {
       if (fileType === "pdf") mimeType = "application/pdf";
       else if (fileType === "image") mimeType = "image/jpeg";

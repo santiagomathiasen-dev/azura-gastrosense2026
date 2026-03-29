@@ -139,11 +139,19 @@ export function IngredientFileImportDialog({
           content = await compressImage(file, 800, 0.6);
           mimeType = 'image/jpeg';
         } else if (file.type === 'application/pdf') {
-          // Envia PDF como base64 — Gemini lê nativo, funciona para PDFs
-          // digitais E escaneados. extractTextFromPDF falha em PDFs de imagem.
-          fileType = 'pdf';
-          content = await fileToBase64(file);
-          mimeType = 'application/pdf';
+          // Upload to Storage to bypass the 1MB Edge Function body limit (error 546).
+          const { data: { session: s } } = await supabase.auth.getSession();
+          const uid = s?.user?.id;
+          if (!uid) throw new Error('Usuário não autenticado.');
+          const tempPath = `${uid}/temp_${Date.now()}_${file.name}`;
+          const { error: upErr } = await supabase.storage.from('invoices').upload(tempPath, file);
+          if (upErr) throw new Error(`Falha ao preparar arquivo: ${upErr.message}`);
+          const { data, error: funcError } = await supabase.functions.invoke('extract-ingredients', {
+            body: { storagePath: tempPath, fileType: 'pdf', mimeType: 'application/pdf', extractRecipe: false },
+          });
+          if (funcError) throw new Error(funcError.message);
+          setProcessingStage('processing');
+          return data; // early return — handled entirely here
         } else {
           fileType = 'text';
           content = await file.text();

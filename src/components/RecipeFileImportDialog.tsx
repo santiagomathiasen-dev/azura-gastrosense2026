@@ -123,10 +123,21 @@ export function RecipeFileImportDialog({
           fileType = 'image';
           content = await compressImage(file, 800, 0.6);
         } else if (file.type === 'application/pdf') {
+          // Upload to Storage to bypass the 1MB Edge Function body limit (error 546).
           setProcessingStage('reading');
-          fileType = 'pdf';
-          content = await fileToBase64(file);
-          mimeType = 'application/pdf';
+          const { data: { session: s } } = await supabase.auth.getSession();
+          const uid = s?.user?.id;
+          if (!uid) throw new Error('Usuário não autenticado.');
+          const tempPath = `${uid}/temp_${Date.now()}_${file.name}`;
+          const { error: upErr } = await supabase.storage.from('invoices').upload(tempPath, file);
+          if (upErr) throw new Error(`Falha ao preparar arquivo: ${upErr.message}`);
+          setProcessingStage('sending');
+          const { data, error: funcError } = await supabase.functions.invoke('extract-ingredients', {
+            body: { storagePath: tempPath, fileType: 'pdf', mimeType: 'application/pdf', extractRecipe: true },
+          });
+          if (funcError) throw new Error(funcError.message);
+          setProcessingStage('processing');
+          return data; // early return
         } else if (file.type === 'text/plain') {
           setProcessingStage('reading');
           fileType = 'text';

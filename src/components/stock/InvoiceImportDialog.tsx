@@ -181,12 +181,50 @@ export function InvoiceImportDialog({
       const isImage = file.type.startsWith('image/');
 
       if (isPdf) {
-        // Envia PDF como base64 — Gemini lê nativamente, funciona para PDFs
-        // escaneados e digitais. Extração de texto (pdfjs) falha em PDFs de imagem.
+        // Envia PDF via Supabase Storage para evitar limite de 1MB do Edge Function.
+        // PDF em base64 costuma ultrapassar o limite → erro 546 WORKER_LIMIT.
         setProcessingStage('reading');
-        content = await pdfToBase64(file);
-        fileType = 'pdf';
-        mimeType = 'application/pdf';
+        const { data: { session } } = await supabase.auth.getSession();
+        const uid = session?.user?.id;
+        if (!uid) throw new Error('Usuário não autenticado.');
+        const tempPath = `${uid}/temp_${Date.now()}_${file.name}`;
+        const { error: uploadErr } = await supabase.storage.from('invoices').upload(tempPath, file);
+        if (uploadErr) throw new Error(`Falha ao preparar arquivo: ${uploadErr.message}`);
+        // Passa o path — Edge Function baixa diretamente do Storage
+        setProcessingStage('sending');
+        const { data: extractedData, error: extractError } = await supabase.functions.invoke(
+          'extract-ingredients',
+          { body: { storagePath: tempPath, fileType: 'pdf', mimeType: 'application/pdf', extractRecipe: false } }
+        );
+        clearTimeout(timeout);
+        if (extractError) throw new Error(`Erro na extração: ${extractError.message}`);
+        if (extractedData?.error) throw new Error(extractedData.error);
+        setProcessingStage('processing');
+        const { data: { session: s2 } } = await supabase.auth.getSession();
+        if (s2?.user) {
+          const { data: importRecord } = await supabase.from('invoice_imports').insert({
+            user_id: s2.user.id, status: 'completed',
+            supplier_name: extractedData.fornecedor ?? null,
+            invoice_number: extractedData.numero_nota ?? null,
+            emission_date: extractedData.data_emissao ?? null,
+            total_value: extractedData.valor_total ?? null,
+            items_count: extractedData.ingredients?.length ?? 0,
+            extracted_data: extractedData,
+          }).select('id').single();
+          if (importRecord?.id) setImportId(importRecord.id);
+        }
+        const normalized = {
+          supplierName: extractedData.fornecedor ?? 'Fornecedor não identificado',
+          supplierCnpj: null, invoiceNumber: extractedData.numero_nota ?? '-',
+          totalValue: extractedData.valor_total ?? 0,
+          items: (extractedData.ingredients ?? []).map((ing: any) => ({
+            name: ing.name, quantity: ing.quantity, unit: ing.unit,
+            unitPrice: ing.price ?? 0, category: ing.category,
+          })),
+        };
+        setProcessingStage(null);
+        handleComplete(normalized);
+        return; // handled above — skip rest of processFile
       } else if (isImage) {
         // Comprime imagem — reduz payload em ~70%
         setProcessingStage('reading');
