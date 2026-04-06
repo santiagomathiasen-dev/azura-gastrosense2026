@@ -1,6 +1,33 @@
 import { BaseApiService } from './BaseApiService';
 import { StockItem, StockItemInsert, StockItemUpdate } from '@/modules/stock/types';
 
+const VALID_CATEGORIES = new Set(['laticinios', 'secos_e_graos', 'hortifruti', 'carnes_e_peixes', 'embalagens', 'limpeza', 'outros']);
+const VALID_UNITS = new Set(['kg', 'g', 'L', 'ml', 'unidade', 'caixa', 'dz']);
+
+const UNIT_MAP: Record<string, string> = {
+    l: 'L', litro: 'L', litros: 'L',
+    quilos: 'kg', quilo: 'kg', kilos: 'kg', kilo: 'kg',
+    grama: 'g', gramas: 'g',
+    mililitro: 'ml', mililitros: 'ml',
+    un: 'unidade', und: 'unidade', unid: 'unidade', unidades: 'unidade',
+    cx: 'caixa', caixas: 'caixa',
+    duzia: 'dz', duzias: 'dz',
+};
+
+function normalizeUnit(unit: string | null | undefined): string {
+    if (!unit || unit === 'null') return 'unidade';
+    const u = unit.trim();
+    if (VALID_UNITS.has(u)) return u;
+    return UNIT_MAP[u.toLowerCase()] || 'unidade';
+}
+
+function normalizeCategory(cat: string | null | undefined): string {
+    if (!cat || cat === 'null') return 'outros';
+    const c = cat.trim().toLowerCase();
+    if (VALID_CATEGORIES.has(c)) return c;
+    return 'outros';
+}
+
 export class StockApi extends BaseApiService {
     protected get endpoint(): string {
         return 'stock_items';
@@ -15,7 +42,12 @@ export class StockApi extends BaseApiService {
     }
 
     async create(item: StockItemInsert): Promise<StockItem> {
-        return this.post<StockItem>(item);
+        const normalized = {
+            ...item,
+            unit: normalizeUnit(item.unit as string),
+            category: normalizeCategory(item.category as string),
+        };
+        return this.post<StockItem>(normalized);
     }
 
     async update(id: string, updates: StockItemUpdate): Promise<StockItem> {

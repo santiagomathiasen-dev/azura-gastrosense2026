@@ -90,7 +90,19 @@ export function useStockItems() {
       if (isOwnerLoading) throw new Error('Carregando dados do usuário...');
       if (!ownerId) throw new Error('Usuário não autenticado');
 
-      const itemsWithUser = items.map(item => ({ ...item, user_id: ownerId }));
+      const validUnits = new Set(['kg', 'g', 'L', 'ml', 'unidade', 'caixa', 'dz']);
+      const unitMap: Record<string, string> = { l: 'L', litro: 'L', un: 'unidade', und: 'unidade', cx: 'caixa', quilo: 'kg' };
+      const validCategories = new Set(['laticinios', 'secos_e_graos', 'hortifruti', 'carnes_e_peixes', 'embalagens', 'limpeza', 'outros']);
+      const itemsWithUser = items.map(item => {
+        const rawUnit = (item.unit as string || 'unidade').trim();
+        const rawCat = item.category as string;
+        return {
+          ...item,
+          user_id: ownerId,
+          unit: validUnits.has(rawUnit) ? rawUnit : (unitMap[rawUnit.toLowerCase()] || 'unidade'),
+          category: (rawCat && rawCat !== 'null' && validCategories.has(rawCat)) ? rawCat : 'outros',
+        };
+      });
 
       try {
         await supabaseFetch('stock_items', {
@@ -146,12 +158,19 @@ export function useStockItems() {
       // Calculate updates for existing items first (need snapshot data)
       for (const item of mappedItems) {
         if (item.matchedId === 'new') {
+          const rawUnit = (item.unit || 'unidade').trim();
+          const unitMap: Record<string, string> = { l: 'L', litro: 'L', un: 'unidade', und: 'unidade', cx: 'caixa', quilo: 'kg' };
+          const validUnits = new Set(['kg', 'g', 'L', 'ml', 'unidade', 'caixa', 'dz']);
+          const normalizedUnit = validUnits.has(rawUnit) ? rawUnit : (unitMap[rawUnit.toLowerCase()] || 'unidade');
+          const validCategories = new Set(['laticinios', 'secos_e_graos', 'hortifruti', 'carnes_e_peixes', 'embalagens', 'limpeza', 'outros']);
+          const normalizedCategory = (item.category && item.category !== 'null' && validCategories.has(item.category)) ? item.category : 'outros';
+
           newItemsToCreate.push({
             user_id: ownerId,
             name: item.name,
             current_quantity: item.quantity,
-            unit: item.unit,
-            category: item.category || 'outros',
+            unit: normalizedUnit,
+            category: normalizedCategory,
             unit_price: item.unitPrice,
             notes: `Criado via NF ${nfeData.invoiceNumber}`
           });
