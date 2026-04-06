@@ -17,6 +17,7 @@ import { useMemo } from 'react';
 import { getTodayStr, cn, getNow } from '@/lib/utils';
 import { useAllExpiryAlerts, parseSafeDate, useEarliestExpiryMap } from '@/hooks/useExpiryDates';
 import { useStockMovements } from '@/hooks/useStockMovements';
+import { DriveSync } from '@/components/DriveSync';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -302,6 +303,9 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Google Drive Sync */}
+        <DriveSync />
       </div>
     </div>
   );

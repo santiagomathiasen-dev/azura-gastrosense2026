@@ -3,6 +3,7 @@
 import { Sidebar } from '@/components/Sidebar';
 import { MobileNav } from '@/components/MobileNav';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { DriveDataProvider } from '@/contexts/DriveDataContext';
 import { useState } from 'react';
 
 export default function DashboardLayout({
@@ -29,7 +30,9 @@ export default function DashboardLayout({
                 <main className="flex-1 p-4 md:p-8 animate-in fade-in duration-500 overflow-y-auto overflow-x-hidden">
                     <div className="max-w-7xl mx-auto pb-8">
                         <ProtectedRoute>
-                            {children}
+                            <DriveDataProvider>
+                                {children}
+                            </DriveDataProvider>
                         </ProtectedRoute>
                     </div>
                 </main>
