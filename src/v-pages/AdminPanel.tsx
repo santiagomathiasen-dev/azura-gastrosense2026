@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Loader2, Search, Users, ShieldAlert, Plus, Pencil, Trash2, Shield,
-  Eye, EyeOff, CreditCard, CheckCircle2, XCircle, UserCog, Store,
+  Eye, EyeOff, CreditCard, CheckCircle2, XCircle,
   CalendarClock, Clock
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';

@@ -10,7 +10,6 @@ function Navigate({ to, replace }: { to: string, replace?: boolean }) {
   }, [to, replace, router]);
   return null;
 }
-import { useCollaboratorAuth } from '@/hooks/useCollaborators';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';

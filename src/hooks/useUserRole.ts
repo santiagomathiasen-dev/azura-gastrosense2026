@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
-export type AppRole = 'admin' | 'gestor' | 'colaborador' | 'user';
+export type AppRole = 'owner' | 'admin' | 'gestor' | 'colaborador' | 'user';
 
 export function useUserRole() {
   const { user } = useAuth();
@@ -33,7 +33,8 @@ export function useUserRole() {
 
 
   const userRole = profile?.role as AppRole;
-  const isAdmin = userRole === 'admin';
+  const isOwner = userRole === 'owner';
+  const isAdmin = userRole === 'admin' || isOwner; // Owner has all admin privileges
   const isGestor = userRole === 'gestor';
   const isColaborador = userRole === 'colaborador';
   const isBlocked = false; // The status column is not present in the production profiles table
@@ -58,6 +59,7 @@ export function useUserRole() {
 
   return {
     userRole,
+    isOwner,
     isAdmin,
     isGestor,
     isColaborador,

@@ -39,7 +39,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
 
-const navItems = [
+interface NavItem {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  permission: string | null;
+  managementOnly?: boolean;
+  adminOnly?: boolean;
+}
+
+const navItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Painel', permission: 'can_access_dashboard' },
   { to: '/estoque', icon: Package, label: 'Estoque Central', permission: 'can_access_estoque' },
   { to: '/estoque-producao', icon: Boxes, label: 'Estoque Produção', permission: 'can_access_estoque_producao' },
@@ -87,27 +96,33 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     }, 100);
   };
 
+  const isOwner = (profile?.role as string) === 'owner';
+
   // Build visible nav items — memoized to avoid recalculating on every parent render
-  const visibleNavItems = useMemo(() => navItems.filter(item => {
-    // Full admin / owner always sees everything
-    if (isAdmin || isGestor || (profile?.role as string) === 'owner') return true;
+  const visibleNavItems = useMemo(() => navItems.filter((item: NavItem) => {
+    // Owner and admin always see everything
+    if (isOwner || isAdmin) return true;
 
-    // While profile is loading show nothing to avoid flashing management items
-    if (!profile) return false;
+    // Gestor sees everything except admin-only items
+    if (isGestor) return !item.adminOnly;
 
-    // Admin-only items (e.g. Gestores) require admin/owner role
-    if ((item as any).adminOnly) return false;
+    // While profile is loading, show only basic non-restricted items
+    if (!profile) return !item.adminOnly && !item.managementOnly;
+
+    // Admin-only items (e.g. Admin panel) require admin/owner role
+    if (item.adminOnly) return false;
     // Management-only items (e.g. Cadastros, Colaboradores) require admin or gestor role
-    if ((item as any).managementOnly) return false;
+    if (item.managementOnly) return false;
 
     // Colaboradores only see what they explicitly have permission for
     if (profile.role === 'colaborador') {
-      return item.permission ? (profile as any)[item.permission] === true : false;
+      if (!item.permission) return item.to === '/dashboard'; // Always allow dashboard
+      return (profile as any)[item.permission] === true;
     }
 
-    // Fallback: regular user role sees standard items
+    // Fallback: regular user role sees standard (non-restricted) items
     return true;
-  }), [isAdmin, isGestor, profile]);
+  }), [isOwner, isAdmin, isGestor, profile]);
   return (
     <aside
       className={cn(

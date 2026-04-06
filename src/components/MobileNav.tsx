@@ -10,25 +10,33 @@ import {
   Boxes,
   PackageCheck,
   ShoppingBag,
-  Users,
   BarChart3,
   TrendingDown,
   Calculator,
   UtensilsCrossed,
   UserCog,
-  Store,
   Zap,
   CalendarClock,
-  CreditCard
+  CreditCard,
+  Shield
 } from 'lucide-react';
-import { Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useProfile } from '@/hooks/useProfile';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-const navItems = [
+interface NavItem {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  permission: string | null;
+  managementOnly?: boolean;
+  adminOnly?: boolean;
+}
+
+const navItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Painel', permission: 'can_access_dashboard' },
   { to: '/estoque', icon: Package, label: 'Central', permission: 'can_access_estoque' },
   { to: '/estoque-producao', icon: Boxes, label: 'Est. Prod.', permission: 'can_access_estoque_producao' },
@@ -45,42 +53,51 @@ const navItems = [
   { to: '/financeiro', icon: Calculator, label: 'Financeiro', permission: 'can_access_financeiro' },
   { to: '/assinatura', icon: CreditCard, label: 'Assinatura', permission: null },
   { to: '/colaboradores', icon: UserCog, label: 'Colab.', permission: null, managementOnly: true },
-  { to: '/admin', icon: Shield, label: 'Admin', permission: null, managementOnly: true, adminOnly: true },
+  { to: '/admin', icon: Shield, label: 'Admin', permission: null, adminOnly: true },
 ];
 
 export function MobileNav() {
   const { logout } = useAuth();
   const { isCollaboratorMode, clearCollaboratorSession, hasAccess } = useCollaboratorContext();
   const { isAdmin, isGestor } = useUserRole();
+  const { profile } = useProfile();
   const router = useRouter();
   const pathname = usePathname();
 
+  const isOwner = (profile?.role as string) === 'owner';
+
   const handleLogout = async () => {
-    // If in collaborator mode, clear session first
     if (isCollaboratorMode) {
       clearCollaboratorSession();
     }
     await logout();
-    // Use full page reload to avoid React unmount issues
     setTimeout(() => {
       window.location.href = '/auth';
     }, 0);
   };
 
-  const visibleNavItems = [
-    ...navItems.filter(item => {
-      // adminOnly é exclusivo para admins
-      if ((item as any).adminOnly) return isAdmin;
-      if (item.managementOnly) {
-        if (isCollaboratorMode) return false;
-        return isAdmin || isGestor;
-      }
-      if (isCollaboratorMode && item.permission) {
-        return hasAccess(item.to);
-      }
-      return true;
-    }),
-  ];
+  // Same filtering logic as Sidebar for consistency
+  const visibleNavItems = navItems.filter((item: NavItem) => {
+    // Owner and admin always see everything
+    if (isOwner || isAdmin) return true;
+
+    // Gestor sees everything except admin-only items
+    if (isGestor) return !item.adminOnly;
+
+    // Admin-only items require admin/owner role
+    if (item.adminOnly) return false;
+    // Management-only items require admin or gestor role
+    if (item.managementOnly) return false;
+
+    // Collaborator mode — check explicit permission
+    if (isCollaboratorMode) {
+      if (item.permission) return hasAccess(item.to);
+      return item.to === '/dashboard';
+    }
+
+    // Regular user — show standard items
+    return true;
+  });
 
   return (
     <nav className="md:hidden fixed left-0 top-14 bottom-0 w-16 bg-card border-r border-border z-50 flex flex-col">
