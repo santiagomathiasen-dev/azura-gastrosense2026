@@ -42,6 +42,8 @@ export async function GET(request: Request) {
     }
 
     const user = data.session.user;
+    const providerToken = data.session.provider_token;
+    const providerRefreshToken = data.session.provider_refresh_token;
 
     // Ensure profile exists for Google OAuth users.
     // ignoreDuplicates: true leaves existing profiles untouched.
@@ -64,6 +66,21 @@ export async function GET(request: Request) {
     } catch (profileErr) {
         // Non-fatal: useProfile hook will create it as a fallback if this fails
         console.warn('Auth callback: profile upsert skipped:', profileErr);
+    }
+
+    // Persist Google OAuth tokens for Drive API access
+    if (providerToken) {
+        try {
+            const tokenUpdate: Record<string, string> = {
+                google_access_token: providerToken,
+            };
+            if (providerRefreshToken) {
+                tokenUpdate.google_refresh_token = providerRefreshToken;
+            }
+            await supabase.from('profiles').update(tokenUpdate).eq('id', user.id);
+        } catch (tokenErr) {
+            console.warn('Auth callback: token save skipped:', tokenErr);
+        }
     }
 
     return NextResponse.redirect(`${origin}${next}`);

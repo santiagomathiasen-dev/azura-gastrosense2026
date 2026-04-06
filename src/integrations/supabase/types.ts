@@ -487,6 +487,8 @@ export type Database = {
           can_access_produtos_venda: boolean
           can_access_financeiro: boolean
           can_access_relatorios: boolean
+          google_access_token: string | null
+          google_refresh_token: string | null
         }
         Insert: {
           created_at?: string
@@ -512,6 +514,8 @@ export type Database = {
           can_access_produtos_venda?: boolean
           can_access_financeiro?: boolean
           can_access_relatorios?: boolean
+          google_access_token?: string | null
+          google_refresh_token?: string | null
         }
         Update: {
           created_at?: string
@@ -537,6 +541,8 @@ export type Database = {
           can_access_produtos_venda?: boolean
           can_access_financeiro?: boolean
           can_access_relatorios?: boolean
+          google_access_token?: string | null
+          google_refresh_token?: string | null
         }
         Relationships: [
           {
