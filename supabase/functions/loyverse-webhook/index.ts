@@ -61,23 +61,35 @@ Deno.serve(async (req: any) => {
             );
         }
 
-        // 3. Find the gestor user (owner of the system)
-        const { data: gestor, error: gestorErr } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("role", "gestor")
-            .limit(1)
-            .single();
+        // 3. Find the tenant user — prefer owner role, fallback to gestor
+        // Support multi-tenant: check for user_id in URL query params first
+        const urlParams = new URL(req.url).searchParams;
+        const tenantId = urlParams.get("user_id") || urlParams.get("tenant_id");
 
-        if (gestorErr || !gestor?.id) {
-            const errMsg = `No gestor found: ${gestorErr?.message || "empty result"}`;
-            await supabase.from("webhook_logs").insert({
-                payload, status: "error", error_message: errMsg,
-            });
-            throw new Error(errMsg);
+        let userId: string;
+
+        if (tenantId) {
+            // Multi-tenant: use provided user_id param (each tenant has their own webhook URL)
+            userId = tenantId;
+        } else {
+            // Legacy single-tenant: find the primary owner/gestor
+            const { data: ownerProfile, error: ownerErr } = await supabase
+                .from("profiles")
+                .select("id")
+                .in("role", ["owner", "gestor"])
+                .order("created_at", { ascending: true })
+                .limit(1)
+                .maybeSingle();
+
+            if (ownerErr || !ownerProfile?.id) {
+                const errMsg = `No owner/gestor found: ${ownerErr?.message || "empty result"}`;
+                await supabase.from("webhook_logs").insert({
+                    payload, status: "error", error_message: errMsg,
+                });
+                throw new Error(errMsg);
+            }
+            userId = ownerProfile.id;
         }
-
-        const userId = gestor.id;
 
         // 4. Get all sale products for this user
         const { data: allProducts, error: prodErr } = await supabase

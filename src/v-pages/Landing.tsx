@@ -1,14 +1,45 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 import './Landing.css';
 
 export default function Landing() {
     const router = useRouter();
     const navigate = (to: string) => router.push(to);
+    const [isRedirecting, setIsRedirecting] = useState(false);
 
     useEffect(() => {
+        let mounted = true;
+
+        // Detect Google OAuth return via URL hash
+        if (typeof window !== 'undefined' &&
+            (window.location.hash.includes('access_token') || window.location.hash.includes('error'))) {
+            setIsRedirecting(true);
+        }
+
+        // Redirect to dashboard if already logged in
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (!mounted) return;
+            if (session) {
+                setIsRedirecting(true);
+                router.replace('/dashboard');
+            } else if (event === 'SIGNED_OUT') {
+                setIsRedirecting(false);
+            }
+        });
+
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!mounted) return;
+            if (session) {
+                setIsRedirecting(true);
+                router.replace('/dashboard');
+            }
+        });
+
+        // Reveal animations via IntersectionObserver
         const reveals = document.querySelectorAll('.reveal');
         const obs = new IntersectionObserver((entries) => {
             entries.forEach((entry, i) => {
@@ -20,9 +51,24 @@ export default function Landing() {
         }, { threshold: 0.12 });
         reveals.forEach(el => obs.observe(el));
 
-        // Cleanup intersection observer
-        return () => obs.disconnect();
-    }, []);
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+            obs.disconnect();
+        };
+    }, [router]);
+
+    if (isRedirecting) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="text-center space-y-2">
+                    <p className="text-muted-foreground animate-pulse text-sm">Validando acesso...</p>
+                    <p className="text-[10px] text-muted-foreground/50">Carregando painel Azura</p>
+                </div>
+            </div>
+        );
+    }
 
     const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
         e.preventDefault();

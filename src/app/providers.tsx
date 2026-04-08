@@ -19,8 +19,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     queries: {
                         staleTime: 5 * 60 * 1000,
                         gcTime: 30 * 60 * 1000,
-                        retry: 1,
+                        // Don't retry on AbortError (query was cancelled intentionally)
+                        retry: (failureCount, error: any) => {
+                            if (error?.name === 'AbortError') return false;
+                            return failureCount < 1;
+                        },
                         refetchOnWindowFocus: false,
+                        // Suppress unhandled AbortErrors from cancelled queries
+                        throwOnError: (error: any) => error?.name !== 'AbortError',
                     },
                 },
             })

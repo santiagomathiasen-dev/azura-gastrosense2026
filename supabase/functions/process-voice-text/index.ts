@@ -1,5 +1,4 @@
 // @ts-ignore
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 declare const Deno: any;
 
@@ -64,7 +63,7 @@ async function callGemini(apiKey: string, geminiBody: unknown): Promise<any> {
   throw finalErr;
 }
 
-serve(async (req: any) => {
+Deno.serve(async (req: any) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
