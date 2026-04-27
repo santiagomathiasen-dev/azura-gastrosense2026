@@ -3,11 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../shared/useAuth';
 import { useOwnerId } from '../shared/useOwnerId';
 import { toast } from 'sonner';
-import type { StockItem } from './useStockItems';
+import type { StockItem } from '../stock/useStockItems';
 import { supabaseFetch } from '@/lib/supabase-fetch';
 
-import { ProductionService } from '../modules/production/services/ProductionService';
-import type { ProductionStockItem, StockTransfer } from '../modules/production/types';
+import { ProductionService } from '../../modules/production/services/ProductionService';
+import type { ProductionStockItem, StockTransfer } from '../../modules/production/types';
 
 export type { ProductionStockItem, StockTransfer };
 

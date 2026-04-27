@@ -7,6 +7,7 @@ import type { Database } from '@/integrations/supabase/types';
 import { supabaseFetch } from '@/lib/supabase-fetch';
 
 import { stockApi } from '@/api/StockApi';
+import { StockService } from '../../modules/stock/services/StockService';
 import type {
   StockItem,
   StockItemInsert,

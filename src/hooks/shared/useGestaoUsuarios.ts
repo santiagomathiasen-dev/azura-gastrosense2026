@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { adminSupabase } from '../integrations/supabase/adminClient'; // admin client for protected functions
+import { adminSupabase } from '../../integrations/supabase/adminClient'; // admin client for protected functions
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 import { supabaseFetch } from '@/lib/supabase-fetch';
@@ -28,6 +28,8 @@ export interface Gestor extends Profile {
     can_access_financeiro: boolean;
     can_access_relatorios: boolean;
     status_pagamento: boolean;
+    subscription_end_date?: string | null;
+    subscription_plan?: string | null;
 }
 
 export function useGestaoUsuarios() {
@@ -124,6 +126,30 @@ export function useGestaoUsuarios() {
         }
     });
 
+    const updateSubscription = useMutation({
+        mutationFn: async ({ id, days, plan }: { id: string; days: number; plan?: string }) => {
+            const end_date = days > 0
+                ? new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+                : null;
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    subscription_end_date: end_date,
+                    ...(plan ? { subscription_plan: plan } : {}),
+                    status_pagamento: days > 0,
+                })
+                .eq('id', id);
+            if (error) throw new Error(error.message);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['profiles-management'] });
+            toast.success('Assinatura atualizada');
+        },
+        onError: (error: any) => {
+            toast.error('Erro ao atualizar assinatura: ' + error.message);
+        }
+    });
+
     return {
         profiles,
         isLoading,
@@ -131,6 +157,7 @@ export function useGestaoUsuarios() {
         createGestor,
         updatePermissions,
         updateStatus,
+        updateSubscription,
         deleteGestor
     };
 }

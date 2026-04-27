@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { StockCategory, StockUnit } from './useStockItems';
+import type { StockCategory, StockUnit } from '../stock/useStockItems';
 
 export interface ExtractedIngredient {
   name: string;

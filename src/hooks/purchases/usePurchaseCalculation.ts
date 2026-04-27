@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { useStockItems, StockItem, UNIT_LABELS, CATEGORY_LABELS } from './useStockItems';
-import { useProductions } from './useProductions';
+import { useStockItems, StockItem, UNIT_LABELS, CATEGORY_LABELS } from '../stock/useStockItems';
+import { useProductions } from '../ops/useProductions';
 import { useSuppliers } from './useSuppliers';
-import { useProductionStock } from './useProductionStock';
+import { useProductionStock } from '../ops/useProductionStock';
 
 export interface PurchaseNeedItem {
   stockItemId: string;

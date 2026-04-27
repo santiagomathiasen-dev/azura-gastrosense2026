@@ -8,6 +8,8 @@ import type { Database } from '@/integrations/supabase/types';
 import { supabaseFetch } from '@/lib/supabase-fetch';
 
 import { productionApi } from '@/api/ProductionApi';
+import { ProductionService } from '../../modules/production/services/ProductionService';
+import { sendToN8N } from '@/services/n8n';
 import type {
   Production,
   ProductionInsert,
@@ -15,7 +17,7 @@ import type {
   ProductionStatus,
   ProductionPeriod,
   ProductionWithSheet
-} from '../modules/production/types';
+} from '../../modules/production/types';
 
 export type { Production, ProductionInsert, ProductionUpdate, ProductionStatus, ProductionPeriod, ProductionWithSheet };
 
@@ -296,6 +298,7 @@ export function useProductions() {
         toast.success('Produção iniciada! Estoque atualizado automaticamente.');
       } else if (variables.status === 'completed') {
         toast.success('Produção finalizada! Adicionada ao estoque de produções finalizadas.');
+        sendToN8N({ event: 'producao_finalizada', productionId: variables.id, status: 'completed' }).catch(() => {});
       } else {
         toast.success('Produção atualizada com sucesso!');
       }

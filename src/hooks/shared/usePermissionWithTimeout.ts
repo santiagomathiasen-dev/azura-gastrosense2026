@@ -212,7 +212,7 @@ export function useMultiplePermissionsWithTimeout(
     allReady,
     hasAnyError,
     hasAnyTimeout,
-  };
+  } as Record<string, PermissionCheckResult> & { allReady: boolean; hasAnyError: boolean; hasAnyTimeout: boolean };
 }
 
 // Helper para promisificar funcoes síncronas

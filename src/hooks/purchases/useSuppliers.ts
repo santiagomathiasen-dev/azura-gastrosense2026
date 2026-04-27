@@ -7,8 +7,8 @@ import type { Database } from '@/integrations/supabase/types';
 import { supabaseFetch } from '@/lib/supabase-fetch';
 
 import { supplierApi } from '@/api/SupplierApi';
-import { SupplierService } from '../modules/supplier/services/SupplierService';
-import type { Supplier, SupplierInsert, SupplierUpdate } from '../modules/supplier/types';
+import { SupplierService } from '../../modules/supplier/services/SupplierService';
+import type { Supplier, SupplierInsert, SupplierUpdate } from '../../modules/supplier/types';
 
 export type { Supplier, SupplierInsert, SupplierUpdate };
 
