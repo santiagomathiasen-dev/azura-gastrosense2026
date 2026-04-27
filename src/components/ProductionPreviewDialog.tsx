@@ -1,4 +1,4 @@
-import { DollarSign, Calculator, Scale, Clock, Users, Factory, FileText, Play } from 'lucide-react';
+﻿import { DollarSign, Calculator, Scale, Clock, Users, Factory, FileText, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { parseSafeDate } from '@/hooks/useExpiryDates';
+import { parseSafeDate } from '@/hooks/stock/useExpiryDates';
 
 interface ReceitaIngrediente {
   id: string;

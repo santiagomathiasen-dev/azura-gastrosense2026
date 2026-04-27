@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+﻿import { useState, useRef } from 'react';
 import { FileText, Upload, Camera, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import type { StockCategory, StockUnit } from '@/hooks/useStockItems';
+import type { StockCategory, StockUnit } from '@/hooks/stock/useStockItems';
 
 export interface ExtractedIngredient {
   name: string;

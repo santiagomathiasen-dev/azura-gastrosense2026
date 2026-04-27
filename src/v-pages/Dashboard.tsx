@@ -1,22 +1,23 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Calendar, Clock, Bot, XCircle, CheckCircle2, Sparkles, ShoppingCart, TrendingUp, ChefHat, CalendarClock, BarChart3, Package, ClipboardList, ArrowUpRight, Plus } from 'lucide-react';
+import { AlertTriangle, Calendar, Clock, Bot, XCircle, CheckCircle2, Sparkles, ShoppingCart, TrendingUp, ChefHat, CalendarClock, BarChart3, Package, ClipboardList, ArrowUpRight, Plus, Flame, DollarSign, AlertTriangle as CriticalIcon } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
+import { StatCard } from '@/components/StatCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useProductions } from '@/hooks/useProductions';
-import { useStockItems } from '@/hooks/useStockItems';
-import { useFinishedProductionsStock } from '@/hooks/useFinishedProductionsStock';
-import { useSaleProducts } from '@/hooks/useSaleProducts';
-import { usePendingDeliveries } from '@/hooks/usePendingDeliveries';
-import { usePreparationAlerts } from '@/hooks/usePreparationAlerts';
-import { usePurchaseCalculationByPeriod } from '@/hooks/usePurchaseCalculationByPeriod';
+import { useProductions } from '@/hooks/ops/useProductions';
+import { useStockItems } from '@/hooks/stock/useStockItems';
+import { useFinishedProductionsStock } from '@/hooks/ops/useFinishedProductionsStock';
+import { useSaleProducts } from '@/hooks/financial/useSaleProducts';
+import { usePendingDeliveries } from '@/hooks/purchases/usePendingDeliveries';
+import { usePreparationAlerts } from '@/hooks/ops/usePreparationAlerts';
+import { usePurchaseCalculationByPeriod } from '@/hooks/purchases/usePurchaseCalculationByPeriod';
 import { useMemo } from 'react';
 import { getTodayStr, cn, getNow } from '@/lib/utils';
-import { useAllExpiryAlerts, parseSafeDate, useEarliestExpiryMap } from '@/hooks/useExpiryDates';
-import { useStockMovements } from '@/hooks/useStockMovements';
+import { useAllExpiryAlerts, parseSafeDate, useEarliestExpiryMap } from '@/hooks/stock/useExpiryDates';
+import { useStockMovements } from '@/hooks/stock/useStockMovements';
 import { DriveSync } from '@/components/DriveSync';
 
 export default function Dashboard() {
@@ -34,6 +35,13 @@ export default function Dashboard() {
 
   const plannedProductions = productions.filter((p) => p.status === 'planned');
   const inProgressProductions = productions.filter((p) => p.status === 'in_progress');
+  const todayStr = getTodayStr();
+  const todayProductions = productions.filter(p => p.scheduled_date?.startsWith(todayStr) && p.status === 'planned');
+  
+  // KPI Calculations
+  const totalStockValue = stockItems.reduce((sum, item) => sum + (Number(item.current_quantity) * (Number(item.unit_price) || 0)), 0);
+  const avgCostPerDish = saleProducts.length > 0 ? saleProducts.reduce((sum, p) => sum + (p.cost_per_portion || 0), 0) / saleProducts.length : 0;
+  const criticalIngredients = stockItems.filter(item => Number(item.current_quantity) <= Number(item.minimum_quantity)).length;
 
   const lowStockItems = stockItems.filter(
     (item) => {
@@ -101,6 +109,44 @@ export default function Dashboard() {
       <PageHeader title="Painel" description="Visão geral da sua gestão gastronômica" />
 
       <div className="space-y-4">
+        {/* KPI Widgets Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Produção de Hoje */}
+          <StatCard
+            title="Produção Hoje"
+            value={todayProductions.length}
+            icon={Flame}
+            description={`${todayProductions.length} prato${todayProductions.length !== 1 ? 's' : ''} programado${todayProductions.length !== 1 ? 's' : ''}`}
+            variant={todayProductions.length > 0 ? 'success' : 'default'}
+          />
+          
+          {/* Custo por Prato */}
+          <StatCard
+            title="Custo/Prato"
+            value={`R$ ${avgCostPerDish.toFixed(2)}`}
+            icon={DollarSign}
+            description={`Média de ${saleProducts.length} pratos`}
+            variant="primary"
+          />
+          
+          {/* Estoque Central */}
+          <StatCard
+            title="Estoque Central"
+            value={stockItems.length}
+            icon={Package}
+            description={`Valor: R$ ${totalStockValue.toFixed(2)}`}
+            variant="default"
+          />
+          
+          {/* Ingredientes Críticos */}
+          <StatCard
+            title="Ingredientes Críticos"
+            value={criticalIngredients}
+            icon={CriticalIcon}
+            description={`${criticalIngredients} item${criticalIngredients !== 1 ? 'ns' : ''} abaixo do mínimo`}
+            variant={criticalIngredients > 0 ? 'warning' : 'success'}
+          />
+        </div>
         {/* Alerta Crítico de Validade */}
         {totalExpiryAlerts > 0 && (
           <div

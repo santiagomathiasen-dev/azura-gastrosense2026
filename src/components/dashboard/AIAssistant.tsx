@@ -1,9 +1,9 @@
-import { Bot, Sparkles, TrendingUp, AlertCircle, ChefHat, ShoppingCart } from 'lucide-react';
+﻿import { Bot, Sparkles, TrendingUp, AlertCircle, ChefHat, ShoppingCart } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { usePurchaseCalculationByPeriod } from '@/hooks/usePurchaseCalculationByPeriod';
-import { useProductions } from '@/hooks/useProductions';
-import { useSaleProducts } from '@/hooks/useSaleProducts';
+import { usePurchaseCalculationByPeriod } from '@/hooks/purchases/usePurchaseCalculationByPeriod';
+import { useProductions } from '@/hooks/ops/useProductions';
+import { useSaleProducts } from '@/hooks/financial/useSaleProducts';
 import { useMemo } from 'react';
 import { getTodayStr } from '@/lib/utils';
 

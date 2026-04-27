@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { Plus, Minus, RefreshCw, Calendar, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,9 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { type StockItem, UNIT_LABELS } from '@/hooks/useStockItems';
-import { type MovementType } from '@/hooks/useStockMovements';
-import { useExpiryDates, parseSafeDate } from '@/hooks/useExpiryDates';
+import { type StockItem, UNIT_LABELS } from '@/hooks/stock/useStockItems';
+import { type MovementType } from '@/hooks/stock/useStockMovements';
+import { useExpiryDates, parseSafeDate } from '@/hooks/stock/useExpiryDates';
 import { cn } from '@/lib/utils';
 
 interface StockMovementDialogProps {

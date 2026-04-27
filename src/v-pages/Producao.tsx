@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { Factory, Search, Calendar as CalendarIcon, Play, CheckCircle2, Clock, Eye, ChevronLeft, ChevronRight, XCircle, ListChecks, Check, ChevronDown, Loader2, PauseCircle, TrendingUp, DollarSign } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState } from '@/components/EmptyState';
@@ -42,11 +42,11 @@ import {
   MobileListDetails,
   MobileListBadge,
 } from '@/components/ui/mobile-list';
-import { useProductions, ProductionWithSheet, STATUS_LABELS, ProductionStatus } from '@/hooks/useProductions';
-import { useTechnicalSheets } from '@/hooks/useTechnicalSheets';
-import { useTechnicalSheetStages, StageWithSteps } from '@/hooks/useTechnicalSheetStages';
-import { useProductionStepExecution } from '@/hooks/useProductionStepExecution';
-import { useProductionStageExecution } from '@/hooks/useProductionStageExecution';
+import { useProductions, ProductionWithSheet, STATUS_LABELS, ProductionStatus } from '@/hooks/ops/useProductions';
+import { useTechnicalSheets } from '@/hooks/ops/useTechnicalSheets';
+import { useTechnicalSheetStages, StageWithSteps } from '@/hooks/ops/useTechnicalSheetstages';
+import { useProductionStepExecution } from '@/hooks/ops/useProductionstepExecution';
+import { useProductionStageExecution } from '@/hooks/ops/useProductionstageExecution';
 import { ProductionExecutionDialog } from '@/components/production/ProductionExecutionDialog';
 import { ProductionReportDialog } from '@/components/production/ProductionReportDialog';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, addDays, addWeeks, addMonths, addYears, subDays, subWeeks, subMonths, subYears, isWithinInterval } from 'date-fns';

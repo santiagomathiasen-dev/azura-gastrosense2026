@@ -1,8 +1,8 @@
-import { Outlet } from 'react-router-dom';
+﻿import { Outlet } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileNav } from '@/components/MobileNav';
 import { MobileHeader } from '@/components/MobileHeader';
-import { useGlobalRealtimeSync } from '@/hooks/useRealtimeSubscription';
+import { useGlobalRealtimeSync } from '@/hooks/shared/useRealtimeSubscription';
 import { useState } from 'react';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
 import { Button } from '@/components/ui/button';

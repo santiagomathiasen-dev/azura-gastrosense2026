@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/shared/useAuth';
 import { driveDataService, DriveModuleMap, ModuleName } from '@/lib/drive-data-service';
 import { toast } from 'sonner';
 

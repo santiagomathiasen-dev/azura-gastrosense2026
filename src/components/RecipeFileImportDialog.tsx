@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+﻿import { useState, useRef } from 'react';
 import { FileText, Upload, Camera, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import type { ExtractedIngredient, RecipeData } from '@/hooks/useIngredientImport';
+import type { ExtractedIngredient, RecipeData } from '@/hooks/purchases/useIngredientImport';
 
 interface RecipeFileImportDialogProps {
   open: boolean;

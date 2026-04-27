@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -21,11 +21,11 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { CATEGORY_LABELS, UNIT_LABELS, type StockItem, type StockCategory, type StockUnit } from '@/hooks/useStockItems';
-import { useSuppliers } from '@/hooks/useSuppliers';
+import { CATEGORY_LABELS, UNIT_LABELS, type StockItem, type StockCategory, type StockUnit } from '@/hooks/stock/useStockItems';
+import { useSuppliers } from '@/hooks/purchases/useSuppliers';
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { getNow } from '@/lib/utils';
-import { useExpiryDates, parseSafeDate } from '@/hooks/useExpiryDates';
+import { useExpiryDates, parseSafeDate } from '@/hooks/stock/useExpiryDates';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 

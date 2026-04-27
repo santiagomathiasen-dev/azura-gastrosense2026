@@ -1,5 +1,13 @@
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  EdgeErrorCodes,
+  denoSuccessResponse,
+  denoErrorResponse,
+  handleOptions,
+  parseJsonBodyDeno,
+  getEdgeErrorResponse,
+} from '../_shared/api-errors-deno.ts';
 
 declare const Deno: any;
 
@@ -11,14 +19,26 @@ const corsHeaders = {
 
 Deno.serve(async (req: any) => {
     if (req.method === "OPTIONS") {
-        return new Response(null, { headers: corsHeaders });
+        return handleOptions();
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+    if (!supabaseUrl || !supabaseKey) {
+        console.error('Supabase configuration missing');
+        return denoSuccessResponse({ received: false, reason: 'Configuration error' }, 200);
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     try {
+        // Validate POST method
+        if (req.method !== "POST") {
+            const err = getEdgeErrorResponse(EdgeErrorCodes.METHOD_NOT_ALLOWED, req.method);
+            return denoErrorResponse(err, err.status);
+        }
+
         // 1. Read body
         const rawBody = await req.text();
         const method = req.method;
@@ -27,11 +47,29 @@ Deno.serve(async (req: any) => {
             headers[key] = value;
         });
 
+        // Validate body is not empty
+        if (!rawBody || rawBody.trim() === "") {
+            await supabase.from("webhook_logs").insert({
+                payload: { method, headers, body: null },
+                status: "ignored",
+                error_message: "Empty request body",
+            }).catch(e => console.error("Failed to log empty body:", e));
+
+            return denoSuccessResponse({ received: false, reason: "Empty body" }, 200);
+        }
+
         let payload: any = {};
         try {
             payload = JSON.parse(rawBody);
-        } catch (_e) {
-            payload = { raw: rawBody, error: "Invalid JSON" };
+        } catch (parseErr) {
+            console.error("JSON parse error:", parseErr);
+            await supabase.from("webhook_logs").insert({
+                payload: { raw: rawBody, error: "Invalid JSON", parseErr: parseErr.message },
+                status: "error",
+                error_message: "Invalid JSON in request body",
+            }).catch(e => console.error("Failed to log parse error:", e));
+
+            return denoSuccessResponse({ received: false, reason: "Invalid JSON" }, 200);
         }
 
         // Log received webhook
@@ -39,25 +77,22 @@ Deno.serve(async (req: any) => {
             payload: { method, headers, body: payload },
             status: "received",
             error_message: null,
-        });
-
-        if (!rawBody) {
-            return new Response("Empty body", { status: 400, headers: corsHeaders });
-        }
+        }).catch(e => console.error("Failed to log received webhook:", e));
 
         // 2. Extract receipt from payload
         // Loyverse sends { receipts: [...] } or a single receipt object
         const receipt = payload.receipts ? payload.receipts[0] : payload;
 
-        if (!receipt || !receipt.line_items) {
+        if (!receipt || !receipt.line_items || !Array.isArray(receipt.line_items)) {
             await supabase.from("webhook_logs").insert({
                 payload: payload,
                 status: "ignored",
                 error_message: "No line_items found in payload",
-            });
-            return new Response(
-                JSON.stringify({ message: "Ignored event - no line_items" }),
-                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            }).catch(e => console.error("Failed to log ignored event:", e));
+
+            return denoSuccessResponse(
+                { message: "Ignored event - no line_items" },
+                200
             );
         }
 
@@ -85,8 +120,9 @@ Deno.serve(async (req: any) => {
                 const errMsg = `No owner/gestor found: ${ownerErr?.message || "empty result"}`;
                 await supabase.from("webhook_logs").insert({
                     payload, status: "error", error_message: errMsg,
-                });
-                throw new Error(errMsg);
+                }).catch(e => console.error("Failed to log owner error:", e));
+
+                return denoSuccessResponse({ received: false, reason: errMsg }, 200);
             }
             userId = ownerProfile.id;
         }
@@ -98,13 +134,20 @@ Deno.serve(async (req: any) => {
             .eq("user_id", userId);
 
         if (prodErr) {
-            throw new Error(`Failed to fetch sale_products: ${prodErr.message}`);
+            const errMsg = `Failed to fetch sale_products: ${prodErr.message}`;
+            await supabase.from("webhook_logs").insert({
+                payload: { error: prodErr },
+                status: "error",
+                error_message: errMsg,
+            }).catch(e => console.error("Failed to log product fetch error:", e));
+
+            return denoSuccessResponse({ received: false, reason: errMsg }, 200);
         }
 
         // Build a map: lowercase trimmed name -> product id
         const productMap = new Map<string, string>();
-        allProducts?.forEach((p: any) => {
-            if (p.is_active !== false) {
+        (allProducts || []).forEach((p: any) => {
+            if (p.is_active !== false && p.name) {
                 productMap.set(p.name.toLowerCase().trim(), p.id);
             }
         });
@@ -115,6 +158,8 @@ Deno.serve(async (req: any) => {
 
         for (const item of receipt.line_items) {
             const itemName = (item.item_name || "").toLowerCase().trim();
+            if (!itemName) continue;
+
             const azuraProductId = productMap.get(itemName);
 
             if (azuraProductId) {
@@ -131,10 +176,11 @@ Deno.serve(async (req: any) => {
             const errMsg = `No matching products. Tried: ${unmatchedItems.join(", ")}. Available: ${Array.from(productMap.keys()).join(", ")}`;
             await supabase.from("webhook_logs").insert({
                 payload, status: "error", error_message: errMsg,
-            });
-            return new Response(
-                JSON.stringify({ message: "No matching products found", details: errMsg }),
-                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            }).catch(e => console.error("Failed to log no matches error:", e));
+
+            return denoSuccessResponse(
+                { message: "No matching products found", details: errMsg },
+                200
             );
         }
 
@@ -164,8 +210,9 @@ Deno.serve(async (req: any) => {
                 payload: { salePayload, rpcError },
                 status: "error",
                 error_message: errMsg,
-            });
-            throw new Error(errMsg);
+            }).catch(e => console.error("Failed to log RPC error:", e));
+
+            return denoSuccessResponse({ received: false, reason: errMsg }, 200);
         }
 
         // 7. Log success with details
@@ -180,34 +227,35 @@ Deno.serve(async (req: any) => {
             error_message: unmatchedItems.length > 0
                 ? `Unmatched items: ${unmatchedItems.join(", ")}`
                 : null,
-        });
+        }).catch(e => console.error("Failed to log success:", e));
 
-        return new Response(JSON.stringify({
+        return denoSuccessResponse({
             success: true,
             matched: soldItems.length,
             unmatched: unmatchedItems,
             result,
-        }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        }, 200);
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Webhook Error:", error);
 
         try {
             await supabase.from("webhook_logs").insert({
                 payload: { error_stack: error.stack },
                 status: "error",
-                error_message: error.message,
+                error_message: error.message || "Unknown error",
             });
         } catch (logErr) {
             console.error("Failed to log error:", logErr);
         }
 
-        return new Response(
-            JSON.stringify({ error: error.message }),
-            {
-                status: 500,
+        // Always return 200 for webhooks
+        return denoSuccessResponse(
+            { received: false, reason: error?.message || "Unknown error" },
+            200
+        );
+    }
+});
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             }
         );

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { useSaleProducts } from '@/hooks/useSaleProducts';
+import { useSaleProducts } from '@/hooks/financial/useSaleProducts';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

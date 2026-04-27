@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,11 +10,11 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Edit, Trash2, ShoppingBag, Search, DollarSign, X, Package, Mic, FileText, ChefHat, Trash, Minus, Settings2, RefreshCw } from 'lucide-react';
-import { useSaleProducts, SaleProduct, ComponentInput } from '@/hooks/useSaleProducts';
-import { useFinishedProductionsStock } from '@/hooks/useFinishedProductionsStock';
-import { useStockItems } from '@/hooks/useStockItems';
-import { useTechnicalSheets } from '@/hooks/useTechnicalSheets';
-import { usePurchaseList } from '@/hooks/usePurchaseList';
+import { useSaleProducts, SaleProduct, ComponentInput } from '@/hooks/financial/useSaleProducts';
+import { useFinishedProductionsStock } from '@/hooks/ops/useFinishedProductionsStock';
+import { useStockItems } from '@/hooks/stock/useStockItems';
+import { useTechnicalSheets } from '@/hooks/ops/useTechnicalSheets';
+import { usePurchaseList } from '@/hooks/purchases/usePurchaseList';
 import { toast } from 'sonner';
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';

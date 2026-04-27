@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight } from 'lucide-react';
+﻿import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -6,8 +6,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import type { StageWithSteps } from '@/hooks/useTechnicalSheetStages';
-import type { TechnicalSheetIngredient } from '@/hooks/useTechnicalSheets';
+import type { StageWithSteps } from '@/hooks/ops/useTechnicalSheetstages';
+import type { TechnicalSheetIngredient } from '@/hooks/ops/useTechnicalSheets';
 
 interface StageDisplayProps {
   stages: StageWithSteps[];

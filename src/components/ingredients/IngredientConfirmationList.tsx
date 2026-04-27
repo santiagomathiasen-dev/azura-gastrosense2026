@@ -1,10 +1,10 @@
-import { Checkbox } from '@/components/ui/checkbox';
+﻿import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
-import { CATEGORY_LABELS, UNIT_LABELS, type StockCategory, type StockUnit } from '@/hooks/useStockItems';
-import type { ExtractedIngredient } from '@/hooks/useIngredientImport';
+import { CATEGORY_LABELS, UNIT_LABELS, type StockCategory, type StockUnit } from '@/hooks/stock/useStockItems';
+import type { ExtractedIngredient } from '@/hooks/purchases/useIngredientImport';
 
 interface IngredientConfirmationListProps {
   ingredients: ExtractedIngredient[];

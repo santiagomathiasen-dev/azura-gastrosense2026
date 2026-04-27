@@ -1,9 +1,9 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+﻿import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/PageHeader";
 import { GestaoGestores } from "@/components/GestaoGestores";
 import { GestaoColaboradores } from "@/components/GestaoColaboradores";
-import { useUserRole } from "@/hooks/useUserRole";
-import { useProfile } from "@/hooks/useProfile";
+import { useUserRole } from "@/hooks/shared/useUserRole";
+import { useProfile } from "@/hooks/shared/useProfile";
 import { ShieldAlert, Users, Shield } from "lucide-react";
 import { Loader2 } from "lucide-react";
 

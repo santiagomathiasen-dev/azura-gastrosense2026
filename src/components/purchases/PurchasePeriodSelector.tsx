@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+﻿import { useState, useMemo, useEffect, useRef } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, addDays, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, ChevronLeft, ChevronRight, Factory } from 'lucide-react';
@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import type { ProductionWithSheet } from '@/hooks/useProductions';
+import type { ProductionWithSheet } from '@/hooks/ops/useProductions';
 import { getNow, formatInBrasilia } from '@/lib/utils';
 
 export type PeriodType = 'day' | 'week' | 'month' | 'year';

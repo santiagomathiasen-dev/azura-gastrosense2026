@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Plus, Phone, Mail, Star, Truck, MapPin, CreditCard, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatBrazilianNumber } from '@/lib/utils';
-import type { Supplier } from '@/hooks/useSuppliers';
+import type { Supplier } from '@/hooks/purchases/useSuppliers';
 
 interface SupplierFormProps {
   open: boolean;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Plus, Trash2, GripVertical, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { useTechnicalSheetStages, StageWithSteps, TechnicalSheetStageStep } from '@/hooks/useTechnicalSheetStages';
+import { useTechnicalSheetStages, StageWithSteps, TechnicalSheetStageStep } from '@/hooks/ops/useTechnicalSheetstages';
 import { toast } from 'sonner';
 
 interface StageEditorProps {

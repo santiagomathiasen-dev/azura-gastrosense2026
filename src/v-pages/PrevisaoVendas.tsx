@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useOwnerId } from '@/hooks/useOwnerId';
+import { useOwnerId } from '@/hooks/shared/useOwnerId';
 import {
     CalendarClock,
     Plus,
@@ -53,23 +53,23 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
-import { useSalesForecasts } from '@/hooks/useSalesForecasts';
-import { useForecastExplosion } from '@/hooks/useForecastExplosion';
-import { parseSafeDate } from '@/hooks/useExpiryDates';
+import { useSalesForecasts } from '@/hooks/financial/useSalesForecasts';
+import { useForecastExplosion } from '@/hooks/financial/useForecastExplosion';
+import { parseSafeDate } from '@/hooks/stock/useExpiryDates';
 import {
     useForecastProductionOrders,
     PRACA_LABELS,
     FORECAST_STATUS_LABELS,
     ForecastProductionOrder,
-} from '@/hooks/useForecastProductionOrders';
-import { useSaleProducts } from '@/hooks/useSaleProducts';
+} from '@/hooks/financial/useForecastProductionOrders';
+import { useSaleProducts } from '@/hooks/financial/useSaleProducts';
 import { ProductionSheetDialog } from '@/components/production/ProductionSheetDialog';
-import { useSalesProductionHistory, ProductionHistoryItem } from '@/hooks/useSalesProductionHistory';
+import { useSalesProductionHistory, ProductionHistoryItem } from '@/hooks/financial/useSalesProductionHistory';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { AIImportDialog } from '@/components/AIImportDialog';
-import { ExtractedIngredient } from '@/hooks/useIngredientImport';
-import { useEvents, CalendarEvent } from '@/hooks/useEvents';
+import { ExtractedIngredient } from '@/hooks/purchases/useIngredientImport';
+import { useEvents, CalendarEvent } from '@/hooks/shared/useEvents';
 
 // ---- Forecast Input Tab ----
 

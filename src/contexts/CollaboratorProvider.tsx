@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, ReactNode } from 'react';
-import { Collaborator } from '@/hooks/useCollaborators';
+import { Collaborator } from '@/hooks/shared/useCollaborators';
 import { supabase } from '@/integrations/supabase/client';
 import { CollaboratorContext } from './CollaboratorContext';
 

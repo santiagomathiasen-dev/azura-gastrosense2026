@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,10 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Trash2, TrendingDown, Search, Package, PackageCheck, AlertCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useLosses, LossInput } from '@/hooks/useLosses';
-import { useStockItems } from '@/hooks/useStockItems';
-import { useFinishedProductionsStock } from '@/hooks/useFinishedProductionsStock';
-import { useProductCosts } from '@/hooks/useProductCosts';
+import { useLosses, LossInput } from '@/hooks/stock/useLosses';
+import { useStockItems } from '@/hooks/stock/useStockItems';
+import { useFinishedProductionsStock } from '@/hooks/ops/useFinishedProductionsStock';
+import { useProductCosts } from '@/hooks/financial/useProductCosts';
 import { formatInBrasilia, formatQuantity } from '@/lib/utils';
 
 const SOURCE_TYPE_LABELS: Record<string, string> = {

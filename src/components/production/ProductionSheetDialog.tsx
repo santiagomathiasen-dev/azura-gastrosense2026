@@ -1,4 +1,4 @@
-
+﻿
 import {
     Dialog,
     DialogContent,
@@ -9,12 +9,12 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useTechnicalSheet } from '@/hooks/useTechnicalSheet';
-import { useTechnicalSheetStages } from '@/hooks/useTechnicalSheetStages';
+import { useTechnicalSheet } from '@/hooks/ops/useTechnicalSheet';
+import { useTechnicalSheetStages } from '@/hooks/ops/useTechnicalSheetstages';
 import { StageDisplay } from '@/components/fichas/StageDisplay';
-import { ForecastProductionOrder } from '@/hooks/useForecastProductionOrders';
+import { ForecastProductionOrder } from '@/hooks/financial/useForecastProductionOrders';
 import { Skeleton } from '@/components/ui/skeleton';
-import { parseSafeDate } from '@/hooks/useExpiryDates';
+import { parseSafeDate } from '@/hooks/stock/useExpiryDates';
 import { Calculator, Clock, Users, AlertTriangle } from 'lucide-react';
 
 interface ProductionSheetDialogProps {

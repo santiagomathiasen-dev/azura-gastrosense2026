@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useCallback } from 'react';
 import { MoreHorizontal, Pencil, Trash2, ArrowUpDown, Check, X, ArrowRightLeft, Calendar, Mic, Package } from 'lucide-react';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,10 @@ import { cn, formatQuantity } from '@/lib/utils';
 import type {
   StockItem,
   StockCategory,
-} from '@/hooks/useStockItems';
-import { CATEGORY_LABELS, UNIT_LABELS } from '@/hooks/useStockItems';
+} from '@/hooks/stock/useStockItems';
+import { CATEGORY_LABELS, UNIT_LABELS } from '@/hooks/stock/useStockItems';
 import { StockService } from '@/modules/stock/services/StockService';
-import { parseSafeDate } from '@/hooks/useExpiryDates';
+import { parseSafeDate } from '@/hooks/stock/useExpiryDates';
 import { getNow } from '@/lib/utils';
 import {
   MobileList,
@@ -61,6 +61,8 @@ export function StockTable({
 }: StockTableProps) {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'name' | 'quantity' | 'status'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const handleStartEdit = (item: StockItemWithProjection, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -90,19 +92,50 @@ export function StockTable({
     }
   };
 
+  const handleSort = (column: 'name' | 'quantity' | 'status') => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
+
+  const sortedItems = [...items].sort((a, b) => {
+    let comparison = 0;
+    
+    if (sortBy === 'name') {
+      comparison = a.name.localeCompare(b.name);
+    } else if (sortBy === 'quantity') {
+      comparison = Number(a.current_quantity) - Number(b.current_quantity);
+    } else if (sortBy === 'status') {
+      const aMinQty = Number(a.minimum_quantity);
+      const bMinQty = Number(b.minimum_quantity);
+      const aCurrentQty = Number(a.current_quantity);
+      const bCurrentQty = Number(b.current_quantity);
+      
+      // Status order: red (critical) -> yellow (low) -> green (ok)
+      const aStatus = aCurrentQty <= aMinQty ? (aCurrentQty === 0 ? 0 : 1) : 2;
+      const bStatus = bCurrentQty <= bMinQty ? (bCurrentQty === 0 ? 0 : 1) : 2;
+      comparison = aStatus - bStatus;
+    }
+    
+    return sortOrder === 'asc' ? comparison : -comparison;
+  });
+
   if (items.length === 0) {
     return (
       <EmptyState
         icon={Package}
-        title="Nenhum item no estoque"
-        description="Adicione ingredientes e insumos para começar a controlar seu estoque."
+        title="Nenhum item encontrado"
+        description={`${'Nenhum item no estoque corresponde aos filtros selecionados. Adicione ingredientes e insumos ou ajuste os filtros.'}`}
       />
     );
   }
 
   return (
     <MobileList>
-      {items.map((item) => {
+      {sortedItems.map((item) => {
         const currentQty = Number(item.current_quantity);
         const minQty = Number(item.minimum_quantity);
         const isExpired = currentQty > 0 && expiryMap[item.id] && parseSafeDate(expiryMap[item.id]) < getNow();

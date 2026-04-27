@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,8 +22,8 @@ import {
   AlertTriangle,
   TrendingUp
 } from 'lucide-react';
-import { useReports, DateRangeType } from '@/hooks/useReports';
-import { useProductCosts } from '@/hooks/useProductCosts';
+import { useReports, DateRangeType } from '@/hooks/financial/useReports';
+import { useProductCosts } from '@/hooks/financial/useProductCosts';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn, getNow, formatInBrasilia } from '@/lib/utils';

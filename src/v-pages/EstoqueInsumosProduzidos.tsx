@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Package, Search, Plus, Calendar, Trash2, Edit, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Input } from '@/components/ui/input';
@@ -24,10 +24,10 @@ import {
 } from '@/components/ui/mobile-list';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/EmptyState';
-import { useProducedInputsStock, ProducedInputWithSheet } from '@/hooks/useProducedInputsStock';
-import { useTechnicalSheets } from '@/hooks/useTechnicalSheets';
+import { useProducedInputsStock, ProducedInputWithSheet } from '@/hooks/ops/useProducedInputsStock';
+import { useTechnicalSheets } from '@/hooks/ops/useTechnicalSheets';
 import { formatInBrasilia, getNow, getTodayStr } from '@/lib/utils';
-import { parseSafeDate } from '@/hooks/useExpiryDates';
+import { parseSafeDate } from '@/hooks/stock/useExpiryDates';
 import { toast } from 'sonner';
 
 export default function EstoqueInsumosProduzidos() {

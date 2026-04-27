@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { toast } from 'sonner';
 import {
     Plus,
@@ -27,7 +27,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useSuppliers, type Supplier } from '@/hooks/useSuppliers';
+import { useSuppliers, type Supplier } from '@/hooks/purchases/useSuppliers';
 import { SupplierForm } from './SupplierForm';
 import { formatBrazilianNumber } from '@/lib/utils'; // Assuming this exists or standard utils
 import { WhatsAppDialog } from './WhatsAppDialog';

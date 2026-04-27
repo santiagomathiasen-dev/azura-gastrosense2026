@@ -26,7 +26,7 @@ export const PLAN_LIMITS = {
 };
 
 export const PLAN_PRICES = {
-  gratis: { monthly: 0, label: 'Gratis' },
+  gratis: { monthly: 0, label: 'Grátis' },
   pro:    { monthly: 197, label: 'Pro' },
   ultra:  { monthly: 397, label: 'Ultra' },
 };

@@ -1,4 +1,4 @@
-import { ShoppingCart, Search, AlertTriangle, Download, Factory, Package, Calendar, Check, Clock, CheckCircle2, Printer, MessageCircle } from 'lucide-react';
+﻿import { ShoppingCart, Search, AlertTriangle, Download, Factory, Package, Calendar, Check, Clock, CheckCircle2, Printer, MessageCircle } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { cn, getNow } from '@/lib/utils';
 import { useState, useMemo, useCallback } from 'react';
-import { usePurchaseCalculationByPeriod } from '@/hooks/usePurchaseCalculationByPeriod';
-import { usePendingDeliveries } from '@/hooks/usePendingDeliveries';
-import { usePurchaseSchedule } from '@/hooks/usePurchaseSchedule';
-import { useProductions, ProductionWithSheet } from '@/hooks/useProductions';
-import { usePurchaseList } from '@/hooks/usePurchaseList';
+import { usePurchaseCalculationByPeriod } from '@/hooks/purchases/usePurchaseCalculationByPeriod';
+import { usePendingDeliveries } from '@/hooks/purchases/usePendingDeliveries';
+import { usePurchaseSchedule } from '@/hooks/purchases/usePurchaseSchedule';
+import { useProductions, ProductionWithSheet } from '@/hooks/ops/useProductions';
+import { usePurchaseList } from '@/hooks/purchases/usePurchaseList';
 import { PurchasePeriodSelector } from '@/components/purchases/PurchasePeriodSelector';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { parseSafeDate } from '@/hooks/useExpiryDates';
+import { parseSafeDate } from '@/hooks/stock/useExpiryDates';
 import {
   Select,
   SelectContent,
@@ -40,7 +40,7 @@ import {
   MobileListBadge,
 } from '@/components/ui/mobile-list';
 import { WhatsAppDialog } from '@/components/suppliers/WhatsAppDialog';
-import { useSuppliers } from '@/hooks/useSuppliers';
+import { useSuppliers } from '@/hooks/purchases/useSuppliers';
 
 
 // Extended interface to include purchase status

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+﻿import { useState, useRef, useEffect, useCallback } from 'react';
 import { FileText, Upload, Loader2, Check, AlertTriangle, Plus, Search, RefreshCw, Camera, AlignLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useStockItems, type StockCategory, type StockUnit } from '@/hooks/useStockItems';
+import { useStockItems, type StockCategory, type StockUnit } from '@/hooks/stock/useStockItems';
 import { formatQuantity, cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { parseNfeXml } from '@/lib/xml-parser';

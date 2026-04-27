@@ -1,4 +1,4 @@
-import { Check, X, AlertCircle } from 'lucide-react';
+﻿import { Check, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -8,8 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { StockSuggestion } from '@/hooks/useStockAI';
-import type { StockItem } from '@/hooks/useStockItems';
+import type { StockSuggestion } from '@/hooks/stock/useStockAI';
+import type { StockItem } from '@/hooks/stock/useStockItems';
 
 interface AISuggestionsCardProps {
   suggestions: StockSuggestion[];

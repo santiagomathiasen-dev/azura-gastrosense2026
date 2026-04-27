@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useCallback } from 'react';
 import { Search, Filter, Mic, MicOff, PackageCheck, Check, X, Plus, FileText, ArrowRightLeft, ShoppingBag, ClipboardList, Send, ClipboardCheck } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Input } from '@/components/ui/input';
@@ -39,15 +39,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { useStockItems, CATEGORY_LABELS, UNIT_LABELS, type StockItem, type StockCategory, type StockUnit } from '@/hooks/useStockItems';
-import { useStockMovements, type MovementType } from '@/hooks/useStockMovements';
-import { useStockVoiceControl } from '@/hooks/useStockVoiceControl';
-import { useEarliestExpiryMap } from '@/hooks/useExpiryDates';
-import { useProductions } from '@/hooks/useProductions';
-import { usePendingDeliveries } from '@/hooks/usePendingDeliveries';
-import { useProductionStock } from '@/hooks/useProductionStock';
-import { useSaleProducts } from '@/hooks/useSaleProducts';
-import { useStockRequests } from '@/hooks/useStockRequests';
+import { useStockItems, CATEGORY_LABELS, UNIT_LABELS, type StockItem, type StockCategory, type StockUnit } from '@/hooks/stock/useStockItems';
+import { useStockMovements, type MovementType } from '@/hooks/stock/useStockMovements';
+import { useStockVoiceControl } from '@/hooks/stock/useStockVoiceControl';
+import { useEarliestExpiryMap } from '@/hooks/stock/useExpiryDates';
+import { useProductions } from '@/hooks/ops/useProductions';
+import { usePendingDeliveries } from '@/hooks/purchases/usePendingDeliveries';
+import { useProductionStock } from '@/hooks/ops/useProductionStock';
+import { useSaleProducts } from '@/hooks/financial/useSaleProducts';
+import { useStockRequests } from '@/hooks/stock/useStockRequests';
 import { StockTable } from '@/components/stock/StockTable';
 import { StockItemForm } from '@/components/stock/StockItemForm';
 import { StockMovementDialog } from '@/components/stock/StockMovementDialog';
@@ -74,6 +74,7 @@ export default function Estoque() {
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'ok' | 'low' | 'stocked'>('all');
   const [formOpen, setFormOpen] = useState(false);
   const [movementOpen, setMovementOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -167,7 +168,21 @@ export default function Estoque() {
   const filteredItems = items.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    
+    // Availability filter logic
+    const currentQty = Number(item.current_quantity);
+    const minQty = Number(item.minimum_quantity);
+    
+    let matchesAvailability = true;
+    if (availabilityFilter === 'ok') {
+      matchesAvailability = currentQty > minQty;
+    } else if (availabilityFilter === 'low') {
+      matchesAvailability = currentQty <= minQty && currentQty > 0;
+    } else if (availabilityFilter === 'stocked') {
+      matchesAvailability = currentQty > (minQty * 1.5); // 50% acima do mínimo
+    }
+    
+    return matchesSearch && matchesCategory && matchesAvailability;
   });
 
   // Calculate projected quantities
@@ -657,6 +672,18 @@ export default function Estoque() {
                     {label}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={availabilityFilter} onValueChange={(value) => setAvailabilityFilter(value as 'all' | 'ok' | 'low' | 'stocked')}>
+              <SelectTrigger className="w-40 h-9">
+                <Filter className="h-3 w-3 mr-1" />
+                <SelectValue placeholder="Disponibilidade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Disponibilidades</SelectItem>
+                <SelectItem value="stocked">✅ Abastecido</SelectItem>
+                <SelectItem value="ok">⚠️ OK</SelectItem>
+                <SelectItem value="low">🔴 Baixo</SelectItem>
               </SelectContent>
             </Select>
           </div>

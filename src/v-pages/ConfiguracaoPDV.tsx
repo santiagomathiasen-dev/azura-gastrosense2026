@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ import {
     Activity,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { usePosIntegrations, PosIntegration } from '@/hooks/usePosIntegrations';
+import { usePosIntegrations, PosIntegration } from '@/hooks/shared/usePosIntegrations';
 import { formatInBrasilia } from '@/lib/utils';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';

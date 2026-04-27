@@ -1,8 +1,8 @@
-import { AlertTriangle } from 'lucide-react';
+﻿import { AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { StockItem } from '@/hooks/useStockItems';
-import { UNIT_LABELS } from '@/hooks/useStockItems';
+import type { StockItem } from '@/hooks/stock/useStockItems';
+import { UNIT_LABELS } from '@/hooks/stock/useStockItems';
 import { StockService } from '@/modules/stock/services/StockService';
 
 interface StockAlertCardProps {

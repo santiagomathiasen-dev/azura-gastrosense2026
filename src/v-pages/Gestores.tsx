@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useGestaoUsuarios, Gestor } from '@/hooks/useGestaoUsuarios';
+﻿import { useState, useMemo } from 'react';
+import { useGestaoUsuarios, Gestor } from '@/hooks/shared/useGestaoUsuarios';
 import { PageHeader } from '@/components/PageHeader';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,9 +11,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Search, Users, ShieldAlert, Plus, Pencil, Trash2, Shield, Eye, EyeOff, CreditCard, CalendarClock, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import { useProfile } from '@/hooks/useProfile';
-import { useUserRole } from '@/hooks/useUserRole';
-import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { useProfile } from '@/hooks/shared/useProfile';
+import { useUserRole } from '@/hooks/shared/useUserRole';
+import { usePlanLimits } from '@/hooks/shared/usePlanLimits';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';

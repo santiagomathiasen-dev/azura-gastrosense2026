@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Calendar, Package, Hash } from 'lucide-react';
-import { useExpiryDates, parseSafeDate } from '@/hooks/useExpiryDates';
+import { useExpiryDates, parseSafeDate } from '@/hooks/stock/useExpiryDates';
 import { toast } from 'sonner';
 
 interface BatchManagementDialogProps {

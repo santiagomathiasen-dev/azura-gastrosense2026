@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { ExternalLink, Copy, Send } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSupplierMessages } from '@/hooks/useSupplierMessages';
+import { useSupplierMessages } from '@/hooks/purchases/useSupplierMessages';
 
 interface WhatsAppDialogProps {
     open: boolean;

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
@@ -31,10 +31,10 @@ import {
   CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/shared/useAuth';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
-import { useUserRole } from '@/hooks/useUserRole';
-import { useProfile } from '@/hooks/useProfile';
+import { useUserRole } from '@/hooks/shared/useUserRole';
+import { useProfile } from '@/hooks/shared/useProfile';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Search, DollarSign, Calculator, Clock, Users, ChefHat, Edit, Trash2, Plus, FileText, Loader2, Printer } from 'lucide-react';
 import { EmptyState } from '@/components/EmptyState';
 import { PageHeader } from '@/components/PageHeader';
@@ -25,17 +25,17 @@ import {
   MobileListDetails,
   MobileListBadge,
 } from '@/components/ui/mobile-list';
-import { useTechnicalSheets, TechnicalSheetWithIngredients } from '@/hooks/useTechnicalSheets';
-import { useTechnicalSheetStages } from '@/hooks/useTechnicalSheetStages';
-import { useStockItems, type StockUnit, type StockCategory } from '@/hooks/useStockItems';
+import { useTechnicalSheets, TechnicalSheetWithIngredients } from '@/hooks/ops/useTechnicalSheets';
+import { useTechnicalSheetStages } from '@/hooks/ops/useTechnicalSheetstages';
+import { useStockItems, type StockUnit, type StockCategory } from '@/hooks/stock/useStockItems';
 import { RecipeFileImportDialog } from '@/components/RecipeFileImportDialog';
 import { StageForm, type StageFormData } from '@/components/fichas/StageForm';
 import { StageDisplay } from '@/components/fichas/StageDisplay';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import type { ExtractedIngredient, RecipeData } from '@/hooks/useIngredientImport';
-import { useProfile } from '@/hooks/useProfile';
-import { usePlanLimits, PLAN_PRICES } from '@/hooks/usePlanLimits';
+import type { ExtractedIngredient, RecipeData } from '@/hooks/purchases/useIngredientImport';
+import { useProfile } from '@/hooks/shared/useProfile';
+import { usePlanLimits, PLAN_PRICES } from '@/hooks/shared/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 
 const calcularCustoTotal = (sheet: TechnicalSheetWithIngredients) => {

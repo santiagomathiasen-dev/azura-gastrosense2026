@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import OpenAI from 'openai';
+import {
+  errorResponse,
+  ErrorCodes,
+  validateFileSize,
+  getErrorResponse,
+} from '@/lib/api-errors-next';
 
 export const maxDuration = 90;
 
@@ -59,22 +65,47 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: 'Sessão expirada ou não autorizado.' }, { status: 401 });
+      return errorResponse(
+        { message: 'Sessão expirada ou não autorizado', code: 'UNAUTHORIZED', statusCode: 401 },
+        401
+      );
     }
 
-    // 2. Chave de API
+    // 2. Validar que é POST
+    if (req.method !== 'POST') {
+      const errorDef = ErrorCodes.METHOD_NOT_ALLOWED;
+      const message = typeof errorDef.message === 'function' ? errorDef.message(req.method) : errorDef.message;
+      return errorResponse({ status: errorDef.status, code: errorDef.code, message });
+    }
+
+    // 3. Chave de API
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       console.error('ERRO CRÍTICO: OPENAI_API_KEY ausente.');
-      return NextResponse.json({ error: 'Configuração da IA ausente no servidor.' }, { status: 502 });
+      return errorResponse(
+        {
+          message: 'Configuração da IA ausente no servidor',
+          code: 'CONFIGURATION_ERROR',
+          statusCode: 502,
+        },
+        502
+      );
     }
 
-    // 3. Parsing do Arquivo
+    // 4. Parsing do Arquivo
     let formData: FormData;
     try {
       formData = await req.formData();
     } catch (e: any) {
-      return NextResponse.json({ error: 'Falha ao processar formulário: ' + e.message }, { status: 400 });
+      console.error('Form parsing error:', e);
+      return errorResponse(
+        {
+          message: 'Falha ao processar formulário: ' + e.message,
+          code: 'FORM_PARSE_ERROR',
+          statusCode: 400,
+        },
+        400
+      );
     }
 
     const file = formData.get('file') as File;
@@ -82,18 +113,40 @@ export async function POST(req: NextRequest) {
     const saveToDb = formData.get('saveToDb') !== 'false';
 
     if (!file) {
-      return NextResponse.json({ error: 'Nenhum arquivo enviado.' }, { status: 400 });
+      return errorResponse(
+        {
+          message: 'Nenhum arquivo enviado',
+          code: 'MISSING_FIELD',
+          statusCode: 400,
+        },
+        400
+      );
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Arquivo muito grande (máx 10MB).' }, { status: 413 });
+    // Validate file size
+    const fileSizeValidation = validateFileSize(file.size, 10 * 1024 * 1024);
+    if (!fileSizeValidation.valid) {
+      return errorResponse(fileSizeValidation.error);
     }
 
+    // Validate file type
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf', 'text/csv', 'text/xml', 'text/plain'];
     const mimeType = file.type || 'application/octet-stream';
+    if (!mimeType.startsWith('image/') && !['application/pdf', 'text/csv', 'text/xml', 'text/plain'].includes(mimeType)) {
+      return errorResponse(
+        {
+          message: `Tipo de arquivo não permitido: ${mimeType}`,
+          code: 'INVALID_CONTENT_TYPE',
+          statusCode: 400,
+        },
+        400
+      );
+    }
+
     const arrayBuffer = await file.arrayBuffer();
     const base64Data = Buffer.from(arrayBuffer).toString('base64');
 
-    // 4. OpenAI Chat Completions
+    // 5. OpenAI Chat Completions
     const openai = new OpenAI({ apiKey });
     const prompt = extractRecipe ? PROMPT_RECIPE : PROMPT_INGREDIENT;
 
@@ -114,6 +167,16 @@ export async function POST(req: NextRequest) {
     } else {
       // Text files (XML, CSV, TXT)
       const textContent = Buffer.from(arrayBuffer).toString('utf-8');
+      if (!textContent || textContent.trim().length === 0) {
+        return errorResponse(
+          {
+            message: 'Arquivo vazio',
+            code: 'EMPTY_BODY',
+            statusCode: 400,
+          },
+          400
+        );
+      }
       contentParts[0] = { type: 'text', text: `${prompt}\n\n--- CONTEÚDO DO ARQUIVO ---\n${textContent}` };
     }
 
@@ -127,14 +190,28 @@ export async function POST(req: NextRequest) {
       });
     } catch (aiErr: any) {
       console.error('FALHA NA API OPENAI:', aiErr);
-      return NextResponse.json({
-        error: 'Falha na IA: ' + (aiErr.message?.includes('quota') ? 'Limite de uso excedido' : aiErr.message),
-      }, { status: 502 });
+      return errorResponse(
+        {
+          message: aiErr.message?.includes('quota')
+            ? 'Limite de uso da IA excedido. Tente novamente mais tarde.'
+            : `Erro ao processar com IA: ${aiErr.message}`,
+          code: 'EXTERNAL_API_ERROR',
+          statusCode: 502,
+        },
+        502
+      );
     }
 
     const rawText = result.choices[0]?.message?.content;
-    if (!rawText) {
-      return NextResponse.json({ error: 'A IA não conseguiu ler o documento (resposta vazia).' }, { status: 422 });
+    if (!rawText || rawText.trim().length === 0) {
+      return errorResponse(
+        {
+          message: 'A IA não conseguiu ler o documento (resposta vazia)',
+          code: 'VALIDATION_ERROR',
+          statusCode: 422,
+        },
+        422
+      );
     }
 
     // 6. Parsing de JSON
@@ -144,11 +221,27 @@ export async function POST(req: NextRequest) {
     } catch {
       const match = rawText.match(/\{[\s\S]*\}/);
       if (match) {
-        try { parsed = JSON.parse(match[0]); } catch {
-          return NextResponse.json({ error: 'IA retornou formato inválido.', raw: rawText }, { status: 422 });
+        try {
+          parsed = JSON.parse(match[0]);
+        } catch {
+          return errorResponse(
+            {
+              message: 'IA retornou formato JSON inválido',
+              code: 'INVALID_FORMAT',
+              statusCode: 422,
+            },
+            422
+          );
         }
       } else {
-        return NextResponse.json({ error: 'IA falhou ao estruturar dados.', raw: rawText }, { status: 422 });
+        return errorResponse(
+          {
+            message: 'IA falhou ao estruturar dados (resposta não contém JSON)',
+            code: 'INVALID_FORMAT',
+            statusCode: 422,
+          },
+          422
+        );
       }
     }
 
@@ -208,6 +301,7 @@ export async function POST(req: NextRequest) {
         responseData.importId = importRecord?.id ?? null;
       } catch (dbErr: any) {
         console.warn('Alerta: Dados extraídos mas não salvos no histórico:', dbErr.message);
+        // Continue sem erro - a extração foi bem-sucedida
       }
     }
 
@@ -215,8 +309,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('ERRO NÃO TRATADO NO UPLOAD:', error);
-    return NextResponse.json({
-      error: 'Erro sistêmico: ' + (error.message || 'Desconhecido'),
-    }, { status: 400 });
+    return errorResponse(error);
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+﻿import { useState, useRef, useCallback } from 'react';
 import { Upload, FileImage, FileSpreadsheet, FileText, X, Loader2, CheckCircle2, Sparkles, Plus, AlertCircle } from 'lucide-react';
 import {
   Dialog,
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { useIngredientImport, type ExtractedIngredient, type RecipeData } from '@/hooks/useIngredientImport';
+import { useIngredientImport, type ExtractedIngredient, type RecipeData } from '@/hooks/purchases/useIngredientImport';
 import { IngredientConfirmationList } from '@/components/ingredients/IngredientConfirmationList';
 
 interface AIImportDialogProps {

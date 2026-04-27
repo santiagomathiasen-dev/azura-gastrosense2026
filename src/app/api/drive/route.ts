@@ -9,6 +9,7 @@ import {
   deleteFile,
   findFileByName,
 } from '@/lib/google-drive';
+import { errorResponse, ErrorCodes, validateRequiredFields } from '@/lib/api-errors-next';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
@@ -45,7 +46,11 @@ async function refreshGoogleToken(refreshToken: string): Promise<string> {
     }),
   });
   if (!res.ok) {
-    throw new Error('Falha ao renovar token Google. Faça login novamente.');
+    throw {
+      message: 'Falha ao renovar token Google. Faça login novamente.',
+      code: 'EXTERNAL_API_ERROR',
+      statusCode: 502,
+    };
   }
   const data = await res.json();
   return data.access_token;
@@ -60,7 +65,11 @@ async function getAccessToken(supabase: any, userId: string): Promise<string> {
     .single();
 
   if (!profile?.google_access_token) {
-    throw new Error('Nenhum token Google encontrado. Faça login com Google primeiro.');
+    throw {
+      message: 'Nenhum token Google encontrado. Faça login com Google primeiro.',
+      code: 'UNAUTHORIZED',
+      statusCode: 401,
+    };
   }
 
   // Try the current token first
@@ -74,7 +83,11 @@ async function getAccessToken(supabase: any, userId: string): Promise<string> {
 
   // Token expired — refresh it
   if (!profile.google_refresh_token) {
-    throw new Error('Token expirado e sem refresh token. Faça login com Google novamente.');
+    throw {
+      message: 'Token expirado e sem refresh token. Faça login com Google novamente.',
+      code: 'INVALID_TOKEN',
+      statusCode: 401,
+    };
   }
 
   const newToken = await refreshGoogleToken(profile.google_refresh_token);
@@ -96,14 +109,56 @@ async function getAccessToken(supabase: any, userId: string): Promise<string> {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Validate HTTP method
+    if (request.method !== 'POST') {
+      const errorDef = ErrorCodes.METHOD_NOT_ALLOWED;
+      const message = typeof errorDef.message === 'function' ? errorDef.message(request.method) : errorDef.message;
+      return errorResponse({ status: errorDef.status, code: errorDef.code, message });
+    }
+
+    // Parse body with validation
+    let body: any;
+    try {
+      const text = await request.text();
+      if (!text || text.trim() === '') {
+        return errorResponse(
+          {
+            message: 'Corpo da requisição vazio (ação obrigatória)',
+            code: 'EMPTY_BODY',
+            statusCode: 400,
+          },
+          400
+        );
+      }
+      body = JSON.parse(text);
+    } catch {
+      return errorResponse(
+        {
+          message: 'JSON inválido no corpo da requisição',
+          code: 'INVALID_JSON',
+          statusCode: 400,
+        },
+        400
+      );
+    }
+
+    const { action } = body;
+    if (!action || typeof action !== 'string') {
+      return errorResponse(
+        {
+          message: 'Campo obrigatório faltando: action',
+          code: 'MISSING_FIELD',
+          statusCode: 400,
+        },
+        400
+      );
+    }
+
     const supabase = await getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+      return errorResponse(ErrorCodes.UNAUTHORIZED, 401);
     }
-
-    const body = await request.json();
-    const { action } = body;
 
     const accessToken = await getAccessToken(supabase, user.id);
     const folderId = await getOrCreateAppFolder(accessToken);
@@ -119,16 +174,40 @@ export async function POST(request: NextRequest) {
       }
 
       case 'read': {
-        if (!body.fileId) {
-          return NextResponse.json({ error: 'fileId obrigatório' }, { status: 400 });
+        if (!body.fileId || typeof body.fileId !== 'string') {
+          return errorResponse(
+            {
+              message: 'Campo obrigatório faltando: fileId',
+              code: 'MISSING_FIELD',
+              statusCode: 400,
+            },
+            400
+          );
         }
         const content = await readJsonFile(accessToken, body.fileId);
         return NextResponse.json({ content });
       }
 
       case 'save': {
-        if (!body.fileName || body.data === undefined) {
-          return NextResponse.json({ error: 'fileName e data obrigatórios' }, { status: 400 });
+        if (!body.fileName || typeof body.fileName !== 'string') {
+          return errorResponse(
+            {
+              message: 'Campo obrigatório faltando: fileName',
+              code: 'MISSING_FIELD',
+              statusCode: 400,
+            },
+            400
+          );
+        }
+        if (body.data === undefined || body.data === null) {
+          return errorResponse(
+            {
+              message: 'Campo obrigatório faltando: data',
+              code: 'MISSING_FIELD',
+              statusCode: 400,
+            },
+            400
+          );
         }
         const existingFile = body.fileId || null;
         const savedId = await saveJsonFile(accessToken, folderId, body.fileName, body.data, existingFile);
@@ -136,26 +215,47 @@ export async function POST(request: NextRequest) {
       }
 
       case 'delete': {
-        if (!body.fileId) {
-          return NextResponse.json({ error: 'fileId obrigatório' }, { status: 400 });
+        if (!body.fileId || typeof body.fileId !== 'string') {
+          return errorResponse(
+            {
+              message: 'Campo obrigatório faltando: fileId',
+              code: 'MISSING_FIELD',
+              statusCode: 400,
+            },
+            400
+          );
         }
         await deleteFile(accessToken, body.fileId);
         return NextResponse.json({ ok: true });
       }
 
       case 'find': {
-        if (!body.fileName) {
-          return NextResponse.json({ error: 'fileName obrigatório' }, { status: 400 });
+        if (!body.fileName || typeof body.fileName !== 'string') {
+          return errorResponse(
+            {
+              message: 'Campo obrigatório faltando: fileName',
+              code: 'MISSING_FIELD',
+              statusCode: 400,
+            },
+            400
+          );
         }
         const file = await findFileByName(accessToken, folderId, body.fileName);
         return NextResponse.json({ file });
       }
 
       default:
-        return NextResponse.json({ error: `Ação desconhecida: ${action}` }, { status: 400 });
+        return errorResponse(
+          {
+            message: `Ação não reconhecida: ${action}. Ações válidas: init, list, read, save, delete, find`,
+            code: 'INVALID_FIELD',
+            statusCode: 400,
+          },
+          400
+        );
     }
   } catch (err: any) {
     console.error('Drive API error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return errorResponse(err);
   }
 }

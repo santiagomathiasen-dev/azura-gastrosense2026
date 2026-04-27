@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,11 +27,11 @@ import {
     CalendarDays
 } from 'lucide-react';
 import { AIImportDialog } from '@/components/AIImportDialog';
-import { ExtractedIngredient } from '@/hooks/useIngredientImport';
-import { useProductCosts } from '@/hooks/useProductCosts';
-import { useSaleProducts } from '@/hooks/useSaleProducts';
-import { useFinancials, FinancialExpense, PayrollEntry } from '@/hooks/useFinancials';
-import { useCollaborators } from '@/hooks/useCollaborators';
+import { ExtractedIngredient } from '@/hooks/purchases/useIngredientImport';
+import { useProductCosts } from '@/hooks/financial/useProductCosts';
+import { useSaleProducts } from '@/hooks/financial/useSaleProducts';
+import { useFinancials, FinancialExpense, PayrollEntry } from '@/hooks/financial/useFinancials';
+import { useCollaborators } from '@/hooks/shared/useCollaborators';
 import { cn, getNow } from '@/lib/utils';
 import {
     Table,

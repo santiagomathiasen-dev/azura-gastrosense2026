@@ -5,7 +5,6 @@ import { useOwnerId } from './useOwnerId';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { supabaseFetch } from '@/lib/supabase-fetch';
-import { useDriveData } from '@/contexts/DriveDataContext';
 
 type SaleComponentType = Database['public']['Enums']['sale_component_type'];
 
@@ -48,24 +47,13 @@ export function useSaleProducts() {
   const { user } = useAuth();
   const { ownerId, isLoading: isOwnerLoading } = useOwnerId();
   const queryClient = useQueryClient();
-  const { isDriveConnected, data: driveData } = useDriveData();
 
-  // Hybrid query: Drive or Supabase
+  // Query uses RLS - no need to filter by user_id client-side
   const { data: saleProducts = EMPTY_ARRAY, isLoading, error } = useQuery({
-    queryKey: ['sale_products', ownerId, isDriveConnected ? 'drive' : 'supabase'],
+    queryKey: ['sale_products', ownerId],
     queryFn: async () => {
       if (!user?.id && !ownerId) return [];
 
-      // Drive mode
-      if (isDriveConnected && driveData?.sales?.sale_products) {
-        return (driveData.sales.sale_products as any[]).map((p: any) => ({
-          ...p,
-          minimum_stock: Number(p.minimum_stock || 0),
-          sale_price: p.sale_price ? Number(p.sale_price) : null,
-        })) as SaleProduct[];
-      }
-
-      // Supabase fallback
       try {
         const data = await supabaseFetch('sale_products?select=*,components:sale_product_components(*)&order=name.asc');
 
@@ -82,7 +70,6 @@ export function useSaleProducts() {
     enabled: (!!user?.id || !!ownerId) && !isOwnerLoading,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
-    refetchInterval: isDriveConnected ? false : undefined,
   });
 
   const createSaleProduct = useMutation({

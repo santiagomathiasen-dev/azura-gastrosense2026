@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
 import { createContext, useContext } from 'react';
-import { Collaborator } from '@/hooks/useCollaborators';
+import { Collaborator } from '@/hooks/shared/useCollaborators';
 
 export interface CollaboratorContextType {
     collaborator: Collaborator | null;

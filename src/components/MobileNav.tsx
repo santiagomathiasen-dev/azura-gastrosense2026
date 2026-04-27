@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -21,10 +21,10 @@ import {
   Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/shared/useAuth';
 import { useCollaboratorContext } from '@/contexts/CollaboratorContext';
-import { useUserRole } from '@/hooks/useUserRole';
-import { useProfile } from '@/hooks/useProfile';
+import { useUserRole } from '@/hooks/shared/useUserRole';
+import { useProfile } from '@/hooks/shared/useProfile';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface NavItem {

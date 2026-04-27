@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useCollaborators, Collaborator, CollaboratorPermissions } from '@/hooks/useCollaborators';
+﻿import { useState } from 'react';
+import { useCollaborators, Collaborator, CollaboratorPermissions } from '@/hooks/shared/useCollaborators';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { Plus, Pencil, Trash2, KeyRound, Users, Shield, Eye, EyeOff } from 'luci
 import { EmptyState } from '@/components/EmptyState';
 import { Loader2 } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { usePlanLimits } from '@/hooks/shared/usePlanLimits';
 import { toast } from 'sonner';
 
 const defaultPermissions: CollaboratorPermissions = {

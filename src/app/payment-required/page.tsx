@@ -1,11 +1,11 @@
-'use client';
+﻿'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { CreditCard, LogOut, MessageSquare, Copy, CheckCircle2, QrCode, RefreshCw, Wallet, ShieldCheck, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/shared/useAuth';
+import { useProfile } from '@/hooks/shared/useProfile';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, Suspense } from 'react';
 import { toast } from 'sonner';
@@ -177,33 +177,33 @@ function PaymentRequiredContent() {
                     <div className="md:col-span-2 bg-muted/40 p-8 border-r border-border/50 flex flex-col justify-between">
                         <div>
                             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
-                                <ShieldCheck className="h-6 w-6 text-primary" />
+                                <ShieldCheck className="h-6 w-6 text-primary" aria-hidden="true" />
                             </div>
                             <h2 className="text-xl font-bold mb-4 text-foreground">Plano Pro</h2>
                             <p className="text-2xl font-bold text-primary mb-6">R$ 197 <span className="text-xs text-muted-foreground font-normal">/mês</span></p>
                             <ul className="space-y-4">
                                 <li className="flex gap-3 text-sm text-muted-foreground">
-                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
                                     <span>Dashboard e Relatórios Financeiros</span>
                                 </li>
                                 <li className="flex gap-3 text-sm text-muted-foreground">
-                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
                                     <span>Gestão de Estoque e Compras</span>
                                 </li>
                                 <li className="flex gap-3 text-sm text-muted-foreground">
-                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                                    <span>Engenharia de Cardápio (CVM)</span>
+                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+                                    <span>Engenharia de Cardápio (COGS)</span>
                                 </li>
                                 <li className="flex gap-3 text-sm text-muted-foreground">
-                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
                                     <span>Suporte via WhatsApp</span>
                                 </li>
                             </ul>
                         </div>
 
                         <div className="mt-8 pt-8 border-t border-border/50">
-                            <Button variant="ghost" className="w-full justify-start p-0 h-auto text-muted-foreground hover:text-destructive transition-colors text-xs" onClick={handleLogout}>
-                                <LogOut className="mr-2 h-3 w-3" />
+                            <Button variant="ghost" className="w-full justify-start p-0 h-auto text-muted-foreground hover:text-destructive transition-colors text-xs" onClick={handleLogout} aria-label="Sair da conta">
+                                <LogOut className="mr-2 h-3 w-3" aria-hidden="true" />
                                 Sair da Conta
                             </Button>
                         </div>
@@ -224,9 +224,10 @@ function PaymentRequiredContent() {
                                 className="w-full h-14 justify-between px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg rounded-xl transition-all shadow-md group"
                                 onClick={() => handleCheckout('pro', 'pix')}
                                 disabled={loading}
+                                aria-label="Pagar com PIX Automático (Escaneie QR Code)"
                             >
                                 <span className="flex items-center gap-3">
-                                    {loading ? <RefreshCw className="h-6 w-6 animate-spin" /> : <QrCode className="h-6 w-6" />}
+                                    {loading ? <RefreshCw className="h-6 w-6 animate-spin" aria-hidden="true" /> : <QrCode className="h-6 w-6" aria-hidden="true" />}
                                     Pagar com PIX Automático
                                 </span>
                                 <span className="text-sm font-normal opacity-0 group-hover:opacity-100 transition-opacity underline">Gerar QR →</span>
@@ -237,9 +238,10 @@ function PaymentRequiredContent() {
                                 className="w-full h-14 justify-between px-6 bg-[#003087] hover:bg-[#00246B] text-white font-bold text-lg rounded-xl transition-all shadow-md group"
                                 onClick={() => handleCheckout('pro', 'paypal')}
                                 disabled={loading}
+                                aria-label="Pagar com Cartão de Crédito ou PayPal"
                             >
                                 <span className="flex items-center gap-3">
-                                    {loading ? <RefreshCw className="h-6 w-6 animate-spin" /> : <CreditCard className="h-6 w-6" />}
+                                    {loading ? <RefreshCw className="h-6 w-6 animate-spin" aria-hidden="true" /> : <CreditCard className="h-6 w-6" aria-hidden="true" />}
                                     Cartão / PayPal
                                 </span>
                                 <span className="text-sm font-normal opacity-0 group-hover:opacity-100 transition-opacity underline">Pagar →</span>
@@ -270,8 +272,9 @@ function PaymentRequiredContent() {
                                             variant="ghost" 
                                             className="h-10 w-10 shrink-0 text-emerald-600 hover:bg-emerald-50" 
                                             onClick={() => handleCopyPix(pixData.qrCode)}
+                                            aria-label={pixCopied ? 'Código PIX copiado' : 'Copiar código PIX'}
                                         >
-                                            {pixCopied ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <Copy className="h-5 w-5" />}
+                                            {pixCopied ? <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden="true" /> : <Copy className="h-5 w-5" aria-hidden="true" />}
                                         </Button>
                                     </div>
                                 </div>
@@ -295,7 +298,7 @@ function PaymentRequiredContent() {
                         <Card className="bg-muted/30 border-dashed border-border p-5 rounded-2xl space-y-4">
                             <div className="flex items-start gap-4">
                                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-                                    <QrCode className="h-5 w-5 text-primary" />
+                                    <QrCode className="h-5 w-5 text-primary" aria-hidden="true" />
                                 </div>
                                 <div className="space-y-1">
                                     <h4 className="text-sm font-bold text-foreground">PIX Manual (E-mail)</h4>
@@ -310,16 +313,18 @@ function PaymentRequiredContent() {
                                     variant="ghost"
                                     className="h-9 w-9 shrink-0 hover:bg-primary/10 hover:text-primary transition-colors"
                                     onClick={() => handleCopyPix(process.env.NEXT_PUBLIC_PIX_KEY || '')}
+                                    aria-label={pixCopied ? 'Chave PIX copiada' : 'Copiar chave PIX'}
                                 >
-                                    {pixCopied ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                                    {pixCopied ? <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
                                 </Button>
                             </div>
 
                             <Button
                                 className="w-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-none font-bold gap-2 text-sm h-11 transition-all shadow-none"
                                 onClick={openWhatsApp}
+                                aria-label="Confirmar pagamento pelo WhatsApp enviando comprovante"
                             >
-                                <MessageSquare className="h-4 w-4" />
+                                <MessageSquare className="h-4 w-4" aria-hidden="true" />
                                 Confirmar pelo WhatsApp (Envio de Comprovante)
                             </Button>
                         </Card>
@@ -330,8 +335,9 @@ function PaymentRequiredContent() {
                                 className="h-12 gap-2 text-muted-foreground hover:bg-accent transition-all font-medium text-sm"
                                 onClick={handleVerifyPayment}
                                 disabled={isVerifying}
+                                aria-label="Verificar se o pagamento foi recebido"
                             >
-                                <RefreshCw className={cn("h-4 w-4", isVerifying && "animate-spin")} />
+                                <RefreshCw className={cn("h-4 w-4", isVerifying && "animate-spin")} aria-hidden="true" />
                                 Verificar Agora
                             </Button>
                             <Button
@@ -339,8 +345,9 @@ function PaymentRequiredContent() {
                                 className="h-12 gap-2 text-blue-600 hover:bg-blue-50 transition-all font-medium text-sm border border-blue-100 rounded-xl"
                                 onClick={() => handleCheckout('pro', 'mercadopago')}
                                 disabled={loading}
+                                aria-label="Pagar com outras opções através do Mercado Pago"
                             >
-                                <Wallet className="h-4 w-4" />
+                                <Wallet className="h-4 w-4" aria-hidden="true" />
                                 Outras Opções (Mercado Pago)
                             </Button>
                         </div>

@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/shared/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,16 +45,31 @@ function AuthContent() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <div className="text-center space-y-2">
                     <p className="text-muted-foreground animate-pulse text-sm">Carregando sistema Azura...</p>
-                    <button
-                        onClick={() => {
-                            localStorage.clear();
-                            sessionStorage.clear();
-                            window.location.reload();
-                        }}
-                        className="text-[10px] text-muted-foreground/50 hover:text-primary transition-colors underline"
-                    >
-                        Se demorar muito, clique aqui para resetar
-                    </button>
+                    <div className="flex gap-2 justify-center flex-wrap">
+                        <button
+                            onClick={() => {
+                                localStorage.clear();
+                                sessionStorage.clear();
+                                window.location.reload();
+                            }}
+                            className="text-[10px] text-muted-foreground/50 hover:text-primary transition-colors underline"
+                        >
+                            Se demorar muito, clique aqui para resetar
+                        </button>
+                        {user && (
+                            <button
+                                onClick={() => {
+                                    localStorage.removeItem('supabase_auth_token');
+                                    localStorage.clear();
+                                    sessionStorage.clear();
+                                    window.location.href = '/auth';
+                                }}
+                                className="text-[10px] text-muted-foreground/50 hover:text-destructive transition-colors underline"
+                            >
+                                ou Sair
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         );
@@ -77,6 +92,9 @@ function AuthContent() {
 
         if (result.error) {
             setError(result.error);
+        } else {
+            // Limpar campos após sucesso
+            resetFormFields();
         }
         setLoading(false);
     };
@@ -89,6 +107,16 @@ function AuthContent() {
             setError(result.error);
             setLoading(false);
         }
+    };
+
+    const resetFormFields = () => {
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setName('');
+        setError('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
     };
 
     return (
@@ -238,7 +266,7 @@ function AuthContent() {
                                 type="button"
                                 onClick={() => {
                                     setIsLogin(!isLogin);
-                                    setError('');
+                                    resetFormFields();
                                 }}
                                 className="text-xs text-muted-foreground hover:text-primary transition-colors hover:underline"
                             >
@@ -254,6 +282,8 @@ function AuthContent() {
                                 onClick={() => {
                                     setEmail('test_44@azura.com');
                                     setPassword('password123');
+                                    setConfirmPassword('');
+                                    setName('');
                                     setIsLogin(true);
                                     setError('');
                                 }}

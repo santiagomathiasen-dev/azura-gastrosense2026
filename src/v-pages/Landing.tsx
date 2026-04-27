@@ -4,12 +4,20 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import { CheckoutModal } from '@/components/checkout/CheckoutModal';
 import './Landing.css';
 
 export default function Landing() {
     const router = useRouter();
     const navigate = (to: string) => router.push(to);
     const [isRedirecting, setIsRedirecting] = useState(false);
+    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<{
+        id: string;
+        name: string;
+        price: string;
+        features: string[];
+    } | null>(null);
 
     useEffect(() => {
         let mounted = true;
@@ -78,6 +86,11 @@ export default function Landing() {
         }
     };
 
+    const openCheckout = (planId: string, planName: string, planPrice: string, planFeatures: string[]) => {
+        setSelectedPlan({ id: planId, name: planName, price: planPrice, features: planFeatures });
+        setIsCheckoutOpen(true);
+    };
+
     return (
         <div className="landing-page">
             <div className="bg-pattern"></div>
@@ -112,13 +125,13 @@ export default function Landing() {
                             <div className="hero-ctas">
                                 <button className="cta-primary" onClick={() => navigate('/auth')}>
                                     Começar grátis
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                 </button>
                                 <button className="cta-secondary" onClick={(e) => {
                                     const target = document.querySelector('#ia');
                                     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                 }}>
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" /><path d="M6.5 5.5l4 2.5-4 2.5V5.5z" fill="currentColor" /></svg>
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" /><path d="M6.5 5.5l4 2.5-4 2.5V5.5z" fill="currentColor" /></svg>
                                     Ver demonstração
                                 </button>
                             </div>
@@ -216,37 +229,37 @@ export default function Landing() {
                     </div>
                     <div className="features-grid reveal">
                         <div className="feat-card">
-                            <div className="feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="4" rx="1" /><rect x="3" y="10" width="12" height="4" rx="1" /><rect x="3" y="17" width="8" height="4" rx="1" /></svg></div>
+                            <div className="feat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="4" rx="1" /><rect x="3" y="10" width="12" height="4" rx="1" /><rect x="3" y="17" width="8" height="4" rx="1" /></svg></div>
                             <h3>Gestão de Produção</h3>
                             <p>Controle total do que entra e sai da sua cozinha. Acompanhe cada etapa da produção com rastreabilidade completa em tempo real.</p>
                             <span className="feat-tag">Tempo Real</span>
                         </div>
                         <div className="feat-card">
-                            <div className="feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /><circle cx="8" cy="15" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="15" r="1" fill="currentColor" stroke="none" /><circle cx="16" cy="15" r="1" fill="currentColor" stroke="none" /></svg></div>
+                            <div className="feat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /><circle cx="8" cy="15" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="15" r="1" fill="currentColor" stroke="none" /><circle cx="16" cy="15" r="1" fill="currentColor" stroke="none" /></svg></div>
                             <h3>Planejamento de Produção</h3>
                             <p>Organize a produção da semana com base nas vendas previstas, eventos agendados e histórico de demanda.</p>
                             <span className="feat-tag">Planejamento</span>
                         </div>
                         <div className="feat-card">
-                            <div className="feat-icon gold-icon"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" /></svg></div>
+                            <div className="feat-icon gold-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" /></svg></div>
                             <h3>Compras Automáticas</h3>
                             <p>A IA analisa seu estoque, histórico e demanda futura e gera pedidos de compra automaticamente para os fornecedores certos.</p>
                             <span className="feat-tag gold">IA Integrada</span>
                         </div>
                         <div className="feat-card">
-                            <div className="feat-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg></div>
+                            <div className="feat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg></div>
                             <h3>IA com Base em Vendas</h3>
                             <p>Produção planejada automaticamente cruzando histórico de vendas, sazonalidade e eventos para evitar desperdício e falta.</p>
                             <span className="feat-tag">Inteligente</span>
                         </div>
                         <div className="feat-card">
-                            <div className="feat-icon"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" /><polyline points="3.27,6.96 12,12.01 20.73,6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></svg></div>
+                            <div className="feat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" /><polyline points="3.27,6.96 12,12.01 20.73,6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></svg></div>
                             <h3>Estoques Multinível</h3>
                             <p>Controle separado de estoque central, insumos de produção e produtos acabados com alertas automáticos de reposição.</p>
                             <span className="feat-tag">Multinível</span>
                         </div>
                         <div className="feat-card">
-                            <div className="feat-icon gold-icon"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" /><path d="M19 10v2a7 7 0 01-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg></div>
+                            <div className="feat-icon gold-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" /><path d="M19 10v2a7 7 0 01-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg></div>
                             <h3>Cadastro por Voz</h3>
                             <p>Dite ingredientes, receitas e entradas de estoque por voz. A IA interpreta, categoriza e registra tudo automaticamente.</p>
                             <span className="feat-tag gold">Inovação</span>
@@ -265,21 +278,21 @@ export default function Landing() {
                             <p className="ai-desc">Não é só automação — é uma plataforma que aprende com sua operação e toma decisões inteligentes para reduzir custos e aumentar eficiência.</p>
                             <div className="ai-features">
                                 <div className="ai-feat">
-                                    <div className="ai-feat-icon"><svg viewBox="0 0 24 24"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z" /><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" /><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z" /><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z" /><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z" /><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z" /><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z" /><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z" /></svg></div>
+                                    <div className="ai-feat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z" /><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" /><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z" /><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z" /><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z" /><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z" /><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z" /><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z" /></svg></div>
                                     <div>
                                         <div className="ai-feat-title">Cadastro Automático por IA</div>
                                         <div className="ai-feat-desc">Tire foto de uma nota fiscal ou lista de ingredientes — a IA cadastra tudo automaticamente.</div>
                                     </div>
                                 </div>
                                 <div className="ai-feat">
-                                    <div className="ai-feat-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg></div>
+                                    <div className="ai-feat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg></div>
                                     <div>
                                         <div className="ai-feat-title">Previsão de Demanda</div>
                                         <div className="ai-feat-desc">Modelo preditivo ajustado ao seu perfil de vendas, dias da semana e sazonalidade.</div>
                                     </div>
                                 </div>
                                 <div className="ai-feat">
-                                    <div className="ai-feat-icon"><svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 010 8h-1" /><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z" /><line x1="6" y1="1" x2="6" y2="4" /><line x1="10" y1="1" x2="10" y2="4" /><line x1="14" y1="1" x2="14" y2="4" /></svg></div>
+                                    <div className="ai-feat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h1a4 4 0 010 8h-1" /><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z" /><line x1="6" y1="1" x2="6" y2="4" /><line x1="10" y1="1" x2="10" y2="4" /><line x1="14" y1="1" x2="14" y2="4" /></svg></div>
                                     <div>
                                         <div className="ai-feat-title">Alertas Proativos</div>
                                         <div className="ai-feat-desc">Notificações antes do problema acontecer — ruptura, vencimento e desvio de custo.</div>
@@ -339,7 +352,7 @@ export default function Landing() {
                                 <li className="feat-included">Relatórios mensais</li>
                                 <li className="feat-included">Suporte por chat</li>
                             </ul>
-                            <button className="price-cta-btn outline" onClick={() => navigate('/auth')}>Começar grátis</button>
+                            <button className="price-cta-btn outline" onClick={() => openCheckout('starter', 'Starter', 'R$ 299', ['Gestão de produção básica', 'Controle de estoque central', 'Cadastro por voz', 'Relatórios mensais', 'Suporte por chat'])} aria-label="Começar com plano Starter por R$ 299 por mês">Começar grátis</button>
                         </div>
                         <div className="price-card featured">
                             <div className="price-popular">Mais popular</div>
@@ -355,7 +368,7 @@ export default function Landing() {
                                 <li className="feat-included">Planejamento de produção por IA</li>
                                 <li className="feat-included">Integração com PDV</li>
                             </ul>
-                            <button className="price-cta-btn" onClick={() => navigate('/auth')}>Assinar agora</button>
+                            <button className="price-cta-btn" onClick={() => openCheckout('professional', 'Profissional', 'R$ 699', ['Tudo do Starter', 'Planejamento automático de compras', 'IA de previsão de demanda', 'Estoque multinível', 'Planejamento de produção por IA', 'Integração com PDV'])} aria-label="Assinar plano Profissional por R$ 699 por mês - Mais popular">Assinar agora</button>
                         </div>
                         <div className="price-card">
                             <div className="price-tier">Enterprise</div>
@@ -369,7 +382,7 @@ export default function Landing() {
                                 <li className="feat-included">API e integrações customizadas</li>
                                 <li className="feat-included">Gerente de conta dedicado</li>
                             </ul>
-                            <button className="price-cta-btn outline">Falar com vendas</button>
+                            <button className="price-cta-btn outline" onClick={() => window.open('https://wa.me/558840007878?text=Gostaria%20de%20conhecer%20mais%20sobre%20o%20plano%20Enterprise', '_blank')} aria-label="Falar com vendas sobre plano Enterprise">Falar com vendas</button>
                         </div>
                     </div>
                 </div>
@@ -417,11 +430,11 @@ export default function Landing() {
                     <h2>Pronto para transformar<br />sua <em>gestão gastronômica?</em></h2>
                     <p>14 dias grátis. Sem cartão de crédito. Cancele quando quiser.</p>
                     <div className="final-btns">
-                        <button className="btn-white" onClick={() => navigate('/auth')}>
+                        <button className="btn-white" onClick={() => navigate('/auth')} aria-label="Criar conta grátis - 14 dias sem cartão de crédito">
                             Criar conta grátis
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                         </button>
-                        <button className="btn-ghost-white">Agendar demonstração</button>
+                        <button className="btn-ghost-white" onClick={() => window.open('https://calendly.com/azura', '_blank')} aria-label="Agendar uma demonstração pontual com nossa equipe">Agendar demonstração</button>
                     </div>
                 </div>
             </section>
@@ -442,6 +455,21 @@ export default function Landing() {
                     </div>
                 </div>
             </footer>
+
+            {/* CHECKOUT MODAL */}
+            {selectedPlan && (
+                <CheckoutModal
+                    isOpen={isCheckoutOpen}
+                    onClose={() => {
+                        setIsCheckoutOpen(false);
+                        setSelectedPlan(null);
+                    }}
+                    planId={selectedPlan.id}
+                    planName={selectedPlan.name}
+                    planPrice={selectedPlan.price}
+                    planFeatures={selectedPlan.features}
+                />
+            )}
         </div>
     );
 }

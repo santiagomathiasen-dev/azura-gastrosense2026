@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,9 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2, Package, Search, AlertTriangle } from 'lucide-react';
-import { useFinishedProductionsStock, FinishedProductionStock } from '@/hooks/useFinishedProductionsStock';
+import { useFinishedProductionsStock, FinishedProductionStock } from '@/hooks/ops/useFinishedProductionsStock';
 import { formatQuantity } from '@/lib/utils';
-import { useTechnicalSheets } from '@/hooks/useTechnicalSheets';
+import { useTechnicalSheets } from '@/hooks/ops/useTechnicalSheets';
 import { ImageUpload } from '@/components/ImageUpload';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 

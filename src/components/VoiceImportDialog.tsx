@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import type { RecipeData } from '@/hooks/useIngredientImport';
+﻿import { useState, useRef, useEffect, useCallback } from 'react';
+import type { RecipeData } from '@/hooks/purchases/useIngredientImport';
 import { Mic, MicOff, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
 import {
   Dialog,

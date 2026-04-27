@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useProfile } from "@/hooks/useProfile";
-import { usePlanLimits, PLAN_PRICES } from "@/hooks/usePlanLimits";
+import { useProfile } from "@/hooks/shared/useProfile";
+import { usePlanLimits, PLAN_PRICES } from "@/hooks/shared/usePlanLimits";
 import {
   CheckCircle2, XCircle, Clock, ShieldCheck, Wallet, CreditCard,
   MessageSquare, Copy, RefreshCw, Zap, Star, Rocket

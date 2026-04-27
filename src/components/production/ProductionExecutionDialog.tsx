@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Check, Clock, ChevronRight, ChevronDown, Loader2, PauseCircle, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,9 +18,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { useTechnicalSheetStages, StageWithSteps } from '@/hooks/useTechnicalSheetStages';
-import { useProductionStepExecution } from '@/hooks/useProductionStepExecution';
-import { useProductions, ProductionWithSheet } from '@/hooks/useProductions';
+import { useTechnicalSheetStages, StageWithSteps } from '@/hooks/ops/useTechnicalSheetstages';
+import { useProductionStepExecution } from '@/hooks/ops/useProductionstepExecution';
+import { useProductions, ProductionWithSheet } from '@/hooks/ops/useProductions';
 
 interface ProductionExecutionDialogProps {
   open: boolean;

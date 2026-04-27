@@ -1,4 +1,4 @@
-import {
+﻿import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -8,9 +8,9 @@ import {
 import { format, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Clock, CheckCircle2, AlertTriangle, TrendingUp } from "lucide-react";
-import { ProductionWithSheet } from "@/hooks/useProductions";
-import { useTechnicalSheetStages } from "@/hooks/useTechnicalSheetStages";
-import { useProductionStageExecution } from "@/hooks/useProductionStageExecution";
+import { ProductionWithSheet } from "@/hooks/ops/useProductions";
+import { useTechnicalSheetStages } from "@/hooks/ops/useTechnicalSheetstages";
+import { useProductionStageExecution } from "@/hooks/ops/useProductionstageExecution";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 

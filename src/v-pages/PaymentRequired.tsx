@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
+﻿import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
-import { usePlanLimits, PLAN_PRICES } from "@/hooks/usePlanLimits";
-import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/hooks/shared/useAuth";
+import { usePlanLimits, PLAN_PRICES } from "@/hooks/shared/usePlanLimits";
+import { useProfile } from "@/hooks/shared/useProfile";
 import { LogOut, QrCode, Copy, CheckCircle2, MessageSquare, CreditCard, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";

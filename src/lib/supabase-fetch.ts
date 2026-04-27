@@ -42,15 +42,23 @@ export async function supabaseFetch(
             const { supabase } = await import('@/integrations/supabase/client');
 
             // Timeout de 5s para auth — evita travar o fetch inteiro
-            const authToken = await Promise.race([
-                (async () => {
+            // The inner async IIFE is referenced separately so we can attach a
+        // no-op .catch() to it. This prevents an "unhandled promise rejection"
+        // when the 5 s timeout wins the race and the getSession() call later
+        // rejects (e.g. AbortError from React StrictMode double-mount cleanup).
+        const sessionPromise = (async () => {
                     const { data: { session } } = await supabase.auth.getSession();
                     if (session?.access_token) return session.access_token;
 
                     // Session vazia — tenta refresh
                     const { data: refreshData } = await supabase.auth.refreshSession();
                     return refreshData?.session?.access_token ?? null;
-                })(),
+                })();
+        // Swallow any rejection that occurs after the race already resolved.
+        sessionPromise.catch(() => {});
+
+        const authToken = await Promise.race([
+                sessionPromise,
                 new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
             ]);
 
