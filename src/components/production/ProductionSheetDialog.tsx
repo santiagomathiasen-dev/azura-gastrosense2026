@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useTechnicalSheet } from '@/hooks/ops/useTechnicalSheet';
-import { useTechnicalSheetStages } from '@/hooks/ops/useTechnicalSheetstages';
+import { useTechnicalSheetStages } from '@/hooks/ops/useTechnicalSheetStages';
 import { StageDisplay } from '@/components/fichas/StageDisplay';
 import { ForecastProductionOrder } from '@/hooks/financial/useForecastProductionOrders';
 import { Skeleton } from '@/components/ui/skeleton';

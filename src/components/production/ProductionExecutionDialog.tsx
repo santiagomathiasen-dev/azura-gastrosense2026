@@ -18,8 +18,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { useTechnicalSheetStages, StageWithSteps } from '@/hooks/ops/useTechnicalSheetstages';
-import { useProductionStepExecution } from '@/hooks/ops/useProductionstepExecution';
+import { useTechnicalSheetStages, StageWithSteps } from '@/hooks/ops/useTechnicalSheetStages';
+import { useProductionStepExecution } from '@/hooks/ops/useProductionStepExecution';
 import { useProductions, ProductionWithSheet } from '@/hooks/ops/useProductions';
 
 interface ProductionExecutionDialogProps {
