@@ -26,7 +26,7 @@ import {
   MobileListBadge,
 } from '@/components/ui/mobile-list';
 import { useTechnicalSheets, TechnicalSheetWithIngredients } from '@/hooks/ops/useTechnicalSheets';
-import { useTechnicalSheetStages } from '@/hooks/ops/useTechnicalSheetstages';
+import { useTechnicalSheetStages } from '@/hooks/ops/useTechnicalSheetStages';
 import { useStockItems, type StockUnit, type StockCategory } from '@/hooks/stock/useStockItems';
 import { RecipeFileImportDialog } from '@/components/RecipeFileImportDialog';
 import { StageForm, type StageFormData } from '@/components/fichas/StageForm';

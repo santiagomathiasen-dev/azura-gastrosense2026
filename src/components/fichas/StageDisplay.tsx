@@ -6,7 +6,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import type { StageWithSteps } from '@/hooks/ops/useTechnicalSheetstages';
+import type { StageWithSteps } from '@/hooks/ops/useTechnicalSheetStages';
 import type { TechnicalSheetIngredient } from '@/hooks/ops/useTechnicalSheets';
 
 interface StageDisplayProps {

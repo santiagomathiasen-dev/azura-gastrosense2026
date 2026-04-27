@@ -10,7 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { useTechnicalSheetStages, StageWithSteps, TechnicalSheetStageStep } from '@/hooks/ops/useTechnicalSheetstages';
+import { useTechnicalSheetStages, StageWithSteps, TechnicalSheetStageStep } from '@/hooks/ops/useTechnicalSheetStages';
 import { toast } from 'sonner';
 
 interface StageEditorProps {

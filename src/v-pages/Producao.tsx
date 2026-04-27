@@ -44,9 +44,9 @@ import {
 } from '@/components/ui/mobile-list';
 import { useProductions, ProductionWithSheet, STATUS_LABELS, ProductionStatus } from '@/hooks/ops/useProductions';
 import { useTechnicalSheets } from '@/hooks/ops/useTechnicalSheets';
-import { useTechnicalSheetStages, StageWithSteps } from '@/hooks/ops/useTechnicalSheetstages';
-import { useProductionStepExecution } from '@/hooks/ops/useProductionstepExecution';
-import { useProductionStageExecution } from '@/hooks/ops/useProductionstageExecution';
+import { useTechnicalSheetStages, StageWithSteps } from '@/hooks/ops/useTechnicalSheetStages';
+import { useProductionStepExecution } from '@/hooks/ops/useProductionStepExecution';
+import { useProductionStageExecution } from '@/hooks/ops/useProductionStageExecution';
 import { ProductionExecutionDialog } from '@/components/production/ProductionExecutionDialog';
 import { ProductionReportDialog } from '@/components/production/ProductionReportDialog';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, addDays, addWeeks, addMonths, addYears, subDays, subWeeks, subMonths, subYears, isWithinInterval } from 'date-fns';
