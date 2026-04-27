@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useOwnerId } from './useOwnerId';
+import { useOwnerId } from '../shared/useOwnerId';
 import { toast } from 'sonner';
 import { supabaseFetch } from '@/lib/supabase-fetch';
 

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useOwnerId } from './useOwnerId';
+import { useOwnerId } from '../shared/useOwnerId';
 import { subDays } from 'date-fns';
 import { formatInBrasilia } from '@/lib/utils';
 
