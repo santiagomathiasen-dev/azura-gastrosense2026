@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { usePathname, useRouter } from 'next/navigation';
+import { sendToN8N } from '@/services/n8n';
 
 interface GlobalAIDialogProps {
     open: boolean;
@@ -77,6 +78,14 @@ export function GlobalAIDialog({ open, onOpenChange }: GlobalAIDialogProps) {
             }
 
             const data = await response.json();
+
+            // Notify n8n of the global AI command movement
+            sendToN8N({
+                event: 'ia_global_command',
+                command: text,
+                path: currentPath,
+                result: data
+            }).catch(() => {});
 
             if (data.action === 'navigate' && data.target) {
                 router.push(data.target);

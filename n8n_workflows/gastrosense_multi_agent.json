@@ -1,0 +1,925 @@
+{
+  "name": "GastroSense AI — Ecossistema Multi-Agente v1.0",
+  "nodes": [
+    {
+      "id": "11111111-0000-0000-0000-000000000001",
+      "name": "🎯 Webhook Principal",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 60],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gastrosense",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000002",
+      "name": "🏪 Webhook Loyverse PDV",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [620, 60],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "loyverse-sales",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000003",
+      "name": "⏰ Cron Análise Diária 06h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [1000, 60],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000004",
+      "name": "📋 Preparar Contexto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [240, 240],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ctx-1",
+              "name": "input",
+              "value": "={{ $json.body?.input || $json.body?.message || $json.body?.command || 'analise_diaria_automatica' }}",
+              "type": "string"
+            },
+            {
+              "id": "ctx-2",
+              "name": "owner_id",
+              "value": "={{ $json.body?.owner_id || $json.headers?.['x-owner-id'] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "ctx-3",
+              "name": "sector",
+              "value": "={{ $json.body?.sector || $json.body?.setor || 'restaurante' }}",
+              "type": "string"
+            },
+            {
+              "id": "ctx-4",
+              "name": "timestamp",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            },
+            {
+              "id": "ctx-5",
+              "name": "request_type",
+              "value": "={{ $json.body?.type || 'api' }}",
+              "type": "string"
+            },
+            {
+              "id": "ctx-6",
+              "name": "latitude",
+              "value": "={{ $json.body?.latitude || -23.5505 }}",
+              "type": "number"
+            },
+            {
+              "id": "ctx-7",
+              "name": "longitude",
+              "value": "={{ $json.body?.longitude || -46.6333 }}",
+              "type": "number"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000005",
+      "name": "🔀 Classificador de Setor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 420],
+      "parameters": {
+        "jsCode": "const item = items[0];\nconst setor = (item.json.sector || item.json.setor || 'restaurante').toLowerCase();\n\nconst SECTOR_CONFIG = {\n  padaria: {\n    cmv_meta: { min: 30, max: 40, alerta: 42 },\n    perda_toleravel_pct: 4,\n    unidade_principal: 'kg',\n    usa_baker_percent: true,\n    usa_overrun: false,\n    usa_pax: false,\n    usa_fator_correcao: false,\n    dose_padrao: null,\n    label: 'Padaria/Confeitaria'\n  },\n  confeitaria: {\n    cmv_meta: { min: 30, max: 40, alerta: 42 },\n    perda_toleravel_pct: 3,\n    unidade_principal: 'kg',\n    usa_baker_percent: true,\n    usa_overrun: false,\n    usa_pax: false,\n    usa_fator_correcao: false,\n    dose_padrao: null,\n    label: 'Padaria/Confeitaria'\n  },\n  restaurante: {\n    cmv_meta: { min: 28, max: 35, alerta: 37 },\n    perda_toleravel_pct: 5,\n    unidade_principal: 'kg',\n    usa_baker_percent: false,\n    usa_overrun: false,\n    usa_pax: false,\n    usa_fator_correcao: true,\n    dose_padrao: null,\n    label: 'Restaurante'\n  },\n  bar: {\n    cmv_meta: { min: 18, max: 25, alerta: 27 },\n    perda_toleravel_pct: 2,\n    unidade_principal: 'ml',\n    usa_baker_percent: false,\n    usa_overrun: false,\n    usa_pax: false,\n    usa_fator_correcao: false,\n    dose_padrao: 50,\n    label: 'Bar'\n  },\n  gelateria: {\n    cmv_meta: { min: 25, max: 35, alerta: 37 },\n    perda_toleravel_pct: 4,\n    unidade_principal: 'kg',\n    usa_baker_percent: false,\n    usa_overrun: true,\n    overrun_target_pct: 40,\n    maturacao_horas: 12,\n    usa_pax: false,\n    usa_fator_correcao: false,\n    dose_padrao: null,\n    label: 'Gelateria'\n  },\n  hotel: {\n    cmv_meta: { min: 30, max: 38, alerta: 40 },\n    perda_toleravel_pct: 4,\n    unidade_principal: 'kg',\n    usa_baker_percent: false,\n    usa_overrun: false,\n    usa_pax: true,\n    usa_fator_correcao: true,\n    dose_padrao: null,\n    label: 'Hotel'\n  },\n  eventos: {\n    cmv_meta: { min: 30, max: 38, alerta: 40 },\n    perda_toleravel_pct: 5,\n    unidade_principal: 'kg',\n    usa_baker_percent: false,\n    usa_overrun: false,\n    usa_pax: true,\n    usa_fator_correcao: true,\n    dose_padrao: null,\n    label: 'Eventos'\n  },\n  cafeteria: {\n    cmv_meta: { min: 20, max: 30, alerta: 32 },\n    perda_toleravel_pct: 3,\n    unidade_principal: 'g',\n    usa_baker_percent: false,\n    usa_overrun: false,\n    usa_pax: false,\n    usa_fator_correcao: false,\n    dose_padrao: null,\n    label: 'Cafeteria'\n  }\n};\n\nconst config = SECTOR_CONFIG[setor] || SECTOR_CONFIG.restaurante;\n\nreturn [{ json: { ...item.json, setor, sector_config: config } }];"
+      }
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000006",
+      "name": "🧠 Orquestrador Central",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [240, 620],
+      "parameters": {
+        "agent": "conversationalAgent",
+        "promptType": "define",
+        "text": "=REQUISIÇÃO: {{ $json.input }}\nSETOR: {{ $json.setor }}\nCONFIG_SETOR: {{ JSON.stringify($json.sector_config) }}\nOWNER_ID: {{ $json.owner_id }}\nTIMESTAMP: {{ $json.timestamp }}\nTIPO_REQUEST: {{ $json.request_type }}",
+        "options": {
+          "systemMessage": "Você é o ORQUESTRADOR CENTRAL do GastroSense AI — o sistema nervoso central de uma plataforma SaaS de gestão gastronômica multi-setor.\n\nSua única função é ANALISAR a requisição recebida e ROTEAR para o agente especializado correto.\n\n═══════════════════════════════════════\n AGENTES DISPONÍVEIS\n═══════════════════════════════════════\n\n1. INGESTAO\n   Quando usar: upload/foto de nota fiscal, áudio/voz descrevendo compras, planilha de estoque, PDF de ficha técnica, texto livre com lista de insumos\n   Palavras-chave: 'nota fiscal', 'NF', 'foto', 'upload', 'planilha', 'voz', 'digitação', 'cadastrar insumo', 'importar', 'comprei'\n\n2. ORACULO\n   Quando usar: previsões de venda, projeções, simulações futuras, análise de tendências, impacto climático, feriados, calendário\n   Palavras-chave: 'prever', 'previsão', 'projeção', 'próxima semana', 'vai chover', 'feriado', 'quanto vou vender', 'simular', 'tendência', 'analise_diaria_automatica'\n\n3. COMPRAS\n   Quando usar: lista de compras, pedidos a fornecedores, comparação de preços, aprovação de compras, suprimentos\n   Palavras-chave: 'comprar', 'fornecedor', 'pedido', 'suprimento', 'lista de compras', 'estoque baixo', 'reabastecer', 'preço', 'cotação'\n\n4. CMV\n   Quando usar: análise de custos, CMV, desvios, desperdício, perdas, financeiro, controle de custo\n   Palavras-chave: 'CMV', 'custo', 'desvio', 'desperdício', 'perda', 'financeiro', 'DRE', 'margem', 'lucratividade', 'análise de custo'\n\n5. PRODUCAO\n   Quando usar: cronograma de produção, ordens de produção, fichas técnicas, receitas, praças, status de produção\n   Palavras-chave: 'produção', 'cronograma', 'ordem', 'receita', 'ficha técnica', 'cozinha', 'preparar', 'cozinhar'\n\n═══════════════════════════════════════\n REGRA DE RESPOSTA\n═══════════════════════════════════════\n\nRetorne APENAS este JSON (sem markdown, sem explicações):\n{\n  \"agente\": \"INGESTAO|ORACULO|COMPRAS|CMV|PRODUCAO\",\n  \"prioridade\": \"alta|media|baixa\",\n  \"justificativa\": \"motivo em 1 linha\",\n  \"parametros\": {\n    \"setor\": \"padaria|confeitaria|restaurante|bar|gelateria|hotel|eventos|cafeteria\",\n    \"acao\": \"acao_especifica\",\n    \"periodo\": \"dia|semana|mes\",\n    \"contexto_extra\": {}\n  }\n}\n\nPara 'analise_diaria_automatica' → use ORACULO com prioridade alta."
+        }
+      }
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000007",
+      "name": "LLM Orquestrador GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [60, 800],
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.1,
+          "maxTokens": 600
+        }
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "CONFIGURE_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI GastroSense"
+        }
+      }
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000008",
+      "name": "🔀 Parser Decisão Orquestrador",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 800],
+      "parameters": {
+        "jsCode": "const item = items[0];\nconst rawOutput = item.json.output || item.json.text || '{}';\n\nlet decision;\ntry {\n  const cleaned = rawOutput\n    .replace(/```json\\n?/g, '')\n    .replace(/```\\n?/g, '')\n    .trim();\n  decision = JSON.parse(cleaned);\n} catch(e) {\n  // Default fallback\n  decision = {\n    agente: 'ORACULO',\n    prioridade: 'media',\n    justificativa: 'Fallback padrão por erro de parse',\n    parametros: {\n      setor: item.json.setor || 'restaurante',\n      acao: 'analise_geral',\n      periodo: 'dia',\n      contexto_extra: {}\n    }\n  };\n}\n\nreturn [{\n  json: {\n    ...item.json,\n    decision,\n    agente: decision.agente,\n    setor: decision.parametros?.setor || item.json.setor || 'restaurante'\n  }\n}];"
+      }
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000009",
+      "name": "🔀 Roteador Principal de Agentes",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [240, 980],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "rules": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.agente }}", "rightValue": "INGESTAO", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "INGESTAO"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.agente }}", "rightValue": "ORACULO", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ORACULO"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.agente }}", "rightValue": "COMPRAS", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "COMPRAS"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.agente }}", "rightValue": "CMV", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "CMV"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.agente }}", "rightValue": "PRODUCAO", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "PRODUCAO"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+
+    {
+      "id": "22222222-0001-0001-0001-000000000001",
+      "name": "📥 Agente 1 — Ingestão Universal",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [-400, 1240],
+      "parameters": {
+        "agent": "toolsAgent",
+        "promptType": "define",
+        "text": "=DADOS RECEBIDOS: {{ JSON.stringify($json.decision?.parametros?.contexto_extra || {}) }}\nENTRADA ORIGINAL: {{ $json.input }}\nSETOR: {{ $json.setor }}\nCONFIG_SETOR: {{ JSON.stringify($json.sector_config) }}\nOWNER_ID: {{ $json.owner_id }}\nACÃO: {{ $json.decision?.parametros?.acao || 'processar_documento' }}",
+        "options": {
+          "systemMessage": "Você é o ANALISTA DE INGESTÃO UNIVERSAL do GastroSense AI.\n\nSua missão: processar QUALQUER tipo de entrada de dados e persistir no Supabase com máxima precisão.\n\nTIPOS DE ENTRADA SUPORTADOS:\n- Texto livre: 'comprei 50kg de farinha por R$180'\n- Nota fiscal OCR: extrair CNPJ, data, itens, quantidades, valores\n- Áudio transcrito: normalizar linguagem informal\n- Planilha: processar múltiplas linhas\n- Ficha técnica PDF: extrair ingredientes, quantidades, etapas\n\n═══════════════════════════════════════\n LÓGICA SETORIAL DE IDENTIFICAÇÃO\n═══════════════════════════════════════\n\n🥐 PADARIA / CONFEITARIA:\n- Farinhas: identificar W (força): W170=fraca, W220=média, W300=forte, W380=extra-forte\n- Fermento: seco/fresco, percentual baker (0.2% a 2% do peso da farinha)\n- Gorduras: manteiga vs margarina vs banha vs óleo\n- metadata_setor: { w_force, baker_percent, fermentation_type: 'direto|poolish|biga|levain' }\n\n🍺 BAR:\n- Sempre identificar ML (dosagem padrão: vodka=50ml, cerveja=500ml, destilado=60ml, vinho=150ml)\n- metadata_setor: { teor_alcoolico_pct, dose_padrao_ml, rendimento_garrafa_doses }\n\n🍦 GELATERIA:\n- Bases lácteas, estabilizantes, caldas\n- metadata_setor: { overrun_target_pct: 40, maturation_hours: 12, serving_temp_celsius: -11 }\n\n🏨 HOTEL / EVENTOS:\n- Sempre perguntar PAX (quantidade de pessoas) se não informado\n- Converter quantidades para 'por PAX' e 'total para X pax'\n- metadata_setor: { pax_reference, event_type: 'buffet|coquetel|jantar|cafe_da_manha' }\n\n🍽️ RESTAURANTE:\n- Fator de Correção (FC): FC = Peso Bruto / Peso Líquido\n- Ex: frango inteiro FC=1.35, alface FC=1.20, cebola FC=1.15\n- metadata_setor: { fator_correcao, peso_bruto_kg, peso_liquido_kg }\n\n═══════════════════════════════════════\n VALIDAÇÃO DE PREÇO\n═══════════════════════════════════════\n- SEMPRE buscar preço histórico antes de salvar (use a ferramenta buscar_preco_historico)\n- Se variação > 10%: incluir alerta no resultado\n- Se variação > 25%: marcar como 'price_alert_critical: true'\n\n═══════════════════════════════════════\n FORMATO DE SAÍDA\n═══════════════════════════════════════\n{\n  \"acao\": \"upsert_stock_items\",\n  \"registros_processados\": 0,\n  \"itens\": [\n    {\n      \"name\": \"nome normalizado\",\n      \"category\": \"laticinios|secos|hortifruti|carnes|bebidas|embalagens|limpeza|outros\",\n      \"unit\": \"kg|g|L|ml|unidade|caixa|dz\",\n      \"cost_price\": 0.00,\n      \"supplier\": \"nome do fornecedor\",\n      \"quantity_purchased\": 0,\n      \"total_cost\": 0.00,\n      \"owner_id\": \"{{ $json.owner_id }}\",\n      \"sector\": \"{{ $json.setor }}\",\n      \"metadata_setor\": {}\n    }\n  ],\n  \"alertas_preco\": [],\n  \"invoice_data\": { \"numero\": \"\", \"cnpj_emitente\": \"\", \"data_emissao\": \"\", \"valor_total\": 0.00 }\n}\n\nPassos obrigatórios:\n1. Extrair e normalizar os dados da entrada\n2. Para cada item, chamar buscar_preco_historico\n3. Calcular variação de preço\n4. Salvar cada item com salvar_insumo_supabase\n5. Retornar o JSON de resultado"
+        }
+      }
+    },
+    {
+      "id": "22222222-0001-0001-0001-000000000002",
+      "name": "LLM Ingestão GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [-620, 1420],
+      "parameters": {
+        "model": "gpt-4o",
+        "options": { "temperature": 0.1, "maxTokens": 2500 }
+      },
+      "credentials": {
+        "openAiApi": { "id": "CONFIGURE_OPENAI_CREDENTIAL_ID", "name": "OpenAI GastroSense" }
+      }
+    },
+    {
+      "id": "22222222-0001-0001-0001-000000000003",
+      "name": "🔧 Tool Ingestão: Buscar Preço Histórico",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [-420, 1420],
+      "parameters": {
+        "name": "buscar_preco_historico",
+        "description": "Busca os últimos 5 preços registrados de um insumo no Supabase para comparar com o preço atual. Use antes de salvar qualquer insumo. Parâmetros: item_name (string — nome do insumo), owner_id (string — ID do dono).",
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/stock_movements",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "item_name", "value": "=ilike.*{item_name}*" },
+            { "name": "owner_id", "value": "=eq.{owner_id}" },
+            { "name": "type", "value": "=eq.entrada" },
+            { "name": "select", "value": "item_name,unit_cost,quantity,created_at,supplier" },
+            { "name": "order", "value": "created_at.desc" },
+            { "name": "limit", "value": "5" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "22222222-0001-0001-0001-000000000004",
+      "name": "🔧 Tool Ingestão: Salvar Insumo Supabase",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [-220, 1420],
+      "parameters": {
+        "name": "salvar_insumo_supabase",
+        "description": "Salva ou atualiza um insumo no Supabase (tabela stock_items + stock_movements). Envie o JSON do item com os campos: name, category, unit, cost_price, supplier, quantity_purchased, owner_id, sector, metadata_setor.",
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/stock_items",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "{\"data\": {stock_item_json}}"
+      }
+    },
+
+    {
+      "id": "33333333-0002-0002-0002-000000000001",
+      "name": "🔮 Agente 2 — Oráculo Preditivo",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [100, 1240],
+      "parameters": {
+        "agent": "toolsAgent",
+        "promptType": "define",
+        "text": "=SETOR: {{ $json.setor }}\nCONFIG_SETOR: {{ JSON.stringify($json.sector_config) }}\nOWNER_ID: {{ $json.owner_id }}\nTIMESTAMP: {{ $json.timestamp }}\nPERÍODO: {{ $json.decision?.parametros?.periodo || 'dia' }}\nLATITUDE: {{ $json.latitude || -23.5505 }}\nLONGITUDE: {{ $json.longitude || -46.6333 }}\nCONTEXTO: {{ JSON.stringify($json.decision?.parametros?.contexto_extra || {}) }}",
+        "options": {
+          "systemMessage": "Você é o ORÁCULO PREDITIVO do GastroSense AI — o coração inteligente do sistema.\n\nSua missão: gerar previsões precisas de vendas e necessidades de produção combinando dados históricos, clima e calendário.\n\n═══════════════════════════════════════\n FONTES DE DADOS OBRIGATÓRIAS\n═══════════════════════════════════════\n1. historico_vendas_90_dias — padrões por dia da semana e hora\n2. previsao_tempo — temperatura, chuva, clima dos próximos 7 dias\n3. fichas_tecnicas_bom — para converter vendas em necessidade de insumos\n4. salvar_previsao_vendas — para persistir as previsões geradas\n\n═══════════════════════════════════════\n LÓGICA PREDITIVA POR SETOR\n═══════════════════════════════════════\n\n🍦 GELATERIA:\n- Temp > 30°C → +35% produção de sorvetes base\n- Temp > 35°C → +55% produção + garantir overrun 40%\n- Temp < 15°C → -40% sorvetes, +20% chocolates quentes\n- Chuva prevista → -20% sorveteria, +10% bebidas quentes\n- Fim de semana + calor → buffer +20% adicional\n- ATENÇÃO: calcular D-1 para maturação (12-24h antecedência)\n- Usar overrun_target_pct do sector_config para ajustar quantidades de base\n\n🥐 PADARIA / CONFEITARIA:\n- Feriado → dobrar pães artesanais, +50% bolos\n- Segunda-feira → -20% vs média de dias úteis\n- Sexta-feira → +30% vs média\n- Sábado → +40% vs média\n- Domingo (se aberto) → +35%\n- Pré-fermentos (poolish/biga/levain) → planejar D-2\n- Usar baker_percent para calcular quantidades de fermento/gordura\n\n🍽️ RESTAURANTE:\n- Sexta/Sábado jantar → +40%\n- Almoço executivo seg-sex → padrão\n- Chuva forte → +25% delivery, -30% presencial\n- Feriado → +60% brunch/almoço, variação jantar\n- SEMPRE aplicar Fator de Correção (FC) nos insumos:\n  FC = Peso Bruto / Peso Líquido\n  Ex: frango FC=1.35, alface FC=1.20, cebola FC=1.15\n\n🍺 BAR:\n- Jogo de futebol → +80% cervejas, +50% petiscos\n- Sexta/Sábado noite → +60%\n- Chuva → -30% movimento externo, +10% interno\n- Doses padrão: 50ml destilado, 500ml cerveja\n\n🏨 HOTEL / EVENTOS:\n- Base sempre em PAX (hóspedes confirmados)\n- Buffer de 10% sobre PAX para imprevistos\n- Café manhã: 1.0x PAX\n- Almoço buffet: 0.8x PAX (não todos comem)\n- Jantar: 0.9x PAX\n- Open bar: 0.7L bebidas/PAX/hora\n\n☕ CAFETERIA:\n- Clima frio → +40% bebidas quentes, -20% frappes\n- Manhã (7-10h) → pico; tarde (14-16h) → segundo pico\n- Segunda → -15% vs média\n\n═══════════════════════════════════════\n FORMATO DE SAÍDA (JSON para Frontend e n8n)\n═══════════════════════════════════════\n{\n  \"tipo\": \"previsao_producao\",\n  \"periodo\": \"amanha|proximos_3_dias|semana\",\n  \"setor\": \"...\",\n  \"data_geracao\": \"ISO timestamp\",\n  \"condicoes_externas\": {\n    \"clima\": { \"temp_max\": 0, \"temp_min\": 0, \"precipitacao_mm\": 0, \"descricao\": \"\" },\n    \"feriados\": [],\n    \"eventos_especiais\": []\n  },\n  \"previsoes\": [\n    {\n      \"produto\": \"\",\n      \"data\": \"YYYY-MM-DD\",\n      \"quantidade_prevista\": 0,\n      \"unidade\": \"\",\n      \"variacao_vs_media_pct\": 0,\n      \"confianca_pct\": 85,\n      \"fatores_ajuste\": [\"clima\", \"dia_semana\", \"historico\"],\n      \"insumos_necessarios\": [\n        { \"insumo\": \"\", \"quantidade_bruta\": 0, \"fator_correcao\": 1.0, \"quantidade_liquida\": 0, \"unidade\": \"\" }\n      ]\n    }\n  ],\n  \"proposta_producao\": {\n    \"observacoes\": \"\",\n    \"ordens\": [\n      { \"receita\": \"\", \"quantidade\": 0, \"data_inicio\": \"\", \"prazo_preparo_horas\": 0, \"praca\": \"\" }\n    ]\n  },\n  \"alertas\": []\n}\n\nPassos:\n1. Buscar histórico de 90 dias\n2. Buscar previsão do tempo\n3. Aplicar multiplicadores setoriais\n4. Explodir BOM via fichas técnicas\n5. Salvar previsão no Supabase\n6. Retornar JSON estruturado"
+        }
+      }
+    },
+    {
+      "id": "33333333-0002-0002-0002-000000000002",
+      "name": "LLM Oráculo GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [-120, 1420],
+      "parameters": {
+        "model": "gpt-4o",
+        "options": { "temperature": 0.2, "maxTokens": 3500 }
+      },
+      "credentials": {
+        "openAiApi": { "id": "CONFIGURE_OPENAI_CREDENTIAL_ID", "name": "OpenAI GastroSense" }
+      }
+    },
+    {
+      "id": "33333333-0002-0002-0002-000000000003",
+      "name": "🔧 Tool Oráculo: Histórico Vendas 90d",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [80, 1420],
+      "parameters": {
+        "name": "historico_vendas_90_dias",
+        "description": "Busca o histórico de vendas dos últimos 90 dias no Supabase para análise de padrões. Parâmetros: owner_id (string). Retorna: product_name, quantity, total_price, created_at agrupados.",
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sales",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "owner_id", "value": "=eq.{owner_id}" },
+            { "name": "created_at", "value": "=gte.{data_90_dias_atras}" },
+            { "name": "select", "value": "product_name,quantity,unit_price,total_price,created_at" },
+            { "name": "order", "value": "created_at.desc" },
+            { "name": "limit", "value": "2000" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "33333333-0002-0002-0002-000000000004",
+      "name": "🔧 Tool Oráculo: Previsão Tempo Open-Meteo",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [280, 1420],
+      "parameters": {
+        "name": "previsao_tempo",
+        "description": "Busca previsão do tempo para os próximos 7 dias via Open-Meteo (gratuita, sem API key). Parâmetros: latitude (float, ex: -23.5505), longitude (float, ex: -46.6333). Retorna temperatura máx/mín, precipitação e código de clima por dia.",
+        "method": "GET",
+        "url": "https://api.open-meteo.com/v1/forecast",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "latitude", "value": "{latitude}" },
+            { "name": "longitude", "value": "{longitude}" },
+            { "name": "daily", "value": "temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,precipitation_probability_max" },
+            { "name": "timezone", "value": "America/Sao_Paulo" },
+            { "name": "forecast_days", "value": "7" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "33333333-0002-0002-0002-000000000005",
+      "name": "🔧 Tool Oráculo: Fichas Técnicas BOM",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [480, 1420],
+      "parameters": {
+        "name": "fichas_tecnicas_bom",
+        "description": "Busca fichas técnicas com lista de ingredientes (Bill of Materials) para explodir a previsão de vendas em necessidade de insumos. Parâmetros: owner_id (string). Retorna fichas com ingredientes, quantidades, FC e rendimento.",
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/technical_sheets",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "owner_id", "value": "=eq.{owner_id}" },
+            { "name": "select", "value": "id,name,yield_portions,yield_unit,correction_factor,cost_per_portion,technical_sheet_ingredients(ingredient_name,quantity,unit,waste_percent,correction_factor)" },
+            { "name": "is_active", "value": "=eq.true" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "33333333-0002-0002-0002-000000000006",
+      "name": "🔧 Tool Oráculo: Salvar Previsão",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [680, 1420],
+      "parameters": {
+        "name": "salvar_previsao_vendas",
+        "description": "Persiste uma previsão de venda na tabela sales_forecasts do Supabase. Envie um array de objetos com: owner_id, product_name, forecast_date (YYYY-MM-DD), predicted_quantity, unit, confidence_pct, factors_json, sector.",
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sales_forecasts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation,resolution=merge-duplicates" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json"
+      }
+    },
+
+    {
+      "id": "44444444-0003-0003-0003-000000000001",
+      "name": "🛒 Agente 3 — Gestor de Compras",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [600, 1240],
+      "parameters": {
+        "agent": "toolsAgent",
+        "promptType": "define",
+        "text": "=SETOR: {{ $json.setor }}\nCONFIG_SETOR: {{ JSON.stringify($json.sector_config) }}\nOWNER_ID: {{ $json.owner_id }}\nTIMESTAMP: {{ $json.timestamp }}\nCONTEXTO: {{ JSON.stringify($json.decision?.parametros) }}",
+        "options": {
+          "systemMessage": "Você é o GESTOR DE COMPRAS E SUPRIMENTOS do GastroSense AI.\n\nSua missão: gerar listas de compras inteligentes, agrupar por fornecedor e preparar Pop-ups de Aprovação para o gestor.\n\n═══════════════════════════════════════\n ALGORITMO DE COMPRAS\n═══════════════════════════════════════\n1. Buscar estoque atual de todos os insumos\n2. Buscar previsão de produção (próximos 3-7 dias)\n3. Calcular: Necessidade = Previsão - Estoque Atual + Estoque Segurança\n4. Se Necessidade > 0 → incluir na lista\n5. Agrupar por fornecedor para otimizar pedidos\n6. Comparar preços históricos e alternativas\n7. Gerar JSON do Pop-up de Aprovação\n8. Salvar itens na tabela purchase_list_items\n\n═══════════════════════════════════════\n MATRIZ DE DECISÃO DE COMPRAS\n═══════════════════════════════════════\n- Variação de preço 0-10% → NORMAL, comprar do mesmo fornecedor\n- Variação 10-20% → ALERTA, exibir alternativa mais barata\n- Variação > 20% → CRÍTICO, bloquear auto-aprovação, requerer aprovação manual\n- Estoque < 20% do mínimo → URGENTE, marcar como prioridade alta\n- Item vencendo em < 3 dias → NÃO comprar, usar primeiro\n- Lead time > 3 dias → antecipar pedido\n\n═══════════════════════════════════════\n LÓGICA SETORIAL\n═══════════════════════════════════════\n\n🥐 PADARIA (usa baker_percent):\n- Calcular fermento = (peso_farinha × baker_percent / 100)\n- Calcular gordura = (peso_farinha × percentual_gordura / 100)\n- Agrupar: farinhas, fermentos, gorduras, açúcares, laticínios\n\n🍦 GELATERIA (usa overrun):\n- Calcular base necessária considerando overrun:\n  base_real = volume_final / (1 + overrun_pct/100)\n- Incluir tempo de maturação no planejamento\n\n🏨 HOTEL/EVENTOS (usa PAX):\n- Extrair PAX do contexto\n- Calcular: quantidade = qtd_por_pax × total_pax × (1 + buffer_10pct)\n\n🍺 BAR:\n- Calcular por doses (não por litro):\n  garrafas = doses_previstas / (volume_ml_garrafa / dose_padrao_ml)\n\n═══════════════════════════════════════\n POP-UP DE APROVAÇÃO (JSON para Frontend)\n═══════════════════════════════════════\n{\n  \"popup_type\": \"purchase_approval\",\n  \"popup_id\": \"uuid-gerado\",\n  \"urgency\": \"normal|urgente|critico\",\n  \"titulo\": \"Aprovação de Pedido — [Nome Fornecedor]\",\n  \"mensagem\": \"Detectado aumento de X% no [item]. Sugiro o fornecedor alternativo B. Total consolidado: R$ XXX.\",\n  \"fornecedor_principal\": \"Nome\",\n  \"itens\": [\n    {\n      \"item_id\": \"\",\n      \"nome\": \"\",\n      \"quantidade\": 0,\n      \"unidade\": \"\",\n      \"preco_unitario\": 0.00,\n      \"preco_total\": 0.00,\n      \"fornecedor\": \"\",\n      \"variacao_preco_pct\": 0.0,\n      \"alternativa\": {\n        \"fornecedor\": \"\",\n        \"preco_unitario\": 0.00,\n        \"economia_total\": 0.00\n      }\n    }\n  ],\n  \"resumo_financeiro\": {\n    \"total_pedido\": 0.00,\n    \"economia_potencial\": 0.00,\n    \"total_com_alternativas\": 0.00\n  },\n  \"acoes\": {\n    \"aprovar\": { \"endpoint\": \"/api/purchase-orders/approve\", \"method\": \"POST\" },\n    \"usar_alternativo\": { \"endpoint\": \"/api/purchase-orders/use-alternative\", \"method\": \"POST\" },\n    \"rejeitar\": { \"endpoint\": \"/api/purchase-orders/reject\", \"method\": \"POST\" }\n  },\n  \"whatsapp_mensagem\": \"Pedido para [Fornecedor]: [lista de itens formatada para WhatsApp]\"\n}\n\nPassos obrigatórios:\n1. Chamar nivel_estoque_atual\n2. Chamar comparar_fornecedores para itens críticos\n3. Calcular necessidades com lógica setorial\n4. Chamar salvar_lista_compras para cada item\n5. Retornar JSON do popup de aprovação"
+        }
+      }
+    },
+    {
+      "id": "44444444-0003-0003-0003-000000000002",
+      "name": "LLM Compras GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [380, 1420],
+      "parameters": {
+        "model": "gpt-4o",
+        "options": { "temperature": 0.1, "maxTokens": 3000 }
+      },
+      "credentials": {
+        "openAiApi": { "id": "CONFIGURE_OPENAI_CREDENTIAL_ID", "name": "OpenAI GastroSense" }
+      }
+    },
+    {
+      "id": "44444444-0003-0003-0003-000000000003",
+      "name": "🔧 Tool Compras: Nível de Estoque",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [580, 1420],
+      "parameters": {
+        "name": "nivel_estoque_atual",
+        "description": "Retorna o estoque atual de todos os insumos, ordenados do menor para o maior. Mostra itens abaixo do estoque mínimo. Parâmetros: owner_id (string).",
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/stock_items",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "owner_id", "value": "=eq.{owner_id}" },
+            { "name": "select", "value": "id,name,category,unit,current_stock,min_stock,cost_price,supplier,last_purchase_date" },
+            { "name": "order", "value": "current_stock.asc" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "44444444-0003-0003-0003-000000000004",
+      "name": "🔧 Tool Compras: Comparar Fornecedores",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [780, 1420],
+      "parameters": {
+        "name": "comparar_fornecedores",
+        "description": "Busca histórico de preços e fornecedores alternativos para um insumo. Parâmetros: owner_id (string), item_name (string — nome do insumo a pesquisar).",
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/supplier_messages",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "owner_id", "value": "=eq.{owner_id}" },
+            { "name": "content", "value": "=ilike.*{item_name}*" },
+            { "name": "select", "value": "supplier_name,supplier_phone,item_name,price_per_unit,unit,quantity,created_at,delivery_days" },
+            { "name": "order", "value": "created_at.desc" },
+            { "name": "limit", "value": "20" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "44444444-0003-0003-0003-000000000005",
+      "name": "🔧 Tool Compras: Salvar Lista Compras",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [980, 1420],
+      "parameters": {
+        "name": "salvar_lista_compras",
+        "description": "Salva itens na lista de compras (tabela purchase_list_items). Campos obrigatórios: owner_id, item_name, quantity, unit, supplier_name, estimated_price_unit, urgency (normal/urgente/critico), needed_by_date.",
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/purchase_list_items",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json"
+      }
+    },
+
+    {
+      "id": "55555555-0004-0004-0004-000000000001",
+      "name": "📊 Agente 4 — Inspetor CMV",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1100, 1240],
+      "parameters": {
+        "agent": "toolsAgent",
+        "promptType": "define",
+        "text": "=SETOR: {{ $json.setor }}\nCONFIG_SETOR: {{ JSON.stringify($json.sector_config) }}\nOWNER_ID: {{ $json.owner_id }}\nPERÍODO: {{ $json.decision?.parametros?.periodo || 'ultimo_mes' }}\nDATA_ANALISE: {{ $json.timestamp }}",
+        "options": {
+          "systemMessage": "Você é o INSPETOR DE DESVIOS CMV do GastroSense AI.\n\nSua missão: monitorar o CMV em TEMPO REAL, detectar desvios significativos e gerar alertas apenas quando necessário (não para variações normais do setor).\n\n═══════════════════════════════════════\n FÓRMULAS CMV\n═══════════════════════════════════════\nCMV% = (Custo Total dos Insumos Consumidos / Receita Total de Vendas) × 100\n\nDesvio% = ((CMV_Real - CMV_Teórico) / CMV_Teórico) × 100\nCMV_Real = soma de saídas de estoque × custo_unitario\nCMV_Teórico = soma de (vendas_qtd × custo_ficha_tecnica)\n\n═══════════════════════════════════════\n METAS CMV POR SETOR (do sector_config)\n═══════════════════════════════════════\nUse SEMPRE os valores do sector_config.cmv_meta recebido.\n\nThresholds de alerta por setor:\n- Restaurante: alerta se CMV > 37%\n- Bar: alerta se CMV > 27%\n- Padaria/Confeitaria: alerta se CMV > 42%\n- Gelateria: alerta se CMV > 37%\n- Hotel/Eventos: alerta se CMV > 40%\n- Cafeteria: alerta se CMV > 32%\n\nPERDAS TOLERÁVEIS (não emitir alerta abaixo destes valores):\n- Restaurante: até 5% de desvio é normal\n- Bar: até 2% — BAIXA tolerância\n- Padaria: até 4%\n- Confeitaria: até 3% — se > 3% é CRÍTICO\n- Gelateria: até 4%\n- Hotel/Eventos: até 5%\n\n═══════════════════════════════════════\n ANÁLISE DE CAUSAS RAÍZES\n═══════════════════════════════════════\nQUANDO desvio > margem tolerável, investigar:\n1. Preço de compra subiu mas ficha técnica não foi atualizada\n2. Desperdício operacional acima do FC cadastrado\n3. Roubo/desvio de estoque\n4. Erro de lançamento de entrada/saída\n5. Rendimento real inferior ao cadastrado na ficha técnica\n\n═══════════════════════════════════════\n FORMATO DE SAÍDA\n═══════════════════════════════════════\n{\n  \"analise_cmv\": {\n    \"periodo\": \"YYYY-MM-DD a YYYY-MM-DD\",\n    \"setor\": \"\",\n    \"receita_total_r$\": 0.00,\n    \"custo_real_r$\": 0.00,\n    \"custo_teorico_r$\": 0.00,\n    \"cmv_real_pct\": 0.0,\n    \"cmv_teorico_pct\": 0.0,\n    \"desvio_r$\": 0.00,\n    \"desvio_pct\": 0.0,\n    \"status\": \"ok|atencao|critico\",\n    \"meta_min_pct\": 0,\n    \"meta_max_pct\": 0,\n    \"dentro_da_meta\": true\n  },\n  \"top_desvios\": [\n    {\n      \"produto\": \"\",\n      \"consumo_real\": 0.0,\n      \"consumo_teorico\": 0.0,\n      \"desvio_pct\": 0.0,\n      \"impacto_financeiro_r$\": 0.00,\n      \"causa_provavel\": \"\",\n      \"acao_recomendada\": \"\"\n    }\n  ],\n  \"alertas\": [\n    {\n      \"tipo\": \"cmv_alto|desvio_estoque|preco_subiu|perda_excessiva|possivel_desvio\",\n      \"severidade\": \"info|warning|critical\",\n      \"mensagem\": \"\",\n      \"impacto_mensal_estimado_r$\": 0.00,\n      \"acao_recomendada\": \"\"\n    }\n  ],\n  \"dre_simplificado\": {\n    \"receita\": 0.00,\n    \"(-) cmv\": 0.00,\n    \"(=) lucro_bruto\": 0.00,\n    \"margem_bruta_pct\": 0.0\n  }\n}\n\nREGRA CRÍTICA: Não emita alertas para desvios DENTRO da margem tolerável do setor.\nFoque nos outliers. Qualidade > quantidade de alertas.\n\nPassos:\n1. Buscar movimentações de saída do período\n2. Buscar vendas do período\n3. Calcular CMV real e teórico\n4. Comparar com metas do sector_config\n5. Identificar top 5 desvios por impacto financeiro\n6. Gerar apenas alertas relevantes\n7. Retornar JSON estruturado"
+        }
+      }
+    },
+    {
+      "id": "55555555-0004-0004-0004-000000000002",
+      "name": "LLM CMV GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [880, 1420],
+      "parameters": {
+        "model": "gpt-4o",
+        "options": { "temperature": 0.1, "maxTokens": 3000 }
+      },
+      "credentials": {
+        "openAiApi": { "id": "CONFIGURE_OPENAI_CREDENTIAL_ID", "name": "OpenAI GastroSense" }
+      }
+    },
+    {
+      "id": "55555555-0004-0004-0004-000000000003",
+      "name": "🔧 Tool CMV: Movimentações Estoque",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [1080, 1420],
+      "parameters": {
+        "name": "movimentacoes_estoque",
+        "description": "Busca movimentações de saída do estoque (consumo real de insumos). Parâmetros: owner_id (string), data_inicio (ISO date YYYY-MM-DD), data_fim (ISO date YYYY-MM-DD). Retorna: item_name, quantity, unit, type, unit_cost, total_cost, created_at.",
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/stock_movements",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "owner_id", "value": "=eq.{owner_id}" },
+            { "name": "type", "value": "=in.(saida,consumo,desperdicio,ajuste_negativo,perda)" },
+            { "name": "created_at", "value": "=gte.{data_inicio}" },
+            { "name": "select", "value": "item_name,quantity,unit,type,reason,unit_cost,total_cost,created_at,production_id" },
+            { "name": "order", "value": "created_at.desc" },
+            { "name": "limit", "value": "5000" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "55555555-0004-0004-0004-000000000004",
+      "name": "🔧 Tool CMV: Vendas do Período",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [1280, 1420],
+      "parameters": {
+        "name": "vendas_periodo_cmv",
+        "description": "Busca todas as vendas do período para calcular receita total e CMV teórico via fichas técnicas. Parâmetros: owner_id (string), data_inicio (ISO date YYYY-MM-DD). Retorna: product_name, quantity, unit_price, total_price, unit_cost (custo unitário da ficha técnica), created_at.",
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sales",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "owner_id", "value": "=eq.{owner_id}" },
+            { "name": "created_at", "value": "=gte.{data_inicio}" },
+            { "name": "select", "value": "product_name,quantity,unit_price,total_price,unit_cost,discount_total,created_at" },
+            { "name": "order", "value": "created_at.desc" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "66666666-0005-0005-0005-000000000001",
+      "name": "🏭 Agente 5 — Gestão de Produção",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1600, 1240],
+      "parameters": {
+        "agent": "toolsAgent",
+        "promptType": "define",
+        "text": "=SETOR: {{ $json.setor }}\nCONFIG_SETOR: {{ JSON.stringify($json.sector_config) }}\nOWNER_ID: {{ $json.owner_id }}\nACÃO: {{ $json.decision?.parametros?.acao || 'gerar_cronograma' }}\nCONTEXTO: {{ JSON.stringify($json.decision?.parametros?.contexto_extra || {}) }}",
+        "options": {
+          "systemMessage": "Você é o GESTOR DE PRODUÇÃO do GastroSense AI.\n\nSua missão: transformar previsões de vendas em ordens de produção organizadas por praça, respeitando tempos de preparo, disponibilidade de insumos e a lógica setorial.\n\n═══════════════════════════════════════\n REGRAS DE PRODUÇÃO POR SETOR\n═══════════════════════════════════════\n\n🥐 PADARIA:\n- Ordens liberadas D-1 no mínimo (fermentação longa)\n- Pré-fermentos (poolish/biga): liberar D-2\n- Sequência: pesagem → autólise → mistura → fermentação → modelagem → assamento\n- Praças: massas, forno, confeitaria, embalagem\n\n🍦 GELATERIA:\n- Ordens liberadas D-1 (maturação 12-24h)\n- Calcular base real = volume_final / (1 + overrun_pct/100)\n- Sequência: pasteurização → maturação → mantecação → acondicionamento\n- Temperatura: pasteurizar a 85°C, maturar a 4°C, servir a -11°C\n\n🍽️ RESTAURANTE:\n- Ordens por praça: frio, quente, churrasco, sushi, confeitaria\n- Aplicar FC em todos os pesos brutos de insumos\n- Ordens APENAS se insumos disponíveis em estoque\n\n🏨 HOTEL/EVENTOS:\n- Calcular por PAX confirmado + buffer 10%\n- Cronograma detalhado por tipo de serviço (café, almoço, jantar, bar)\n- Alertas de insumos críticos para o evento\n\n═══════════════════════════════════════\n FORMATO DE SAÍDA\n═══════════════════════════════════════\n{\n  \"cronograma_producao\": {\n    \"data_geracao\": \"ISO timestamp\",\n    \"periodo\": \"YYYY-MM-DD a YYYY-MM-DD\",\n    \"setor\": \"\"\n  },\n  \"ordens\": [\n    {\n      \"ordem_numero\": \"ORD-YYYYMMDD-001\",\n      \"receita_nome\": \"\",\n      \"quantidade_porcoes\": 0,\n      \"data_inicio\": \"YYYY-MM-DD HH:mm\",\n      \"data_limite_entrega\": \"YYYY-MM-DD HH:mm\",\n      \"praca\": \"forno|frio|quente|confeitaria|bar|embalagem\",\n      \"status\": \"pendente\",\n      \"insumos\": [\n        { \"nome\": \"\", \"quantidade_bruta\": 0, \"fator_correcao\": 1.0, \"quantidade_liquida\": 0, \"unidade\": \"\", \"disponivel\": true }\n      ],\n      \"etapas\": [\n        { \"ordem\": 1, \"nome\": \"\", \"duracao_minutos\": 0, \"responsavel\": \"\", \"temperatura\": null }\n      ],\n      \"observacoes\": \"\"\n    }\n  ],\n  \"alertas_bloqueio\": [\n    { \"ordem\": \"\", \"motivo\": \"insumo_indisponivel|equipamento_ocupado\", \"insumo\": \"\", \"faltam\": 0 }\n  ]\n}\n\nPassos:\n1. Buscar previsões de vendas aprovadas\n2. Buscar fichas técnicas de cada produto\n3. Verificar disponibilidade de insumos\n4. Gerar ordens respeitando lead times\n5. Salvar ordens no Supabase\n6. Retornar cronograma completo"
+        }
+      }
+    },
+    {
+      "id": "66666666-0005-0005-0005-000000000002",
+      "name": "LLM Produção GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [1380, 1420],
+      "parameters": {
+        "model": "gpt-4o",
+        "options": { "temperature": 0.1, "maxTokens": 3500 }
+      },
+      "credentials": {
+        "openAiApi": { "id": "CONFIGURE_OPENAI_CREDENTIAL_ID", "name": "OpenAI GastroSense" }
+      }
+    },
+    {
+      "id": "66666666-0005-0005-0005-000000000003",
+      "name": "🔧 Tool Produção: Previsões Aprovadas",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [1580, 1420],
+      "parameters": {
+        "name": "previsoes_aprovadas",
+        "description": "Busca previsões de vendas aprovadas para gerar ordens de produção. Parâmetros: owner_id (string), data_inicio (YYYY-MM-DD). Retorna previsões com produtos, quantidades e datas.",
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sales_forecasts",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "owner_id", "value": "=eq.{owner_id}" },
+            { "name": "forecast_date", "value": "=gte.{data_inicio}" },
+            { "name": "status", "value": "=eq.aprovada" },
+            { "name": "select", "value": "id,product_name,forecast_date,predicted_quantity,unit,confidence_pct,sector" },
+            { "name": "order", "value": "forecast_date.asc" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "66666666-0005-0005-0005-000000000004",
+      "name": "🔧 Tool Produção: Salvar Ordem Produção",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [1780, 1420],
+      "parameters": {
+        "name": "salvar_ordem_producao",
+        "description": "Salva uma ordem de produção na tabela productions do Supabase. Campos: owner_id, recipe_name, technical_sheet_id, quantity_portions, start_datetime, deadline_datetime, praca, status, insumos_json, etapas_json, observacoes.",
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/productions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json"
+      }
+    },
+
+    {
+      "id": "77777777-0006-0006-0006-000000000001",
+      "name": "📱 Processar Venda Loyverse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [620, 240],
+      "parameters": {
+        "jsCode": "// Normaliza dados recebidos do webhook Loyverse\nconst sale = items[0].json;\nconst lineItems = sale.line_items || sale.items || sale.receipts?.[0]?.line_items || [];\nconst receiptDate = sale.receipt_date || sale.created_at || new Date().toISOString();\nconst ownerId = sale.store_id || sale.merchant_id || sale.owner_id;\n\nif (!lineItems.length) {\n  return [{ json: { error: 'Nenhum item na venda', raw: sale } }];\n}\n\nconst salesRecords = lineItems.map(item => ({\n  owner_id: ownerId,\n  product_name: item.item_name || item.name || 'Produto Desconhecido',\n  product_id_loyverse: item.item_id || item.id,\n  variant_id: item.variant_id || null,\n  quantity: parseFloat(item.quantity) || 1,\n  unit_price: parseFloat(item.price) || 0,\n  total_price: (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 1),\n  discount_total: parseFloat(item.discount_amount) || 0,\n  cost_price: parseFloat(item.cost) || null,\n  created_at: receiptDate,\n  source: 'loyverse_webhook',\n  receipt_number: sale.receipt_number || sale.id\n}));\n\nreturn salesRecords.map(r => ({ json: r }));"
+      }
+    },
+    {
+      "id": "77777777-0006-0006-0006-000000000002",
+      "name": "💾 Salvar Venda no Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [820, 240],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sales",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      }
+    },
+
+    {
+      "id": "88888888-0007-0007-0007-000000000001",
+      "name": "📤 Formatador de Resposta Final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [620, 1640],
+      "parameters": {
+        "jsCode": "const item = items[0];\nconst rawOutput = item.json.output || item.json.text || item.json.data || item.json;\n\nlet parsedData;\ntry {\n  if (typeof rawOutput === 'string') {\n    const cleaned = rawOutput\n      .replace(/```json\\n?/gi, '')\n      .replace(/```\\n?/g, '')\n      .trim();\n    parsedData = JSON.parse(cleaned);\n  } else {\n    parsedData = rawOutput;\n  }\n} catch(e) {\n  parsedData = { raw_output: rawOutput, parse_error: e.message };\n}\n\nconst finalResponse = {\n  success: !parsedData.error,\n  timestamp: new Date().toISOString(),\n  sistema: 'GastroSense AI',\n  versao: '1.0',\n  agente_executado: item.json.agente || item.json.decision?.agente || 'desconhecido',\n  setor: item.json.setor || 'restaurante',\n  owner_id: item.json.owner_id,\n  data: parsedData,\n  meta: {\n    workflow: 'ecossistema-multi-agente-v1',\n    execution_id: $execution?.id || 'local'\n  }\n};\n\nreturn [{ json: finalResponse }];"
+      }
+    },
+    {
+      "id": "88888888-0007-0007-0007-000000000002",
+      "name": "✅ Resposta ao Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [820, 1640],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" },
+              { "name": "X-GastroSense-Version", "value": "1.0" },
+              { "name": "X-Agente", "value": "={{ $json.agente_executado }}" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+
+  "connections": {
+    "🎯 Webhook Principal": {
+      "main": [[{ "node": "📋 Preparar Contexto", "type": "main", "index": 0 }]]
+    },
+    "⏰ Cron Análise Diária 06h": {
+      "main": [[{ "node": "📋 Preparar Contexto", "type": "main", "index": 0 }]]
+    },
+    "🏪 Webhook Loyverse PDV": {
+      "main": [[{ "node": "📱 Processar Venda Loyverse", "type": "main", "index": 0 }]]
+    },
+    "📱 Processar Venda Loyverse": {
+      "main": [[{ "node": "💾 Salvar Venda no Supabase", "type": "main", "index": 0 }]]
+    },
+    "📋 Preparar Contexto": {
+      "main": [[{ "node": "🔀 Classificador de Setor", "type": "main", "index": 0 }]]
+    },
+    "🔀 Classificador de Setor": {
+      "main": [[{ "node": "🧠 Orquestrador Central", "type": "main", "index": 0 }]]
+    },
+    "LLM Orquestrador GPT-4o": {
+      "ai_languageModel": [[{ "node": "🧠 Orquestrador Central", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "🧠 Orquestrador Central": {
+      "main": [[{ "node": "🔀 Parser Decisão Orquestrador", "type": "main", "index": 0 }]]
+    },
+    "🔀 Parser Decisão Orquestrador": {
+      "main": [[{ "node": "🔀 Roteador Principal de Agentes", "type": "main", "index": 0 }]]
+    },
+    "🔀 Roteador Principal de Agentes": {
+      "main": [
+        [{ "node": "📥 Agente 1 — Ingestão Universal", "type": "main", "index": 0 }],
+        [{ "node": "🔮 Agente 2 — Oráculo Preditivo", "type": "main", "index": 0 }],
+        [{ "node": "🛒 Agente 3 — Gestor de Compras", "type": "main", "index": 0 }],
+        [{ "node": "📊 Agente 4 — Inspetor CMV", "type": "main", "index": 0 }],
+        [{ "node": "🏭 Agente 5 — Gestão de Produção", "type": "main", "index": 0 }]
+      ]
+    },
+    "LLM Ingestão GPT-4o": {
+      "ai_languageModel": [[{ "node": "📥 Agente 1 — Ingestão Universal", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "🔧 Tool Ingestão: Buscar Preço Histórico": {
+      "ai_tool": [[{ "node": "📥 Agente 1 — Ingestão Universal", "type": "ai_tool", "index": 0 }]]
+    },
+    "🔧 Tool Ingestão: Salvar Insumo Supabase": {
+      "ai_tool": [[{ "node": "📥 Agente 1 — Ingestão Universal", "type": "ai_tool", "index": 0 }]]
+    },
+    "📥 Agente 1 — Ingestão Universal": {
+      "main": [[{ "node": "📤 Formatador de Resposta Final", "type": "main", "index": 0 }]]
+    },
+    "LLM Oráculo GPT-4o": {
+      "ai_languageModel": [[{ "node": "🔮 Agente 2 — Oráculo Preditivo", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "🔧 Tool Oráculo: Histórico Vendas 90d": {
+      "ai_tool": [[{ "node": "🔮 Agente 2 — Oráculo Preditivo", "type": "ai_tool", "index": 0 }]]
+    },
+    "🔧 Tool Oráculo: Previsão Tempo Open-Meteo": {
+      "ai_tool": [[{ "node": "🔮 Agente 2 — Oráculo Preditivo", "type": "ai_tool", "index": 0 }]]
+    },
+    "🔧 Tool Oráculo: Fichas Técnicas BOM": {
+      "ai_tool": [[{ "node": "🔮 Agente 2 — Oráculo Preditivo", "type": "ai_tool", "index": 0 }]]
+    },
+    "🔧 Tool Oráculo: Salvar Previsão": {
+      "ai_tool": [[{ "node": "🔮 Agente 2 — Oráculo Preditivo", "type": "ai_tool", "index": 0 }]]
+    },
+    "🔮 Agente 2 — Oráculo Preditivo": {
+      "main": [[{ "node": "📤 Formatador de Resposta Final", "type": "main", "index": 0 }]]
+    },
+    "LLM Compras GPT-4o": {
+      "ai_languageModel": [[{ "node": "🛒 Agente 3 — Gestor de Compras", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "🔧 Tool Compras: Nível de Estoque": {
+      "ai_tool": [[{ "node": "🛒 Agente 3 — Gestor de Compras", "type": "ai_tool", "index": 0 }]]
+    },
+    "🔧 Tool Compras: Comparar Fornecedores": {
+      "ai_tool": [[{ "node": "🛒 Agente 3 — Gestor de Compras", "type": "ai_tool", "index": 0 }]]
+    },
+    "🔧 Tool Compras: Salvar Lista Compras": {
+      "ai_tool": [[{ "node": "🛒 Agente 3 — Gestor de Compras", "type": "ai_tool", "index": 0 }]]
+    },
+    "🛒 Agente 3 — Gestor de Compras": {
+      "main": [[{ "node": "📤 Formatador de Resposta Final", "type": "main", "index": 0 }]]
+    },
+    "LLM CMV GPT-4o": {
+      "ai_languageModel": [[{ "node": "📊 Agente 4 — Inspetor CMV", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "🔧 Tool CMV: Movimentações Estoque": {
+      "ai_tool": [[{ "node": "📊 Agente 4 — Inspetor CMV", "type": "ai_tool", "index": 0 }]]
+    },
+    "🔧 Tool CMV: Vendas do Período": {
+      "ai_tool": [[{ "node": "📊 Agente 4 — Inspetor CMV", "type": "ai_tool", "index": 0 }]]
+    },
+    "📊 Agente 4 — Inspetor CMV": {
+      "main": [[{ "node": "📤 Formatador de Resposta Final", "type": "main", "index": 0 }]]
+    },
+    "LLM Produção GPT-4o": {
+      "ai_languageModel": [[{ "node": "🏭 Agente 5 — Gestão de Produção", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "🔧 Tool Produção: Previsões Aprovadas": {
+      "ai_tool": [[{ "node": "🏭 Agente 5 — Gestão de Produção", "type": "ai_tool", "index": 0 }]]
+    },
+    "🔧 Tool Produção: Salvar Ordem Produção": {
+      "ai_tool": [[{ "node": "🏭 Agente 5 — Gestão de Produção", "type": "ai_tool", "index": 0 }]]
+    },
+    "🏭 Agente 5 — Gestão de Produção": {
+      "main": [[{ "node": "📤 Formatador de Resposta Final", "type": "main", "index": 0 }]]
+    },
+    "📤 Formatador de Resposta Final": {
+      "main": [[{ "node": "✅ Resposta ao Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "",
+    "timezone": "America/Sao_Paulo"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "gastrosense-ai-ecossistema-v1"
+  },
+  "pinData": {},
+  "versionId": "gastrosense-v1.0.0",
+  "tags": [
+    { "id": "tag-1", "name": "GastroSense AI" },
+    { "id": "tag-2", "name": "Multi-Agente" },
+    { "id": "tag-3", "name": "Gastronomia SaaS" },
+    { "id": "tag-4", "name": "GPT-4o" }
+  ]
+}

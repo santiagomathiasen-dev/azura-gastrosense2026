@@ -10,7 +10,27 @@
       "Bash(gh pr:*)",
       "Bash(where gh:*)",
       "mcp__76447964-1299-4df6-816f-3c51d3102c76__deploy_to_vercel",
-      "Bash(ls D:/azura-gastrosense/great-shaw/src/app/\\\\\\(dashboard\\\\\\)/gestores/)"
+      "Bash(ls D:/azura-gastrosense/great-shaw/src/app/\\\\\\(dashboard\\\\\\)/gestores/)",
+      "Bash(sed -i 's|@/hooks/ops/useTechnicalSheetstages|@/hooks/ops/useTechnicalSheetStages|g' src/components/production/ProductionExecutionDialog.tsx src/components/production/ProductionReportDialog.tsx src/components/production/ProductionSheetDialog.tsx)",
+      "Bash(sed -i 's|@/hooks/ops/useProductionstepExecution|@/hooks/ops/useProductionStepExecution|g' src/components/production/ProductionExecutionDialog.tsx)",
+      "Bash(sed -i 's|@/hooks/ops/useProductionstageExecution|@/hooks/ops/useProductionStageExecution|g' src/components/production/ProductionReportDialog.tsx)",
+      "Bash(sed -i 's|@/hooks/ops/useTechnicalSheetstages|@/hooks/ops/useTechnicalSheetStages|g' src/components/fichas/StageDisplay.tsx src/components/fichas/StageEditor.tsx src/v-pages/Fichas.tsx src/v-pages/Producao.tsx)",
+      "Bash(sed -i 's|@/hooks/ops/useProductionstepExecution|@/hooks/ops/useProductionStepExecution|g' src/v-pages/Producao.tsx)",
+      "Bash(sed -i 's|@/hooks/ops/useProductionstageExecution|@/hooks/ops/useProductionStageExecution|g' src/v-pages/Producao.tsx)",
+      "Bash(sed -i 's|from '\\\\''./useAuth'\\\\''|from '\\\\''../shared/useAuth'\\\\''|g' src/hooks/ops/useForecastProductionOrders.ts src/hooks/ops/usePendingDeliveries.ts src/hooks/ops/useSalesForecasts.ts)",
+      "Bash(sed -i 's|from '\\\\''./useStockItems'\\\\''|from '\\\\''../stock/useStockItems'\\\\''|g' src/hooks/ops/useProductionStock.ts)",
+      "Bash(sed -i 's|from '\\\\''../modules/production/services/ProductionService'\\\\''|from '\\\\''../../modules/production/services/ProductionService'\\\\''|g' src/hooks/ops/useProductionStock.ts)",
+      "Bash(sed -i 's|from '\\\\''../modules/production/types'\\\\''|from '\\\\''../../modules/production/types'\\\\''|g' src/hooks/ops/useProductionStock.ts src/hooks/ops/useProductions.ts)",
+      "Bash(sed -i 's|from '\\\\''./useStockItems'\\\\''|from '\\\\''../stock/useStockItems'\\\\''|g; \\\\ *)",
+      "Bash(sed -i 's|import { productionApi } from '\\\\''@/api/ProductionApi'\\\\'';|import { productionApi } from '\\\\''@/api/ProductionApi'\\\\'';\\\\nimport { ProductionService } from '\\\\''../../modules/production/services/ProductionService'\\\\'';|' src/hooks/ops/useProductions.ts)",
+      "Bash(sed -i 's|import { stockApi } from '\\\\''@/api/StockApi'\\\\'';|import { stockApi } from '\\\\''@/api/StockApi'\\\\'';\\\\nimport { StockService } from '\\\\''../../modules/stock/services/StockService'\\\\'';|' src/hooks/stock/useStockItems.ts)",
+      "Bash(sed -i 's|import { ProductionService } from '\\\\''../../modules/production/services/ProductionService'\\\\'';|import { ProductionService } from '\\\\''../../modules/production/services/ProductionService'\\\\'';\\\\nimport { sendToN8N } from '\\\\''@/services/n8n'\\\\'';|' src/hooks/ops/useProductions.ts)",
+      "Bash(sed -i 's|toast.success\\('\\\\''Produção finalizada! Adicionada ao estoque de produções finalizadas.'\\\\''\\);|toast.success\\('\\\\''Produção finalizada! Adicionada ao estoque de produções finalizadas.'\\\\''\\);\\\\n        sendToN8N\\({ event: '\\\\''producao_finalizada'\\\\'', productionId: variables.id, status: '\\\\''completed'\\\\'' }\\).catch\\(\\(\\) => {}\\);|' src/hooks/ops/useProductions.ts)",
+      "Bash(python -c \"import json; f=open\\('D:/azura-gastrosense - Copia/n8n_workflows/gastrosense_multi_agent.json'\\); data=json.load\\(f\\); print\\(f'Nodes: {len\\(data[\\\\\"nodes\\\\\"]\\)} | Connections: {len\\(data[\\\\\"connections\\\\\"]\\)} | Tags: {len\\(data[\\\\\"tags\\\\\"]\\)}'\\)\")",
+      "Bash(node -e \"const d=require\\('./n8n_workflows/gastrosense_multi_agent.json'\\); console.log\\('Nodes:',d.nodes.length,'| Connections:',Object.keys\\(d.connections\\).length,'| Tags:',d.tags.length,'| JSON válido: SIM'\\)\" --prefix \"D:/azura-gastrosense - Copia\")",
+      "Bash(node -e \"const d=require\\('./n8n_workflows/gastrosense_multi_agent.json'\\); console.log\\('Nodes:',d.nodes.length,'| Connections:',Object.keys\\(d.connections\\).length,'| Tags:',d.tags.length,'| JSON valido: SIM'\\)\")",
+      "Bash(node -e \"const d=require\\('./n8n_workflows/gastrosense_multi_agent_v2.json'\\); const nodes=d.nodes; const agents=nodes.filter\\(n=>n.type==='@n8n/n8n-nodes-langchain.agent'\\); const tools=nodes.filter\\(n=>n.type==='@n8n/n8n-nodes-langchain.toolCode'\\); const llms=nodes.filter\\(n=>n.type.includes\\('lmChat'\\)\\); console.log\\('Total nodes:',nodes.length\\); console.log\\('Agentes AI:',agents.length\\); console.log\\('Tools \\(toolCode\\):',tools.length\\); console.log\\('LLMs:',llms.length\\); console.log\\('Connections:',Object.keys\\(d.connections\\).length\\); console.log\\('JSON valido: SIM'\\);\")",
+      "Bash(node -e ' *)"
     ]
   }
 }

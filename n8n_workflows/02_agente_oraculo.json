@@ -1,0 +1,189 @@
+{
+  "name": "GastroSense 02 — Agente Oraculo Preditivo",
+  "nodes": [
+    {
+      "id": "2b000001-2b00-4000-8000-2b0000000001",
+      "name": "Webhook Oraculo",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "oraculo",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "2b000002-2b00-4000-8000-2b0000000002",
+      "name": "Cron Diario 06h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 160],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }]
+        }
+      }
+    },
+    {
+      "id": "2b000003-2b00-4000-8000-2b0000000003",
+      "name": "Contexto Oraculo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [220, 300],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "owner_id",  "value": "={{ $json.body?.owner_id || '' }}", "type": "string" },
+            { "id": "2", "name": "setor",     "value": "={{ $json.body?.setor || $json.body?.sector || 'restaurante' }}", "type": "string" },
+            { "id": "3", "name": "periodo",   "value": "={{ $json.body?.periodo || 'dia' }}", "type": "string" },
+            { "id": "4", "name": "latitude",  "value": "={{ $json.body?.latitude || -23.5505 }}", "type": "number" },
+            { "id": "5", "name": "longitude", "value": "={{ $json.body?.longitude || -46.6333 }}", "type": "number" },
+            { "id": "6", "name": "timestamp", "value": "={{ new Date().toISOString() }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2b000004-2b00-4000-8000-2b0000000004",
+      "name": "Agente Oraculo",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [440, 300],
+      "parameters": {
+        "agent": "toolsAgent",
+        "promptType": "define",
+        "text": "=SETOR: {{ $json.setor }}\nOWNER_ID: {{ $json.owner_id }}\nPERIODO: {{ $json.periodo }}\nLATITUDE: {{ $json.latitude }}\nLONGITUDE: {{ $json.longitude }}\nDATA_ATUAL: {{ $json.timestamp }}",
+        "options": {
+          "systemMessage": "Você é o ORÁCULO PREDITIVO do GastroSense AI.\n\nCombina 90 dias de histórico de vendas + previsão do tempo + lógica setorial para gerar previsões de produção precisas.\n\nMULTIPLICADORES POR SETOR:\n\nGELATERIA:\n- Temperatura > 30°C → produção +35%\n- Temperatura > 35°C → produção +55%\n- Temperatura < 15°C → produção -40%\n- Chuva prevista → produção -20%\n- Fim de semana + calor → buffer +20% extra\n- ATENÇÃO: planejar D-1 (maturação 12-24h antes)\n- Quantidade de base = volume_final / (1 + 0.40)\n\nPADARIA/CONFEITARIA:\n- Feriado → pães artesanais +100%, bolos +50%\n- Segunda-feira → -20% vs média\n- Sexta-feira → +30%, Sábado → +40%\n- Pré-fermentos (poolish/biga/levain) → planejar D-2\n\nRESTAURANTE:\n- Sexta/Sábado jantar → +40%\n- Chuva forte → delivery +25%, presencial -30%\n- Feriado → almoço +60%\n- SEMPRE aplicar FC nos insumos (FC = Peso_Bruto / Peso_Líquido)\n\nBAR:\n- Jogo de futebol → cervejas +80%, petiscos +50%\n- Sexta/Sábado noite → +60%\n- Calcular por doses: 50ml destilado, 500ml cerveja\n\nHOTEL/EVENTOS:\n- Base em PAX confirmado + buffer 10%\n- Café manhã = 1.0x PAX, Almoço = 0.8x PAX, Jantar = 0.9x PAX\n\nFLUXO OBRIGATÓRIO:\n1. historico_vendas: buscar padrões dos últimos 90 dias\n2. previsao_tempo: obter clima dos próximos 7 dias\n3. fichas_bom: buscar fichas técnicas para calcular insumos\n4. Calcular previsões aplicando multiplicadores\n5. salvar_previsao: persistir cada previsão aprovada\n6. Retornar JSON estruturado\n\nFORMATO DE SAÍDA:\n{\n  \"periodo\": \"\",\n  \"setor\": \"\",\n  \"condicoes\": {\n    \"clima\": { \"temp_max\": 0, \"temp_min\": 0, \"precipitacao_mm\": 0 },\n    \"feriados\": [],\n    \"dia_semana\": \"\"\n  },\n  \"previsoes\": [\n    {\n      \"produto\": \"\",\n      \"data\": \"YYYY-MM-DD\",\n      \"quantidade_prevista\": 0,\n      \"unidade\": \"\",\n      \"variacao_vs_media_pct\": 0,\n      \"confianca_pct\": 85,\n      \"fatores\": [],\n      \"insumos_necessarios\": [\n        { \"insumo\": \"\", \"qtd_bruta\": 0, \"fc\": 1.0, \"qtd_liquida\": 0, \"unidade\": \"\" }\n      ]\n    }\n  ],\n  \"proposta_producao\": {\n    \"ordens\": [\n      { \"receita\": \"\", \"quantidade\": 0, \"data_inicio\": \"\", \"praca\": \"\" }\n    ]\n  },\n  \"alertas\": []\n}"
+        }
+      }
+    },
+    {
+      "id": "2b000005-2b00-4000-8000-2b0000000005",
+      "name": "LLM Oraculo",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [220, 500],
+      "parameters": {
+        "model": "gpt-4o",
+        "options": { "temperature": 0.2 }
+      },
+      "credentials": {
+        "openAiApi": { "id": "1", "name": "OpenAI account" }
+      }
+    },
+    {
+      "id": "2b000006-2b00-4000-8000-2b0000000006",
+      "name": "Tool: Historico Vendas 90d",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [440, 500],
+      "parameters": {
+        "name": "historico_vendas",
+        "description": "Busca histórico de vendas dos últimos N dias para análise de padrões. Parâmetros: owner_id (string), dias (number — padrão 90).",
+        "language": "javaScript",
+        "jsCode": "const { owner_id = '', dias = 90 } = query;\nconst supabaseUrl = ($env && $env.SUPABASE_URL) ? $env.SUPABASE_URL : 'https://SEU_PROJETO.supabase.co';\nconst serviceKey  = ($env && $env.SUPABASE_SERVICE_KEY) ? $env.SUPABASE_SERVICE_KEY : 'SUA_SERVICE_KEY';\n\nconst dataInicio = new Date();\ndataInicio.setDate(dataInicio.getDate() - parseInt(dias || 90));\n\ntry {\n  const result = await this.helpers.httpRequest({\n    method: 'GET',\n    url: supabaseUrl + '/rest/v1/sales',\n    headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey },\n    qs: {\n      owner_id: 'eq.' + owner_id,\n      created_at: 'gte.' + dataInicio.toISOString(),\n      select: 'product_name,quantity,unit_price,total_price,created_at',\n      order: 'created_at.desc',\n      limit: '2000'\n    }\n  });\n  return JSON.stringify(result);\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'historico_vendas' });\n}"
+      }
+    },
+    {
+      "id": "2b000007-2b00-4000-8000-2b0000000007",
+      "name": "Tool: Previsao Tempo Open-Meteo",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [640, 500],
+      "parameters": {
+        "name": "previsao_tempo",
+        "description": "Busca previsão do tempo para os próximos 7 dias usando Open-Meteo (gratuita, sem API key). Parâmetros: latitude (number — ex: -23.5505), longitude (number — ex: -46.6333).",
+        "language": "javaScript",
+        "jsCode": "const { latitude = -23.5505, longitude = -46.6333 } = query;\n\ntry {\n  const result = await this.helpers.httpRequest({\n    method: 'GET',\n    url: 'https://api.open-meteo.com/v1/forecast',\n    qs: {\n      latitude: latitude,\n      longitude: longitude,\n      daily: 'temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,precipitation_probability_max',\n      timezone: 'America/Sao_Paulo',\n      forecast_days: '7'\n    }\n  });\n  return JSON.stringify(result);\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'previsao_tempo' });\n}"
+      }
+    },
+    {
+      "id": "2b000008-2b00-4000-8000-2b0000000008",
+      "name": "Tool: Fichas Tecnicas BOM",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [840, 500],
+      "parameters": {
+        "name": "fichas_tecnicas_bom",
+        "description": "Busca fichas técnicas com ingredientes (Bill of Materials) para converter previsão de vendas em necessidade de insumos. Parâmetros: owner_id (string).",
+        "language": "javaScript",
+        "jsCode": "const { owner_id = '' } = query;\nconst supabaseUrl = ($env && $env.SUPABASE_URL) ? $env.SUPABASE_URL : 'https://SEU_PROJETO.supabase.co';\nconst serviceKey  = ($env && $env.SUPABASE_SERVICE_KEY) ? $env.SUPABASE_SERVICE_KEY : 'SUA_SERVICE_KEY';\n\ntry {\n  const result = await this.helpers.httpRequest({\n    method: 'GET',\n    url: supabaseUrl + '/rest/v1/technical_sheets',\n    headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey },\n    qs: {\n      owner_id: 'eq.' + owner_id,\n      is_active: 'eq.true',\n      select: 'id,name,yield_portions,yield_unit,correction_factor,cost_per_portion,technical_sheet_ingredients(ingredient_name,quantity,unit,waste_percent)'\n    }\n  });\n  return JSON.stringify(result);\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'fichas_tecnicas_bom' });\n}"
+      }
+    },
+    {
+      "id": "2b000009-2b00-4000-8000-2b0000000009",
+      "name": "Tool: Salvar Previsao",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [1040, 500],
+      "parameters": {
+        "name": "salvar_previsao_vendas",
+        "description": "Persiste uma previsão de venda na tabela sales_forecasts. Parâmetros: owner_id, product_name, forecast_date (YYYY-MM-DD), predicted_quantity (number), unit, confidence_pct (number 0-100), sector.",
+        "language": "javaScript",
+        "jsCode": "const {\n  owner_id = '',\n  product_name = '',\n  forecast_date = '',\n  predicted_quantity = 0,\n  unit = 'unidade',\n  confidence_pct = 80,\n  sector = ''\n} = query;\n\nconst supabaseUrl = ($env && $env.SUPABASE_URL) ? $env.SUPABASE_URL : 'https://SEU_PROJETO.supabase.co';\nconst serviceKey  = ($env && $env.SUPABASE_SERVICE_KEY) ? $env.SUPABASE_SERVICE_KEY : 'SUA_SERVICE_KEY';\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: supabaseUrl + '/rest/v1/sales_forecasts',\n    headers: {\n      apikey: serviceKey,\n      Authorization: 'Bearer ' + serviceKey,\n      'Content-Type': 'application/json',\n      Prefer: 'return=minimal,resolution=merge-duplicates'\n    },\n    body: JSON.stringify({\n      owner_id,\n      product_name,\n      forecast_date,\n      predicted_quantity: Number(predicted_quantity),\n      unit,\n      confidence_pct: Number(confidence_pct),\n      sector,\n      status: 'pendente_aprovacao'\n    })\n  });\n  return JSON.stringify({ success: true, produto: product_name, data: forecast_date });\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'salvar_previsao' });\n}"
+      }
+    },
+    {
+      "id": "2b000010-2b00-4000-8000-2b0000000010",
+      "name": "Formatar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300],
+      "parameters": {
+        "jsCode": "const item = items[0];\nconst raw = item.json.output || item.json.text || item.json;\nlet data;\ntry {\n  const clean = (typeof raw === 'string') ? raw.replace(/```json\\n?/gi, '').replace(/```/g, '').trim() : JSON.stringify(raw);\n  data = JSON.parse(clean);\n} catch (e) {\n  data = { raw_output: raw };\n}\nreturn [{ json: { success: true, agente: 'ORACULO', setor: item.json.setor, owner_id: item.json.owner_id, timestamp: new Date().toISOString(), data } }];"
+      }
+    },
+    {
+      "id": "2b000011-2b00-4000-8000-2b0000000011",
+      "name": "Resposta Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [880, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseCode": 200 }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Oraculo": {
+      "main": [[{ "node": "Contexto Oraculo", "type": "main", "index": 0 }]]
+    },
+    "Cron Diario 06h": {
+      "main": [[{ "node": "Contexto Oraculo", "type": "main", "index": 0 }]]
+    },
+    "Contexto Oraculo": {
+      "main": [[{ "node": "Agente Oraculo", "type": "main", "index": 0 }]]
+    },
+    "LLM Oraculo": {
+      "ai_languageModel": [[{ "node": "Agente Oraculo", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Tool: Historico Vendas 90d": {
+      "ai_tool": [[{ "node": "Agente Oraculo", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Previsao Tempo Open-Meteo": {
+      "ai_tool": [[{ "node": "Agente Oraculo", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Fichas Tecnicas BOM": {
+      "ai_tool": [[{ "node": "Agente Oraculo", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Salvar Previsao": {
+      "ai_tool": [[{ "node": "Agente Oraculo", "type": "ai_tool", "index": 0 }]]
+    },
+    "Agente Oraculo": {
+      "main": [[{ "node": "Formatar Resposta", "type": "main", "index": 0 }]]
+    },
+    "Formatar Resposta": {
+      "main": [[{ "node": "Resposta Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "timezone": "America/Sao_Paulo" },
+  "meta": { "instanceId": "gastrosense-oraculo-v1" },
+  "pinData": {}
+}

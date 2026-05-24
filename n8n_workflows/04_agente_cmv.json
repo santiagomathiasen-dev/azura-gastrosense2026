@@ -1,0 +1,172 @@
+{
+  "name": "GastroSense 04 — Agente Inspetor CMV",
+  "nodes": [
+    {
+      "id": "4d000001-4d00-4000-8000-4d0000000001",
+      "name": "Webhook CMV",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cmv",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "4d000002-4d00-4000-8000-4d0000000002",
+      "name": "Cron CMV Diario 07h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 160],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 7 * * *" }]
+        }
+      }
+    },
+    {
+      "id": "4d000003-4d00-4000-8000-4d0000000003",
+      "name": "Contexto CMV",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [220, 300],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "owner_id",  "value": "={{ $json.body?.owner_id || '' }}", "type": "string" },
+            { "id": "2", "name": "setor",     "value": "={{ $json.body?.setor || $json.body?.sector || 'restaurante' }}", "type": "string" },
+            { "id": "3", "name": "periodo",   "value": "={{ $json.body?.periodo || 'mes' }}", "type": "string" },
+            { "id": "4", "name": "timestamp", "value": "={{ new Date().toISOString() }}", "type": "string" },
+            { "id": "5", "name": "sector_config", "value": "={{ (() => { const s = ($json.body?.setor || 'restaurante').toLowerCase(); const m = { padaria:{cmv_min:30,cmv_max:40,cmv_alerta:42,perda_toleravel:4}, confeitaria:{cmv_min:30,cmv_max:40,cmv_alerta:42,perda_toleravel:3}, restaurante:{cmv_min:28,cmv_max:35,cmv_alerta:37,perda_toleravel:5}, bar:{cmv_min:18,cmv_max:25,cmv_alerta:27,perda_toleravel:2}, gelateria:{cmv_min:25,cmv_max:35,cmv_alerta:37,perda_toleravel:4}, hotel:{cmv_min:30,cmv_max:38,cmv_alerta:40,perda_toleravel:4}, eventos:{cmv_min:30,cmv_max:38,cmv_alerta:40,perda_toleravel:5}, cafeteria:{cmv_min:20,cmv_max:30,cmv_alerta:32,perda_toleravel:3} }; return JSON.stringify(m[s] || m.restaurante); })() }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4d000004-4d00-4000-8000-4d0000000004",
+      "name": "Agente CMV",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [440, 300],
+      "parameters": {
+        "agent": "toolsAgent",
+        "promptType": "define",
+        "text": "=SETOR: {{ $json.setor }}\nCONFIG_CMV: {{ $json.sector_config }}\nOWNER_ID: {{ $json.owner_id }}\nPERIODO: {{ $json.periodo }}\nDATA_ANALISE: {{ $json.timestamp }}",
+        "options": {
+          "systemMessage": "Você é o INSPETOR DE DESVIOS CMV do GastroSense AI.\n\nMonitora o Custo de Mercadoria Vendida em tempo real e detecta desvios relevantes.\n\nFÓRMULAS OBRIGATÓRIAS:\nCMV% = (Custo_Real_Insumos / Receita_Total_Vendas) × 100\nDesvio% = ((CMV_Real - CMV_Teórico) / CMV_Teórico) × 100\nCMV_Real = soma de todas as saídas de estoque × custo_unitário\nCMV_Teórico = soma de (qty_vendida × custo_ficha_técnica)\n\nUSE SEMPRE os thresholds do CONFIG_CMV recebido (campos: cmv_min, cmv_max, cmv_alerta, perda_toleravel).\n\nREGRA CRÍTICA — ALERTAS SELETIVOS:\nNÃO emita alerta se o desvio estiver DENTRO da perda_toleravel do setor.\nEx: restaurante com desvio de 4% → normal (tolerável até 5%), NÃO alertar.\nSó alertar para desvios ACIMA da margem tolerável.\n\nCAUSAS RAÍZES DE DESVIO (investigar nesta ordem):\n1. Preço de compra subiu mas ficha técnica não foi atualizada\n2. Desperdício operacional acima do FC cadastrado\n3. Erro de lançamento de entrada ou saída no estoque\n4. Rendimento real inferior ao rendimento da ficha\n5. Possível desvio/roubo (desvio muito acima do esperado)\n\nFLUXO OBRIGATÓRIO:\n1. movimentacoes_saida: buscar consumo real do período\n2. vendas_periodo: buscar receita e CMV teórico\n3. Calcular CMV real vs teórico\n4. Identificar top 5 desvios por impacto financeiro\n5. Emitir apenas alertas acima da margem tolerável do setor\n6. Retornar análise estruturada\n\nFORMATO DE SAÍDA:\n{\n  \"analise_cmv\": {\n    \"periodo\": \"YYYY-MM-DD a YYYY-MM-DD\",\n    \"setor\": \"\",\n    \"receita_total_r$\": 0.00,\n    \"custo_real_r$\": 0.00,\n    \"custo_teorico_r$\": 0.00,\n    \"cmv_real_pct\": 0.0,\n    \"cmv_teorico_pct\": 0.0,\n    \"desvio_pct\": 0.0,\n    \"status\": \"ok|atencao|critico\",\n    \"meta_min_pct\": 0,\n    \"meta_max_pct\": 0,\n    \"dentro_da_meta\": true\n  },\n  \"top_desvios\": [\n    {\n      \"produto\": \"\",\n      \"consumo_real\": 0.0,\n      \"consumo_teorico\": 0.0,\n      \"desvio_pct\": 0.0,\n      \"impacto_r$\": 0.00,\n      \"causa_provavel\": \"\",\n      \"acao_recomendada\": \"\"\n    }\n  ],\n  \"alertas\": [\n    {\n      \"tipo\": \"cmv_alto|desvio_produto|preco_subiu|perda_excessiva\",\n      \"severidade\": \"info|warning|critical\",\n      \"mensagem\": \"\",\n      \"impacto_mensal_estimado_r$\": 0.00,\n      \"acao_recomendada\": \"\"\n    }\n  ],\n  \"dre_simplificado\": {\n    \"receita\": 0.00,\n    \"cmv\": 0.00,\n    \"lucro_bruto\": 0.00,\n    \"margem_bruta_pct\": 0.0\n  }\n}"
+        }
+      }
+    },
+    {
+      "id": "4d000005-4d00-4000-8000-4d0000000005",
+      "name": "LLM CMV",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [220, 500],
+      "parameters": {
+        "model": "gpt-4o",
+        "options": { "temperature": 0.1 }
+      },
+      "credentials": {
+        "openAiApi": { "id": "1", "name": "OpenAI account" }
+      }
+    },
+    {
+      "id": "4d000006-4d00-4000-8000-4d0000000006",
+      "name": "Tool: Movimentacoes de Saida",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [440, 500],
+      "parameters": {
+        "name": "movimentacoes_saida",
+        "description": "Busca todas as saídas de estoque (consumo real de insumos) do período. Parâmetros: owner_id (string), data_inicio (YYYY-MM-DD — padrão: 30 dias atrás).",
+        "language": "javaScript",
+        "jsCode": "const { owner_id = '', data_inicio = '' } = query;\nconst supabaseUrl = ($env && $env.SUPABASE_URL) ? $env.SUPABASE_URL : 'https://SEU_PROJETO.supabase.co';\nconst serviceKey  = ($env && $env.SUPABASE_SERVICE_KEY) ? $env.SUPABASE_SERVICE_KEY : 'SUA_SERVICE_KEY';\n\nconst inicio = data_inicio || (() => {\n  const d = new Date();\n  d.setDate(d.getDate() - 30);\n  return d.toISOString().split('T')[0];\n})();\n\ntry {\n  const result = await this.helpers.httpRequest({\n    method: 'GET',\n    url: supabaseUrl + '/rest/v1/stock_movements',\n    headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey },\n    qs: {\n      owner_id: 'eq.' + owner_id,\n      type: 'in.(saida,consumo,desperdicio,perda,ajuste_negativo)',\n      created_at: 'gte.' + inicio,\n      select: 'item_name,quantity,unit,type,unit_cost,total_cost,reason,created_at',\n      order: 'created_at.desc',\n      limit: '5000'\n    }\n  });\n  return JSON.stringify(result);\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'movimentacoes_saida' });\n}"
+      }
+    },
+    {
+      "id": "4d000007-4d00-4000-8000-4d0000000007",
+      "name": "Tool: Vendas do Periodo",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [640, 500],
+      "parameters": {
+        "name": "vendas_periodo",
+        "description": "Busca vendas do período para calcular receita e CMV teórico. Parâmetros: owner_id (string), data_inicio (YYYY-MM-DD — padrão: 30 dias atrás).",
+        "language": "javaScript",
+        "jsCode": "const { owner_id = '', data_inicio = '' } = query;\nconst supabaseUrl = ($env && $env.SUPABASE_URL) ? $env.SUPABASE_URL : 'https://SEU_PROJETO.supabase.co';\nconst serviceKey  = ($env && $env.SUPABASE_SERVICE_KEY) ? $env.SUPABASE_SERVICE_KEY : 'SUA_SERVICE_KEY';\n\nconst inicio = data_inicio || (() => {\n  const d = new Date();\n  d.setDate(d.getDate() - 30);\n  return d.toISOString().split('T')[0];\n})();\n\ntry {\n  const result = await this.helpers.httpRequest({\n    method: 'GET',\n    url: supabaseUrl + '/rest/v1/sales',\n    headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey },\n    qs: {\n      owner_id: 'eq.' + owner_id,\n      created_at: 'gte.' + inicio,\n      select: 'product_name,quantity,unit_price,total_price,unit_cost,discount_total,created_at',\n      order: 'created_at.desc'\n    }\n  });\n  return JSON.stringify(result);\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'vendas_periodo' });\n}"
+      }
+    },
+    {
+      "id": "4d000008-4d00-4000-8000-4d0000000008",
+      "name": "Tool: Fichas Tecnicas Custos",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [840, 500],
+      "parameters": {
+        "name": "fichas_tecnicas_custos",
+        "description": "Busca fichas técnicas com custo por porção para calcular CMV teórico. Parâmetros: owner_id (string).",
+        "language": "javaScript",
+        "jsCode": "const { owner_id = '' } = query;\nconst supabaseUrl = ($env && $env.SUPABASE_URL) ? $env.SUPABASE_URL : 'https://SEU_PROJETO.supabase.co';\nconst serviceKey  = ($env && $env.SUPABASE_SERVICE_KEY) ? $env.SUPABASE_SERVICE_KEY : 'SUA_SERVICE_KEY';\n\ntry {\n  const result = await this.helpers.httpRequest({\n    method: 'GET',\n    url: supabaseUrl + '/rest/v1/technical_sheets',\n    headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey },\n    qs: {\n      owner_id: 'eq.' + owner_id,\n      is_active: 'eq.true',\n      select: 'id,name,yield_portions,cost_per_portion,correction_factor,technical_sheet_ingredients(ingredient_name,quantity,unit,waste_percent)'\n    }\n  });\n  return JSON.stringify(result);\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'fichas_tecnicas_custos' });\n}"
+      }
+    },
+    {
+      "id": "4d000009-4d00-4000-8000-4d0000000009",
+      "name": "Formatar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300],
+      "parameters": {
+        "jsCode": "const item = items[0];\nconst raw = item.json.output || item.json.text || item.json;\nlet data;\ntry {\n  const clean = (typeof raw === 'string') ? raw.replace(/```json\\n?/gi, '').replace(/```/g, '').trim() : JSON.stringify(raw);\n  data = JSON.parse(clean);\n} catch (e) {\n  data = { raw_output: raw };\n}\nreturn [{ json: { success: true, agente: 'CMV', setor: item.json.setor, owner_id: item.json.owner_id, timestamp: new Date().toISOString(), data } }];"
+      }
+    },
+    {
+      "id": "4d000010-4d00-4000-8000-4d0000000010",
+      "name": "Resposta Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [880, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseCode": 200 }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook CMV": {
+      "main": [[{ "node": "Contexto CMV", "type": "main", "index": 0 }]]
+    },
+    "Cron CMV Diario 07h": {
+      "main": [[{ "node": "Contexto CMV", "type": "main", "index": 0 }]]
+    },
+    "Contexto CMV": {
+      "main": [[{ "node": "Agente CMV", "type": "main", "index": 0 }]]
+    },
+    "LLM CMV": {
+      "ai_languageModel": [[{ "node": "Agente CMV", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Tool: Movimentacoes de Saida": {
+      "ai_tool": [[{ "node": "Agente CMV", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Vendas do Periodo": {
+      "ai_tool": [[{ "node": "Agente CMV", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Fichas Tecnicas Custos": {
+      "ai_tool": [[{ "node": "Agente CMV", "type": "ai_tool", "index": 0 }]]
+    },
+    "Agente CMV": {
+      "main": [[{ "node": "Formatar Resposta", "type": "main", "index": 0 }]]
+    },
+    "Formatar Resposta": {
+      "main": [[{ "node": "Resposta Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "timezone": "America/Sao_Paulo" },
+  "meta": { "instanceId": "gastrosense-cmv-v1" },
+  "pinData": {}
+}

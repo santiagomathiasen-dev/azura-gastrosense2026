@@ -1,0 +1,157 @@
+{
+  "name": "GastroSense 03 — Agente Gestor de Compras",
+  "nodes": [
+    {
+      "id": "3c000001-3c00-4000-8000-3c0000000001",
+      "name": "Webhook Compras",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "compras",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "3c000002-3c00-4000-8000-3c0000000002",
+      "name": "Contexto Compras",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [220, 300],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "owner_id",  "value": "={{ $json.body.owner_id || '' }}", "type": "string" },
+            { "id": "2", "name": "setor",     "value": "={{ $json.body.setor || $json.body.sector || 'restaurante' }}", "type": "string" },
+            { "id": "3", "name": "pax",       "value": "={{ $json.body.pax || 0 }}", "type": "number" },
+            { "id": "4", "name": "contexto",  "value": "={{ $json.body.contexto || 'analise_estoque_geral' }}", "type": "string" },
+            { "id": "5", "name": "timestamp", "value": "={{ new Date().toISOString() }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3c000003-3c00-4000-8000-3c0000000003",
+      "name": "Agente Compras",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [440, 300],
+      "parameters": {
+        "agent": "toolsAgent",
+        "promptType": "define",
+        "text": "=SETOR: {{ $json.setor }}\nOWNER_ID: {{ $json.owner_id }}\nPAX: {{ $json.pax }}\nCONTEXTO: {{ $json.contexto }}\nDATA: {{ $json.timestamp }}",
+        "options": {
+          "systemMessage": "Você é o GESTOR DE COMPRAS E SUPRIMENTOS do GastroSense AI.\n\nGera listas de compras inteligentes com comparação de fornecedores e popup de aprovação para o gestor.\n\nALGORITMO DE COMPRAS:\n1. nivel_estoque: ver o que está baixo ou crítico\n2. Calcular necessidade = previsão_produção - estoque_atual + estoque_segurança\n3. historico_precos: comparar preços e encontrar alternativas mais baratas\n4. Montar popup de aprovação com cálculo de economia\n5. salvar_lista: persistir itens na fila de compras\n\nMATRIZ DE DECISÃO:\n- Variação de preço 0-10% → NORMAL — manter fornecedor atual\n- Variação 10-20% → ALERTA — exibir alternativa mais barata\n- Variação > 20% → CRÍTICO — bloquear auto-aprovação, exigir decisão manual\n- Estoque < 20% do mínimo → URGENTE — marcar como prioridade alta\n- Item com vencimento < 3 dias → não comprar, usar primeiro\n\nLÓGICA SETORIAL:\n- PADARIA: fermento = peso_farinha × baker_percent/100; gordura = peso_farinha × pct_gordura/100\n- GELATERIA: base_real = volume_final / (1 + overrun_pct/100). Ex: 100L com 40% overrun → base = 71.4L\n- HOTEL/EVENTOS: qtd = por_pax × total_pax × 1.10 (buffer 10%)\n- BAR: garrafas = doses_previstas / (volume_garrafa_ml / dose_padrao_ml)\n\nFORMATO DE SAÍDA — JSON popup de aprovação para o frontend:\n{\n  \"popup_type\": \"purchase_approval\",\n  \"urgency\": \"normal|urgente|critico\",\n  \"titulo\": \"Aprovacao de Pedido — [Nome Fornecedor]\",\n  \"mensagem\": \"Resumo da situação em 1-2 frases\",\n  \"itens\": [\n    {\n      \"nome\": \"\",\n      \"quantidade\": 0,\n      \"unidade\": \"\",\n      \"fornecedor\": \"\",\n      \"preco_unitario\": 0.00,\n      \"preco_total\": 0.00,\n      \"variacao_preco_pct\": 0.0,\n      \"alternativa\": {\n        \"fornecedor\": \"\",\n        \"preco_unitario\": 0.00,\n        \"economia_total\": 0.00\n      }\n    }\n  ],\n  \"resumo_financeiro\": {\n    \"total_pedido\": 0.00,\n    \"economia_potencial\": 0.00\n  },\n  \"whatsapp_msg\": \"Pedido para [Fornecedor]:\\n- [item]: [qtd] [unidade]\\n- Total: R$ XXX\"\n}"
+        }
+      }
+    },
+    {
+      "id": "3c000004-3c00-4000-8000-3c0000000004",
+      "name": "LLM Compras",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [220, 500],
+      "parameters": {
+        "model": "gpt-4o",
+        "options": { "temperature": 0.1 }
+      },
+      "credentials": {
+        "openAiApi": { "id": "1", "name": "OpenAI account" }
+      }
+    },
+    {
+      "id": "3c000005-3c00-4000-8000-3c0000000005",
+      "name": "Tool: Nivel de Estoque",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [440, 500],
+      "parameters": {
+        "name": "nivel_estoque",
+        "description": "Retorna o estoque atual de todos os insumos, ordenado do mais baixo ao mais alto. Mostra itens abaixo do mínimo. Parâmetros: owner_id (string).",
+        "language": "javaScript",
+        "jsCode": "const { owner_id = '' } = query;\nconst supabaseUrl = ($env && $env.SUPABASE_URL) ? $env.SUPABASE_URL : 'https://SEU_PROJETO.supabase.co';\nconst serviceKey  = ($env && $env.SUPABASE_SERVICE_KEY) ? $env.SUPABASE_SERVICE_KEY : 'SUA_SERVICE_KEY';\n\ntry {\n  const result = await this.helpers.httpRequest({\n    method: 'GET',\n    url: supabaseUrl + '/rest/v1/stock_items',\n    headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey },\n    qs: {\n      owner_id: 'eq.' + owner_id,\n      select: 'id,name,category,unit,current_stock,min_stock,cost_price,supplier,last_purchase_date',\n      order: 'current_stock.asc'\n    }\n  });\n  return JSON.stringify(result);\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'nivel_estoque' });\n}"
+      }
+    },
+    {
+      "id": "3c000006-3c00-4000-8000-3c0000000006",
+      "name": "Tool: Historico Precos Fornecedor",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [640, 500],
+      "parameters": {
+        "name": "historico_precos_fornecedor",
+        "description": "Busca histórico de preços e fornecedores alternativos para um insumo. Parâmetros: owner_id (string), item_name (string — nome do insumo para pesquisar).",
+        "language": "javaScript",
+        "jsCode": "const { owner_id = '', item_name = '' } = query;\nconst supabaseUrl = ($env && $env.SUPABASE_URL) ? $env.SUPABASE_URL : 'https://SEU_PROJETO.supabase.co';\nconst serviceKey  = ($env && $env.SUPABASE_SERVICE_KEY) ? $env.SUPABASE_SERVICE_KEY : 'SUA_SERVICE_KEY';\n\ntry {\n  const result = await this.helpers.httpRequest({\n    method: 'GET',\n    url: supabaseUrl + '/rest/v1/supplier_messages',\n    headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey },\n    qs: {\n      owner_id: 'eq.' + owner_id,\n      content: 'ilike.*' + item_name + '*',\n      select: 'supplier_name,supplier_phone,item_name,price_per_unit,unit,quantity,created_at,delivery_days',\n      order: 'created_at.desc',\n      limit: '20'\n    }\n  });\n  return JSON.stringify(result);\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'historico_precos_fornecedor' });\n}"
+      }
+    },
+    {
+      "id": "3c000007-3c00-4000-8000-3c0000000007",
+      "name": "Tool: Salvar Lista de Compras",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [840, 500],
+      "parameters": {
+        "name": "salvar_lista_compras",
+        "description": "Salva um item na lista de compras (tabela purchase_list_items). Parâmetros: owner_id, item_name, quantity (number), unit, supplier_name, estimated_price_unit (number), urgency (normal|urgente|critico), needed_by_date (YYYY-MM-DD).",
+        "language": "javaScript",
+        "jsCode": "const {\n  owner_id = '',\n  item_name = '',\n  quantity = 0,\n  unit = 'kg',\n  supplier_name = '',\n  estimated_price_unit = 0,\n  urgency = 'normal',\n  needed_by_date = ''\n} = query;\n\nconst supabaseUrl = ($env && $env.SUPABASE_URL) ? $env.SUPABASE_URL : 'https://SEU_PROJETO.supabase.co';\nconst serviceKey  = ($env && $env.SUPABASE_SERVICE_KEY) ? $env.SUPABASE_SERVICE_KEY : 'SUA_SERVICE_KEY';\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: supabaseUrl + '/rest/v1/purchase_list_items',\n    headers: {\n      apikey: serviceKey,\n      Authorization: 'Bearer ' + serviceKey,\n      'Content-Type': 'application/json',\n      Prefer: 'return=minimal'\n    },\n    body: JSON.stringify({\n      owner_id,\n      item_name,\n      quantity: Number(quantity),\n      unit,\n      supplier_name,\n      estimated_price_unit: Number(estimated_price_unit),\n      estimated_total: Number(quantity) * Number(estimated_price_unit),\n      urgency,\n      needed_by_date,\n      status: 'pendente'\n    })\n  });\n  return JSON.stringify({ success: true, item: item_name, quantity, urgency });\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'salvar_lista_compras' });\n}"
+      }
+    },
+    {
+      "id": "3c000008-3c00-4000-8000-3c0000000008",
+      "name": "Formatar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300],
+      "parameters": {
+        "jsCode": "const item = items[0];\nconst raw = item.json.output || item.json.text || item.json;\nlet data;\ntry {\n  const clean = (typeof raw === 'string') ? raw.replace(/```json\\n?/gi, '').replace(/```/g, '').trim() : JSON.stringify(raw);\n  data = JSON.parse(clean);\n} catch (e) {\n  data = { raw_output: raw };\n}\nreturn [{ json: { success: true, agente: 'COMPRAS', setor: item.json.setor, owner_id: item.json.owner_id, timestamp: new Date().toISOString(), data } }];"
+      }
+    },
+    {
+      "id": "3c000009-3c00-4000-8000-3c0000000009",
+      "name": "Resposta Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [880, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseCode": 200 }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Compras": {
+      "main": [[{ "node": "Contexto Compras", "type": "main", "index": 0 }]]
+    },
+    "Contexto Compras": {
+      "main": [[{ "node": "Agente Compras", "type": "main", "index": 0 }]]
+    },
+    "LLM Compras": {
+      "ai_languageModel": [[{ "node": "Agente Compras", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Tool: Nivel de Estoque": {
+      "ai_tool": [[{ "node": "Agente Compras", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Historico Precos Fornecedor": {
+      "ai_tool": [[{ "node": "Agente Compras", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Salvar Lista de Compras": {
+      "ai_tool": [[{ "node": "Agente Compras", "type": "ai_tool", "index": 0 }]]
+    },
+    "Agente Compras": {
+      "main": [[{ "node": "Formatar Resposta", "type": "main", "index": 0 }]]
+    },
+    "Formatar Resposta": {
+      "main": [[{ "node": "Resposta Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "timezone": "America/Sao_Paulo" },
+  "meta": { "instanceId": "gastrosense-compras-v1" },
+  "pinData": {}
+}

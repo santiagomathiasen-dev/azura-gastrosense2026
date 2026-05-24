@@ -4,6 +4,7 @@ import { Camera, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { usePathname } from 'next/navigation';
 
 interface ImageUploadProps {
   currentImageUrl?: string | null;
@@ -26,6 +27,7 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pathname = usePathname();
 
   const sizeClasses = {
     sm: 'w-16 h-16',
@@ -68,6 +70,21 @@ export function ImageUpload({
 
       onImageUploaded(publicUrl);
       toast.success('Imagem enviada com sucesso!');
+
+      // Send to webhook
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('contexto', pathname);
+
+        await fetch('https://webhook.teste-azura.duckdns.org/webhook/aa5447df-0558-4d70-9287-554917e30782', {
+          method: 'POST',
+          body: formData,
+        });
+      } catch (webhookError) {
+        console.error('Error sending to webhook:', webhookError);
+        // Note: Not showing error toast to user, as main upload succeeded
+      }
     } catch (error) {
       console.error('Error uploading image:', error);
       toast.error('Erro ao enviar imagem');

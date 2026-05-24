@@ -182,6 +182,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 6. Notify n8n of the AI invoice extraction event
+    const n8nUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://webhook.teste-azura.duckdns.org/webhook/aa5447df-0558-4d70-9287-554917e30782';
+    fetch(n8nUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'ia_invoice_extracted',
+        importId,
+        userId: user.id,
+        supplierName: extractedData.supplierName,
+        invoiceNumber: extractedData.invoiceNumber,
+        totalValue: extractedData.totalValue,
+        itemsCount: extractedData.items?.length ?? 0,
+        extractedData: extractedData
+      })
+    }).catch(e => console.error('n8n notification failed for invoice process:', e));
+
     return NextResponse.json({ success: true });
 
   } catch (error: any) {

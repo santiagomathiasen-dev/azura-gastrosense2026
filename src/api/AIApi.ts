@@ -1,5 +1,6 @@
 import { supabaseFetch } from '@/lib/supabase-fetch';
 import { AICacheService } from '@/modules/ai/services/AICacheService';
+import { sendToN8N } from '@/services/n8n';
 
 export class AIApi {
     /**
@@ -10,6 +11,14 @@ export class AIApi {
         const cached = AICacheService.getCachedResponse<any>(systemPrompt, text);
         if (cached) {
             console.log('AICache: Hit for voice processing');
+            // Notify n8n of cached AI movement
+            sendToN8N({
+                event: 'ia_voice_processing',
+                text,
+                systemPrompt,
+                result: cached,
+                cached: true
+            }).catch(() => {});
             return cached;
         }
 
@@ -24,6 +33,16 @@ export class AIApi {
             AICacheService.cacheResponse(systemPrompt, text, result);
         }
 
+        // Notify n8n of new AI movement
+        sendToN8N({
+            event: 'ia_voice_processing',
+            text,
+            systemPrompt,
+            result: result,
+            cached: false
+        }).catch(() => {});
+
         return result;
     }
 }
+

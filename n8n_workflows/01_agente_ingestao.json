@@ -1,0 +1,139 @@
+{
+  "name": "GastroSense 01 — Agente Ingestao Universal",
+  "nodes": [
+    {
+      "id": "1a000001-1a00-4000-8000-1a0000000001",
+      "name": "Webhook Ingestao",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingestao",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "1a000002-1a00-4000-8000-1a0000000002",
+      "name": "Contexto Ingestao",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [220, 300],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "input",    "value": "={{ $json.body.input || $json.body.texto || $json.body.documento || '' }}", "type": "string" },
+            { "id": "2", "name": "owner_id", "value": "={{ $json.body.owner_id || '' }}", "type": "string" },
+            { "id": "3", "name": "setor",    "value": "={{ $json.body.setor || $json.body.sector || 'restaurante' }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "1a000003-1a00-4000-8000-1a0000000003",
+      "name": "Agente Ingestao",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [440, 300],
+      "parameters": {
+        "agent": "toolsAgent",
+        "promptType": "define",
+        "text": "=ENTRADA: {{ $json.input }}\nSETOR: {{ $json.setor }}\nOWNER_ID: {{ $json.owner_id }}",
+        "options": {
+          "systemMessage": "Você é o ANALISTA DE INGESTÃO UNIVERSAL do GastroSense AI.\n\nProcessa qualquer entrada de dados: texto livre, nota fiscal (OCR), áudio transcrito, planilha CSV.\n\nLÓGICA SETORIAL:\n- PADARIA/CONFEITARIA: identificar W da farinha (W170=fraca,W220=média,W300=forte,W380=extra-forte), percentual do padeiro (0.2-2%), tipo de fermento (seco/fresco/levain/poolish/biga).\n- BAR: identificar dose padrão em ML (vodka=50ml, cerveja=500ml, destilado=60ml, vinho=150ml), teor alcoólico.\n- GELATERIA: bases lácteas, overrun_target=40%, maturation_hours=12.\n- HOTEL/EVENTOS: calcular por PAX, informar event_type (buffet/coquetel/jantar).\n- RESTAURANTE: aplicar Fator de Correção FC = Peso_Bruto / Peso_Líquido.\n\nFLUXO OBRIGATÓRIO:\n1. Extrair todos os itens e normalizar nomes\n2. Para cada item: chamar buscar_preco_historico com owner_id e item_name\n3. Calcular variação de preço — ALERTA se > 10%\n4. Chamar salvar_insumo para persistir cada item\n5. Retornar JSON de resultado\n\nFORMATO DE SAÍDA:\n{\n  \"registros_processados\": 0,\n  \"itens\": [\n    {\n      \"name\": \"nome normalizado\",\n      \"category\": \"laticinios|secos|hortifruti|carnes|bebidas|embalagens|limpeza|outros\",\n      \"unit\": \"kg|g|L|ml|unidade|caixa\",\n      \"cost_price\": 0.00,\n      \"supplier\": \"nome do fornecedor\",\n      \"quantity_purchased\": 0,\n      \"metadata_setor\": {}\n    }\n  ],\n  \"alertas_preco\": [\n    { \"item\": \"\", \"preco_anterior\": 0, \"preco_novo\": 0, \"variacao_pct\": 0 }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "1a000004-1a00-4000-8000-1a0000000004",
+      "name": "LLM Ingestao",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [220, 500],
+      "parameters": {
+        "model": "gpt-4o",
+        "options": { "temperature": 0.1 }
+      },
+      "credentials": {
+        "openAiApi": { "id": "1", "name": "OpenAI account" }
+      }
+    },
+    {
+      "id": "1a000005-1a00-4000-8000-1a0000000005",
+      "name": "Tool: Buscar Preco Historico",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [440, 500],
+      "parameters": {
+        "name": "buscar_preco_historico",
+        "description": "Busca os últimos preços registrados de um insumo no Supabase. Use para comparar o preço atual com o histórico antes de salvar. Parâmetros necessários: owner_id (string), item_name (string).",
+        "language": "javaScript",
+        "jsCode": "const { owner_id = '', item_name = '' } = query;\nconst supabaseUrl = ($env && $env.SUPABASE_URL) ? $env.SUPABASE_URL : 'https://SEU_PROJETO.supabase.co';\nconst serviceKey  = ($env && $env.SUPABASE_SERVICE_KEY) ? $env.SUPABASE_SERVICE_KEY : 'SUA_SERVICE_KEY';\n\ntry {\n  const result = await this.helpers.httpRequest({\n    method: 'GET',\n    url: supabaseUrl + '/rest/v1/stock_movements',\n    headers: {\n      apikey: serviceKey,\n      Authorization: 'Bearer ' + serviceKey\n    },\n    qs: {\n      owner_id: 'eq.' + owner_id,\n      item_name: 'ilike.*' + item_name + '*',\n      type: 'eq.entrada',\n      select: 'item_name,unit_cost,quantity,created_at,supplier',\n      order: 'created_at.desc',\n      limit: '5'\n    }\n  });\n  return JSON.stringify(result);\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'buscar_preco_historico' });\n}"
+      }
+    },
+    {
+      "id": "1a000006-1a00-4000-8000-1a0000000006",
+      "name": "Tool: Salvar Insumo Supabase",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [660, 500],
+      "parameters": {
+        "name": "salvar_insumo",
+        "description": "Salva ou atualiza um insumo no Supabase (tabela stock_items). Parâmetros: owner_id, name, category, unit, cost_price (number), supplier, current_stock (number), min_stock (number), setor (string), metadata_setor (string JSON).",
+        "language": "javaScript",
+        "jsCode": "const {\n  owner_id = '',\n  name = '',\n  category = 'outros',\n  unit = 'kg',\n  cost_price = 0,\n  supplier = '',\n  current_stock = 0,\n  min_stock = 0,\n  setor = '',\n  metadata_setor = '{}'\n} = query;\n\nconst supabaseUrl = ($env && $env.SUPABASE_URL) ? $env.SUPABASE_URL : 'https://SEU_PROJETO.supabase.co';\nconst serviceKey  = ($env && $env.SUPABASE_SERVICE_KEY) ? $env.SUPABASE_SERVICE_KEY : 'SUA_SERVICE_KEY';\n\nlet meta = {};\ntry { meta = typeof metadata_setor === 'string' ? JSON.parse(metadata_setor) : metadata_setor; } catch (_) {}\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: supabaseUrl + '/rest/v1/stock_items',\n    headers: {\n      apikey: serviceKey,\n      Authorization: 'Bearer ' + serviceKey,\n      'Content-Type': 'application/json',\n      Prefer: 'resolution=merge-duplicates,return=minimal'\n    },\n    body: JSON.stringify({ owner_id, name, category, unit, cost_price: Number(cost_price), supplier, current_stock: Number(current_stock), min_stock: Number(min_stock), sector: setor, sector_metadata: meta })\n  });\n  return JSON.stringify({ success: true, saved: name });\n} catch (e) {\n  return JSON.stringify({ error: e.message, tool: 'salvar_insumo' });\n}"
+      }
+    },
+    {
+      "id": "1a000007-1a00-4000-8000-1a0000000007",
+      "name": "Formatar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300],
+      "parameters": {
+        "jsCode": "const item = items[0];\nconst raw = item.json.output || item.json.text || item.json;\nlet data;\ntry {\n  const clean = (typeof raw === 'string') ? raw.replace(/```json\\n?/gi, '').replace(/```/g, '').trim() : JSON.stringify(raw);\n  data = JSON.parse(clean);\n} catch (e) {\n  data = { raw_output: raw };\n}\nreturn [{ json: { success: true, agente: 'INGESTAO', setor: item.json.setor, owner_id: item.json.owner_id, timestamp: new Date().toISOString(), data } }];"
+      }
+    },
+    {
+      "id": "1a000008-1a00-4000-8000-1a0000000008",
+      "name": "Resposta Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [880, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseCode": 200 }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Ingestao": {
+      "main": [[{ "node": "Contexto Ingestao", "type": "main", "index": 0 }]]
+    },
+    "Contexto Ingestao": {
+      "main": [[{ "node": "Agente Ingestao", "type": "main", "index": 0 }]]
+    },
+    "LLM Ingestao": {
+      "ai_languageModel": [[{ "node": "Agente Ingestao", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Tool: Buscar Preco Historico": {
+      "ai_tool": [[{ "node": "Agente Ingestao", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Salvar Insumo Supabase": {
+      "ai_tool": [[{ "node": "Agente Ingestao", "type": "ai_tool", "index": 0 }]]
+    },
+    "Agente Ingestao": {
+      "main": [[{ "node": "Formatar Resposta", "type": "main", "index": 0 }]]
+    },
+    "Formatar Resposta": {
+      "main": [[{ "node": "Resposta Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "timezone": "America/Sao_Paulo" },
+  "meta": { "instanceId": "gastrosense-ingestao-v1" },
+  "pinData": {}
+}
