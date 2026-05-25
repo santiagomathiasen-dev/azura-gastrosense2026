@@ -24,7 +24,7 @@ export function useProfile() {
                     }
                 }
 
-                let profile = Array.isArray(profiles) ? profiles[0] : profiles;
+                let profile = (Array.isArray(profiles) ? profiles[0] : profiles) || null;
 
                 // Fallback: Create profile automatically if it doesn't exist
                 if (!profile) {
@@ -68,7 +68,7 @@ export function useProfile() {
                     }
                 }
 
-                return profile;
+                return profile || null;
             } catch (err) {
                 console.error("useProfile: FETCH ERROR", err);
                 throw err;

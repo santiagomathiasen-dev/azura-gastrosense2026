@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
 function Navigate({ to, replace }: { to: string, replace?: boolean }) {
@@ -128,6 +128,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Redirect to auth if not logged in
   if (!authLoading && !user && !isCollaboratorMode) {
     return <Navigate to={`/auth?from=${pathname}`} replace />;
+  }
+
+  // Redirect to payment if user is authenticated but not registered (has no profile)
+  const isAuthPage = pathname.startsWith('/auth');
+  const isPaymentPage = pathname === '/payment-required' || pathname === '/assinatura';
+  if (user && !profileLoading && !profile && !isCollaboratorMode && !isPaymentPage && !isAuthPage) {
+    console.warn("ProtectedRoute: User has no profile (not registered). Redirecting to payment...");
+    return <Navigate to="/payment-required" replace />;
   }
 
   // ⭐ CRITICAL FIX: Se permissões estão TIMEOUT, permite entrada com aviso
