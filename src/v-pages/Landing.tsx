@@ -143,59 +143,71 @@ export default function Landing() {
                             </div>
                         </div>
 
-                        <div className="hero-visual">
-                            <div className="float-badge">
+                        <div className="hero-visual relative">
+                            {/* Ambient Glow behind visual */}
+                            <div className="absolute -inset-10 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+                            <div className="float-badge z-20">
                                 <div className="fb-icon">
-                                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2l1.8 5h5.2l-4.2 3 1.6 5L9 12.3l-4.4 2.7 1.6-5L2 7h5.2L9 2z" stroke="#b87333" strokeWidth="1.5" strokeLinejoin="round" /></svg>
+                                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2l1.8 5h5.2l-4.2 3 1.6 5L9 12.3l-4.4 2.7 1.6-5L2 7h5.2L9 2z" stroke="#f59e0b" strokeWidth="1.5" strokeLinejoin="round" /></svg>
                                 </div>
                                 <div>
                                     <div className="fb-label">Economia gerada</div>
                                     <div className="fb-val">R$ 12.400 / mês</div>
                                 </div>
                             </div>
-                            <div className="dash-wrap">
-                                <div className="dash-topbar">
-                                    <div className="dash-topbar-dots"><div className="dtd r"></div><div className="dtd y"></div><div className="dtd g"></div></div>
-                                    <div className="dash-topbar-title">azura · painel operacional</div>
-                                    <div className="dash-topbar-badge">● AO VIVO</div>
+
+                            {/* Layered Layout: Stunning Generated HUD Artwork behind, with Vector Dashboard slightly overlapping */}
+                            <div className="relative">
+                                <div className="absolute -top-12 -left-12 w-48 h-48 rounded-3xl overflow-hidden border border-white/10 shadow-2xl opacity-60 hover:opacity-100 hover:scale-105 transition-all duration-500 hidden xl:block z-0 bg-zinc-950">
+                                    <img src="/culinary_ai_hero.png" alt="Azura HUD" className="w-full h-full object-cover" />
                                 </div>
-                                <div className="dash-body">
-                                    <div className="dash-kpis">
-                                        <div className="kpi"><div className="kpi-label">Produção hoje</div><div className="kpi-value">248</div><div className="kpi-sub">▲ 12% vs ontem</div></div>
-                                        <div className="kpi"><div className="kpi-label">Custo/prato</div><div className="kpi-value">R$8,40</div><div className="kpi-sub">▼ 3% vs meta</div></div>
-                                        <div className="kpi"><div className="kpi-label">Estoque</div><div className="kpi-value">96%</div><div className="kpi-sub">Abastecido</div></div>
+
+                                <div className="dash-wrap relative z-10">
+                                    <div className="dash-topbar">
+                                        <div className="dash-topbar-dots"><div className="dtd r"></div><div className="dtd y"></div><div className="dtd g"></div></div>
+                                        <div className="dash-topbar-title">azura · painel operacional</div>
+                                        <div className="dash-topbar-badge">● AO VIVO</div>
                                     </div>
-                                    <div className="dash-row">
-                                        <div className="dash-panel">
-                                            <div className="dp-title">Produção — 7 dias</div>
-                                            <div className="mini-chart">
-                                                <div className="bar" style={{ height: '40%' }}></div>
-                                                <div className="bar" style={{ height: '60%' }}></div>
-                                                <div className="bar" style={{ height: '45%' }}></div>
-                                                <div className="bar" style={{ height: '80%' }}></div>
-                                                <div className="bar" style={{ height: '65%' }}></div>
-                                                <div className="bar active" style={{ height: '90%' }}></div>
-                                                <div className="bar" style={{ height: '75%' }}></div>
+                                    <div className="dash-body">
+                                        <div className="dash-kpis">
+                                            <div className="kpi"><div className="kpi-label">Produção hoje</div><div className="kpi-value">248</div><div className="kpi-sub">▲ 12% vs ontem</div></div>
+                                            <div className="kpi"><div className="kpi-label">Custo/prato</div><div className="kpi-value">R$8,40</div><div className="kpi-sub">▼ 3% vs meta</div></div>
+                                            <div className="kpi"><div className="kpi-label">Estoque</div><div className="kpi-value">96%</div><div className="kpi-sub text-emerald-400">Abastecido</div></div>
+                                        </div>
+                                        <div className="dash-row">
+                                            <div className="dash-panel">
+                                                <div className="dp-title">Produção — 7 dias</div>
+                                                <div className="mini-chart">
+                                                    <div className="bar" style={{ height: '40%' }}></div>
+                                                    <div className="bar" style={{ height: '60%' }}></div>
+                                                    <div className="bar" style={{ height: '45%' }}></div>
+                                                    <div className="bar" style={{ height: '80%' }}></div>
+                                                    <div className="bar" style={{ height: '65%' }}></div>
+                                                    <div className="bar active" style={{ height: '90%' }}></div>
+                                                    <div className="bar" style={{ height: '75%' }}></div>
+                                                </div>
+                                            </div>
+                                            <div className="dash-panel relative overflow-hidden group">
+                                                <img src="/culinary_ai_hero.png" alt="IA HUD Background" className="absolute inset-0 w-full h-full object-cover opacity-[0.03] group-hover:opacity-[0.08] transition-opacity duration-300" />
+                                                <div className="dp-title relative z-10">Insumos críticos</div>
+                                                <div className="mini-list relative z-10">
+                                                    <div className="ml-item"><div className="ml-dot" style={{ background: '#10b981' }}></div><span className="ml-name">Frango kg</span><span className="ml-qty">42kg</span><span className="ml-status ok bg-emerald-950/20 text-emerald-400 border border-emerald-500/10">OK</span></div>
+                                                    <div className="ml-item"><div className="ml-dot" style={{ background: '#f59e0b' }}></div><span className="ml-name">Azeite L</span><span className="ml-qty">3.2L</span><span className="ml-status low bg-amber-950/20 text-amber-400 border border-amber-500/10">Baixo</span></div>
+                                                    <div className="ml-item"><div className="ml-dot" style={{ background: '#10b981' }}></div><span className="ml-name">Arroz kg</span><span className="ml-qty">110kg</span><span className="ml-status ok bg-emerald-950/20 text-emerald-400 border border-emerald-500/10">OK</span></div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="dash-panel">
-                                            <div className="dp-title">Insumos críticos</div>
-                                            <div className="mini-list">
-                                                <div className="ml-item"><div className="ml-dot" style={{ background: '#1b5e3f' }}></div><span className="ml-name">Frango kg</span><span className="ml-qty">42kg</span><span className="ml-status ok">OK</span></div>
-                                                <div className="ml-item"><div className="ml-dot" style={{ background: '#b87333' }}></div><span className="ml-name">Azeite L</span><span className="ml-qty">3.2L</span><span className="ml-status low">Baixo</span></div>
-                                                <div className="ml-item"><div className="ml-dot" style={{ background: '#1b5e3f' }}></div><span className="ml-name">Arroz kg</span><span className="ml-qty">110kg</span><span className="ml-status ok">OK</span></div>
+                                        <div className="dash-ai-row">
+                                            <div className="ai-icon">
+                                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="white" strokeWidth="1.5" /><path d="M8 5v3l2 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" /></svg>
                                             </div>
+                                            <div className="ai-text">
+                                                <div className="ai-label text-emerald-300">Azura IA</div>
+                                                <div className="ai-msg">Compra automática de azeite agendada para amanhã — 8L previsto para o fim de semana.</div>
+                                            </div>
+                                            <div className="ai-badge">Auto</div>
                                         </div>
-                                    </div>
-                                    <div className="dash-ai-row">
-                                        <div className="ai-icon">
-                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="white" strokeWidth="1.5" /><path d="M8 5v3l2 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" /></svg>
-                                        </div>
-                                        <div className="ai-text">
-                                            <div className="ai-label">Azura IA</div>
-                                            <div className="ai-msg">Compra automática de azeite agendada para amanhã — 8L previsto para o fim de semana.</div>
-                                        </div>
-                                        <div className="ai-badge">Auto</div>
                                     </div>
                                 </div>
                             </div>
